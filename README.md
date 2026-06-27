@@ -40,7 +40,28 @@ chmod +x install.sh
 ./install.sh
 ```
 
-Commands are copied to `~/.claude/commands/` — Claude Code's global user-level directory. They appear in the `/` picker in every project. Restart Claude Code after installing.
+Commands are copied to `~/.claude/commands/` and `~/.claude-company/commands/` (if the company profile exists). They appear in the `/` picker in every project. Restart Claude Code after installing.
+
+---
+
+## Starting a New Project
+
+Navigate to your project directory and run `/flow-init`. Pass a one-line concept to skip the first question, or leave it blank to answer everything conversationally.
+
+```
+mkdir my-project && cd my-project
+# open Claude Code here, then:
+/flow-init Task management SaaS — Next.js frontend, Python API, Postgres
+```
+
+Claude will ask 2-3 focused questions (stack, layers, user-facing or internal?), then generate:
+
+- **`CLAUDE.md`** — root guardrails (architecture, dev rules, project structure)
+- **`server/CLAUDE.md`**, **`web/CLAUDE.md`**, etc. — one lean file per layer
+- **`SPECIFICATIONS.md`** — Spec 0.1 (Walking Skeleton) + 3-5 Phase 1 specs derived from your concept
+- **`MARKETING.md`** — positioning, target audience, feature highlights (user-facing projects only)
+
+**On an existing project:** `/flow-init` reads what's already there and offers to extend, not replace. Safe to run at any time.
 
 ---
 

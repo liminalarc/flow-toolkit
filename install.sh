@@ -4,17 +4,26 @@
 
 set -e
 
-TARGET="$HOME/.claude/commands"
+TARGETS=(
+    "$HOME/.claude/commands"
+    "$HOME/.claude-company/commands"
+)
 
-mkdir -p "$TARGET"
+count=$(ls commands/*.md 2>/dev/null | wc -l)
 
-count=0
-for file in commands/*.md; do
-    cp "$file" "$TARGET/"
-    echo "Installed $(basename "$file")"
-    count=$((count + 1))
+for target in "${TARGETS[@]}"; do
+    profile=$(basename "$(dirname "$target")")
+    parent=$(dirname "$target")
+    if [ ! -d "$parent" ]; then
+        echo "Skipping $profile (profile directory does not exist)"
+        continue
+    fi
+    mkdir -p "$target"
+    for file in commands/*.md; do
+        cp "$file" "$target/"
+    done
+    echo "Installed $count commands to $target"
 done
 
 echo ""
-echo "Done. $count commands installed to $TARGET"
-echo "Restart Claude Code (or start a new session) for changes to take effect."
+echo "Done. Restart Claude Code (or start a new session) for changes to take effect."
