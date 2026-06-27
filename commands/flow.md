@@ -77,7 +77,7 @@ Show a diff before writing.
 
 4. **Definition of done.**
    - Mark spec `**Status:** DONE` in SPECIFICATIONS.md
-   - **Archive the spec**: move it (full content, number preserved) to the `## Archive` section at the bottom of SPECIFICATIONS.md. The number is never reused — this preserves reference integrity for commits, PRs, and notes that cite the spec number. If no Archive section exists, create it.
+   - **Archive the spec**: move it (full content, number preserved) to the archive. If `SPECIFICATIONS-ARCHIVE.md` exists, append there (preserving phase groupings). Otherwise, move to the `## Archive` section at the bottom of `SPECIFICATIONS.md`, creating the section if absent. The spec number is never reused — this preserves reference integrity for commits, PRs, and notes that cite the spec number.
    - Update CLAUDE.md if new conventions were introduced
    - Update MARKETING.md if the spec added or changed user-facing capabilities (if the file exists)
    - Run the project's feature completion checklist (from CLAUDE.md)

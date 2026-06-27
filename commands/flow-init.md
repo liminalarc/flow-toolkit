@@ -86,6 +86,8 @@ Specs are moved here after completion. Spec numbers are never reused — preserv
 so commits, PRs, and notes that cite a spec number remain meaningful over time.
 ```
 
+Note: this inline archive is right for new projects. Once it grows past 20 specs, `/flow-lint` will suggest migrating to a `SPECIFICATIONS-ARCHIVE.md` sidecar file — run `/flow-lint --fix` to split automatically.
+
 ### 6. Generate MARKETING.md (user-facing projects only)
 
 If the project is user-facing (public product, website, or paying customers), generate `MARKETING.md`. Skip and say so for internal tools, CLIs, or libraries with no direct end-customers.

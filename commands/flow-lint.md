@@ -43,7 +43,7 @@ For each subdirectory CLAUDE.md found:
 
 | Check | Severity | Condition |
 |---|---|---|
-| Under 100 lines | WARNING | Subdirectory files are additive on top of root; bloat compounds. |
+| Under 150 lines | WARNING | Subdirectory files are additive on top of root; bloat compounds. |
 | Not referenced in root | INFO | Root's pointer section or Project Structure doesn't mention this directory. |
 | Duplicates a root `##` section heading | ERROR | Find all `##` headings in the subdirectory file. If any heading text exactly matches a `##` heading in the root, it's a duplication — this content will be loaded twice and may contradict the root over time. List the duplicated headings. |
 | Contains `## Architecture` or `## Development Rules` or `## Project Structure` | WARNING | These are root-level sections. A subdirectory file should only have layer-specific patterns, not top-level structure. |
@@ -62,11 +62,12 @@ For each primary source directory that has no CLAUDE.md: report as `INFO` if the
 |---|---|---|
 | SPECIFICATIONS.md exists | WARNING | Missing — run `/flow-init` to create it. |
 | Spec 0.1 (Walking Skeleton) is present | WARNING | Every project starts with the walking skeleton. |
-| No duplicate spec numbers | ERROR | Find all `### Spec X.Y` headings across both active and archive sections, report any number that appears more than once. |
-| Archive section exists | INFO | `## Archive` section should be present at the end of the file. If absent and there are any DONE specs in active phases, flag as WARNING — done specs should be archived. |
-| Archive section is last | WARNING | `## Archive` must be the final `##` section. Anything after it won't be treated as active backlog, but the ordering signals intent. |
-| No active-section specs with status DONE | WARNING | A DONE spec that hasn't been moved to Archive yet. These accumulate and make the active backlog harder to scan. |
-| No Archive specs with non-DONE/non-SUPERSEDED status | ERROR | An IN PROGRESS or NOT STARTED spec in the Archive section is a mistake — specs only archive on completion or supersession. |
+| No duplicate spec numbers | ERROR | Find all `### Spec X.Y` headings across SPECIFICATIONS.md AND SPECIFICATIONS-ARCHIVE.md (if present), report any number that appears more than once. |
+| Archive exists (either pattern) | WARNING | No `## Archive` section in `SPECIFICATIONS.md` and no `SPECIFICATIONS-ARCHIVE.md` sidecar exists, but DONE specs are present in the active backlog. Run `/flow-lint --fix` to create the appropriate archive. |
+| Inline archive is last section | WARNING | If using `## Archive` in `SPECIFICATIONS.md`, it must be the final `##` section. |
+| Inline archive not too large | WARNING | If using `## Archive` in `SPECIFICATIONS.md` and it contains more than 20 specs, the active backlog file is getting unwieldy. Migrate to a `SPECIFICATIONS-ARCHIVE.md` sidecar — run `/flow-lint --fix` to split automatically. |
+| No active-section specs with status DONE | WARNING | A DONE spec that hasn't been archived yet. These accumulate and make the active backlog harder to scan. |
+| No archive specs with non-DONE/non-SUPERSEDED status | ERROR | An IN PROGRESS or NOT STARTED spec in the archive is a mistake — specs only move there on completion or supersession. Check both `## Archive` and `SPECIFICATIONS-ARCHIVE.md`. |
 
 **Per-spec:**
 
@@ -127,6 +128,7 @@ Safe to auto-fix:
 - Status keyword normalization: `done` → `DONE`, `in progress` → `IN PROGRESS`, `not started` → `NOT STARTED`, etc.
 - Spec heading format: `### Spec X.Y: Title` → `### Spec X.Y — Title`
 - Trailing whitespace, double blank lines in SPECIFICATIONS.md
+- **Archive migration**: when inline `## Archive` has more than 20 specs, offer to create `SPECIFICATIONS-ARCHIVE.md`, move all archived specs there (preserving phase groupings and spec content exactly), and replace the `## Archive` section in `SPECIFICATIONS.md` with a one-line pointer: `*Completed specs are in [SPECIFICATIONS-ARCHIVE.md](SPECIFICATIONS-ARCHIVE.md).*` — always show a diff and confirm before writing.
 
 **Do NOT auto-fix:**
 - CLAUDE.md content (too risky to modify architectural docs without review)
