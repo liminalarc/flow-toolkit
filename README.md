@@ -100,7 +100,7 @@ Establish the minimal end-to-end skeleton so every subsequent spec builds on a w
 ...
 ```
 
-**Spec archival** — when a spec is marked `DONE`, `/flow` moves it to the `## Archive` section at the bottom of the file. The spec number is never reused. This keeps the active backlog scannable while preserving the full history. Commits, PRs, and notes that cite a spec number (e.g., "closes Spec 2.3") remain meaningful because the archived spec is still in the same file.
+**Spec archival** — when a spec is marked `DONE`, `/flow` moves it to the archive. New projects use a `## Archive` section at the bottom of `SPECIFICATIONS.md`. Once that section grows past 20 specs, `/flow-lint` flags it and `/flow-lint --fix` migrates automatically to a `SPECIFICATIONS-ARCHIVE.md` sidecar file — keeping the active backlog lean while preserving every spec number for reference integrity. Commits, PRs, and notes that cite a spec number (e.g., "closes Spec 2.3") remain meaningful forever.
 
 **Status vocabulary** — exactly one of these per spec, no other values:
 
@@ -323,22 +323,23 @@ Enforce the CLAUDE.md hierarchy rules and SPECIFICATIONS.md format. Catches prob
 *CLAUDE.md hierarchy:*
 - Root CLAUDE.md exists and is under 200 lines
 - Root has required sections: `## Architecture`, `## Development Rules`, `## Project Structure`
-- Subdirectory CLAUDE.md files are under 100 lines each
+- Subdirectory CLAUDE.md files are under 150 lines each
 - Subdirectory files don't duplicate `##` section headings from root (content loaded twice = drift risk)
 - Layers with 10+ source files have a subdirectory CLAUDE.md
 
 *SPECIFICATIONS.md:*
 - Spec 0.1 (Walking Skeleton) is present
-- No duplicate spec numbers
+- No duplicate spec numbers (checked across both `SPECIFICATIONS.md` and `SPECIFICATIONS-ARCHIVE.md`)
 - Every spec heading matches `### Spec X.Y — Title`
 - Every spec has exactly one `**Status:**` line
 - Status keyword is one of: `DONE · IN PROGRESS · PARTIAL · NOT STARTED · SUPERSEDED`
 - DONE specs have no unchecked `- [ ]` acceptance criteria remaining
 - Non-DONE specs with all `- [x]` items are flagged (status probably needs updating)
+- Inline `## Archive` section with more than 20 specs flagged — run `--fix` to migrate to `SPECIFICATIONS-ARCHIVE.md`
 
 **Severity levels:** `ERROR` (must fix — breaks `/flow` parsing or creates contradiction), `WARNING` (should fix — will cause drift over time), `INFO` (consider — best practice not met).
 
-**`--fix`** auto-corrects only safe mechanical issues: status keyword casing, spec heading punctuation (`:` → `—`). Never modifies CLAUDE.md content or resolves ambiguous issues — those require human judgment.
+**`--fix`** auto-corrects safe mechanical issues: status keyword casing, spec heading punctuation, and archive migration (inline → sidecar file when archive exceeds 20 specs). Never modifies CLAUDE.md content or resolves ambiguous issues — those require human judgment.
 
 ---
 
