@@ -54,7 +54,55 @@ For each major layer (e.g., `server/`, `web/`, `api/`, `frontend/`, `src/`): cre
 - No duplication with the root file
 - **How the hierarchy works**: root always loads; subdirectory files load in addition to root when Claude works within that directory. Stack additively — root universal rules + layer-specific details. Never repeat root content in a subdirectory file.
 
-### 5. Generate SPECIFICATIONS.md
+### 5. Generate or update README.md
+
+A README is the front door to the project — a new developer should be able to clone the repo and have the app running locally by following it, with no outside knowledge required.
+
+Read the existing README if present. If it already has robust local-setup coverage, offer to extend. If it's missing or thin, generate it.
+
+**Required sections** (adapt headings to the project's conventions, content to the stack):
+
+```markdown
+# [Project Name]
+
+[One paragraph: what it is, who it's for, and the one thing that makes it different.]
+
+## Prerequisites
+
+[List everything a new dev needs installed before cloning: runtime versions (Node 20, .NET 10, Python 3.11), Docker, CLI tools, accounts. Be specific about versions.]
+
+## Local Setup
+
+[Step-by-step: clone → install dependencies → configure environment → run. Number every step. Don't assume any step is obvious.]
+
+### Environment Variables
+
+[List every required env var with a description and example value. Point to any .env.example files.]
+
+## Running the App
+
+[Exact commands to start the app locally — one block per runnable thing (API, web, worker). Include the URL where it's reachable.]
+
+## Running Tests
+
+[Exact commands to run the test suite. If there are multiple test layers (unit, integration, E2E), show each separately.]
+
+## Docker
+
+[If applicable: `docker compose up` instructions, what services start, which ports they use, any first-run steps.]
+
+## Deployment
+
+[High-level: how does code get to production? CI/CD trigger, release process, or manual steps. Link to a runbook if one exists.]
+```
+
+Rules for README generation:
+- Every command in the README must be exact and runnable — no pseudocode, no elided steps.
+- If a step requires a secret or account credential, say what it is and where to get it; don't just say `[configure your env]`.
+- "Local setup documented in README" is the primary acceptance criterion for Spec 0.1 — the README and the walking skeleton ship together.
+- For monorepos or multi-app projects, add a top-level README pointing to per-layer README files; each layer gets its own README with app-specific setup.
+
+### 6. Generate SPECIFICATIONS.md
 
 ```
 # [Project Name] — Specifications
@@ -88,7 +136,7 @@ so commits, PRs, and notes that cite a spec number remain meaningful over time.
 
 Note: this inline archive is right for new projects. Once it grows past 20 specs, `/flow-lint` will suggest migrating to a `SPECIFICATIONS-ARCHIVE.md` sidecar file — run `/flow-lint --fix` to split automatically.
 
-### 6. Generate MARKETING.md (user-facing projects only)
+### 7. Generate MARKETING.md (user-facing projects only)
 
 If the project is user-facing (public product, website, or paying customers), generate `MARKETING.md`. Skip and say so for internal tools, CLIs, or libraries with no direct end-customers.
 
@@ -129,7 +177,7 @@ If the project is user-facing (public product, website, or paying customers), ge
 
 Fill in what can be inferred from the concept; mark unknowns as `[TBD]`. This doc grows over time — run `/flow-review --marketing` to audit it periodically. Update Feature Highlights whenever a spec ships a user-facing capability.
 
-### 7. Explain the workflow
+### 8. Explain the workflow
 
 Tell the user:
 - `/flow` — implement a spec, manage backlog, or brainstorm

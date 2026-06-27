@@ -85,7 +85,22 @@ For each spec block (from `### Spec X.Y` to the next `###` heading or end of fil
 
 ---
 
-### Step 3b: Check MARKETING.md consistency (if file exists)
+### Step 3b: Check README.md (skip if `--claude` or `--specs`)
+
+The README is the day-1 guide — a new developer should be able to clone the repo and reach a running app by following it alone.
+
+| Check | Severity | Condition |
+|---|---|---|
+| `README.md` exists at the project root | ERROR | Missing — every project must have one. Run `/flow-init` to generate it. |
+| Has local setup / getting started section | ERROR | Look for a heading containing "setup", "getting started", "local", or "installation". Without it, a new developer has no path to running the project. |
+| Has prerequisites section | WARNING | Look for "prerequisites", "requirements", or "dependencies" heading. Should list runtime versions, tools, and accounts needed before the first step. |
+| Has test-running instructions | WARNING | Look for "test" in any heading. If tests exist in the repo (any `*.test.*`, `*.spec.*`, or `tests/` directory) but the README has no test section, new developers won't know how to run them. |
+| Commands in setup sections are exact | INFO | Heuristic: look for code blocks in the local setup section. If the section has no code blocks at all, the instructions are likely prose-only and may be incomplete or ambiguous. |
+| Spec 0.1 acceptance criterion satisfied | WARNING | If Spec 0.1 is marked DONE but README has no local setup section, the primary Spec 0.1 acceptance criterion ("Local setup documented in README") was likely not met. |
+
+For monorepos or multi-app projects, also check that each major layer has its own `README.md` with app-specific setup instructions. Report as `INFO` for any layer with 5+ source files and no README.
+
+### Step 3c: Check MARKETING.md consistency (if file exists)
 
 If `MARKETING.md` is present, compare its Feature Highlights section against SPECIFICATIONS.md:
 - Count specs marked `DONE` in the archive
