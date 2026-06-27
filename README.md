@@ -85,6 +85,14 @@ That's the whole loop. Everything else is detail.
 
 ---
 
+## Always Context-Aware
+
+Claude Code reads `CLAUDE.md` automatically at the start of every session. That one fact is what makes the toolkit work: your architecture decisions, TDD mandate, testing stack, commit format, and named patterns are always present before the first command runs — not retrieved on request, just there.
+
+Pair that with `SPECIFICATIONS.md` (Claude knows what's done and what's next) and `README.md` (Claude knows how to run everything), and you get a session that starts at full speed every time. No re-explaining the stack. No "how do we handle auth here?" No drift where Claude makes a different choice than last time because it forgot the context.
+
+The three files together are the project's persistent memory.
+
 ## The Three Files
 
 Every project using flow-toolkit has three plain markdown files. `/flow-init` generates them; you evolve them over time.
