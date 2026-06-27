@@ -99,6 +99,8 @@ Every token in Claude's context window is either signal or noise. The toolkit is
 
 The result: a session that starts sharp and stays sharp, because the structure of the project files keeps Claude's working set lean by default.
 
+**Every command reinforces this.** Each of the five commands opens with an explicit instruction to ignore prior conversation context and read only from the project files. You can chain `/flow-init` → `/flow` → `/flow-lint` without a `/clear` in between — each one starts fresh on its own.
+
 ## The Three Files
 
 Every project using flow-toolkit has three plain markdown files. `/flow-init` generates them; you evolve them over time.
