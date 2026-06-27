@@ -85,13 +85,19 @@ That's the whole loop. Everything else is detail.
 
 ---
 
-## Always Context-Aware
+## Built to Use Context Wisely
 
-Claude Code reads `CLAUDE.md` automatically at the start of every session. That one fact is what makes the toolkit work: your architecture decisions, TDD mandate, testing stack, commit format, and named patterns are always present before the first command runs — not retrieved on request, just there.
+Every token in Claude's context window is either signal or noise. The toolkit is designed to keep the ratio high — so you get more useful work per session without burning budget on irrelevant history.
 
-Pair that with `SPECIFICATIONS.md` (Claude knows what's done and what's next) and `README.md` (Claude knows how to run everything), and you get a session that starts at full speed every time. No re-explaining the stack. No "how do we handle auth here?" No drift where Claude makes a different choice than last time because it forgot the context.
+**Enforced size limits.** Root `CLAUDE.md` is capped at 200 lines; subdirectory files at 150. `/flow-lint` catches drift before it compounds. A bloated guardrail file isn't just a style problem — it's wasted context on every session, forever.
 
-The three files together are the project's persistent memory.
+**Only the active backlog loads.** Completed specs are archived out of `SPECIFICATIONS.md` as they're done. Claude reads 15 active specs, not 150 historical ones. The archive is preserved for reference integrity (spec numbers never reused) but stays out of the working context.
+
+**Subdirectory scoping.** The `CLAUDE.md` hierarchy means working in `server/` loads root + `server/CLAUDE.md` — not `web/`, not `admin/`. Claude gets exactly the layer-specific context it needs, nothing it doesn't.
+
+**Thin vertical slices.** Each `/flow` call is scoped to one spec at a time. Claude isn't reasoning about the whole roadmap — it's reasoning about a defined, bounded increment.
+
+The result: a session that starts sharp and stays sharp, because the structure of the project files keeps Claude's working set lean by default.
 
 ## The Three Files
 
