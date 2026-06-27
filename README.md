@@ -85,9 +85,9 @@ That's the whole loop. Everything else is detail.
 
 ---
 
-## The Two Files
+## The Three Files
 
-Every project using flow-toolkit has two plain markdown files. `/flow-init` generates them; you evolve them over time.
+Every project using flow-toolkit has three plain markdown files. `/flow-init` generates them; you evolve them over time.
 
 ### SPECIFICATIONS.md — the backlog
 
@@ -170,6 +170,30 @@ Engineering principles and architectural context that Claude Code reads in every
 **Keeping the hierarchy healthy:** Run `/flow-lint` periodically to catch drift — subdirectory files that have grown too large, sections that duplicate root content, or specs with invalid status keywords.
 
 **MARKETING.md** — for user-facing projects, `/flow-init` generates a `MARKETING.md` with positioning, target audience, key messages, feature highlights, and pricing. Update the Feature Highlights table whenever a spec ships a user-facing capability. `/flow-review --marketing` audits it; `/flow-lint` checks for shipped specs that haven't been reflected in the marketing doc.
+
+### README.md — the day-1 guide
+
+The README is the front door. A new developer should be able to clone the repo and reach a running app by following it alone, with no outside knowledge required. `/flow-init` generates it; `/flow-lint` checks that it stays complete.
+
+**Required sections:**
+
+| Section | What it must contain |
+|---|---|
+| Prerequisites | Runtime versions (Node 20, .NET 10...), tools, accounts needed before step 1 |
+| Local Setup | Numbered steps: clone → install → configure env → run. Every command exact and runnable. |
+| Environment Variables | Every required var, a description, and an example value. Point to `.env.example` files. |
+| Running the App | Exact commands, one block per runnable thing. Include the URL where it's reachable. |
+| Running Tests | Exact commands for each test layer (unit, integration, E2E). |
+| Docker | `docker compose up` steps, ports, first-run notes — if the project has Docker. |
+| Deployment | How code gets to production: CI/CD trigger, release process, or link to runbook. |
+
+Rules:
+- Every command must be exact — no pseudocode, no elided steps.
+- If a step requires a secret, name it and say where to get it. Don't write `[configure your env]`.
+- Spec 0.1's primary acceptance criterion is "Local setup documented in README" — the README and the walking skeleton ship together.
+- For monorepos, add a root README pointing to per-layer READMEs; each layer gets its own app-specific setup guide.
+
+`/flow-lint` checks: README exists (ERROR if missing), has a local-setup section (ERROR), has prerequisites (WARNING), has test instructions (WARNING), and that Spec 0.1 DONE implies a real setup guide exists.
 
 ---
 
