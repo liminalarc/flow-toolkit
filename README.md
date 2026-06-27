@@ -40,7 +40,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
-Commands are copied to `~/.claude/commands/` and `~/.claude-company/commands/` (if the company profile exists). They appear in the `/` picker in every project. Restart Claude Code after installing.
+Commands are copied to `~/.claude/commands/` and appear in the `/` picker in every project. Restart Claude Code after installing.
 
 ---
 
