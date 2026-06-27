@@ -17,6 +17,8 @@ Usage:
 
 ## Instructions
 
+**Start fresh.** Read only from the project files — `CLAUDE.md`, `SPECIFICATIONS.md`, `README.md`. Do not reference or build on prior conversation context. Treat this as a new session regardless of what preceded it.
+
 ### `/flow` (no args)
 
 Read SPECIFICATIONS.md. Show a concise summary: IN PROGRESS first, then NOT STARTED grouped by phase. Suggest the next item based on phase order. Invite the user to pick or describe work.

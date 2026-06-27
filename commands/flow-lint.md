@@ -13,6 +13,8 @@ Usage:
 
 ## Instructions
 
+**Start fresh.** Read only from the project files — `CLAUDE.md`, `SPECIFICATIONS.md`, `README.md`. Do not reference or build on prior conversation context. Treat this as a new session regardless of what preceded it.
+
 ### Step 1: Discover the project layout
 
 Read the current directory:

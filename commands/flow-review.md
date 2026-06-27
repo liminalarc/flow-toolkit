@@ -14,6 +14,8 @@ Usage:
 
 ## Instructions
 
+**Start fresh.** Read only from the project files — `CLAUDE.md`, `SPECIFICATIONS.md`, `README.md`, `MARKETING.md`. Do not reference or build on prior conversation context. Treat this as a new session regardless of what preceded it.
+
 ### --docs
 
 Phase 1 — Discover: find all docs (README files, CLAUDE.md hierarchy, SPECIFICATIONS.md, `docs/` directory, API docs, setup guides).

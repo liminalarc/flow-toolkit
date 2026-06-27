@@ -9,6 +9,8 @@ Usage: `/flow-init` · `/flow-init <concept description>`
 
 ## Instructions
 
+**Start fresh.** Read only from the project files — `CLAUDE.md`, `SPECIFICATIONS.md`, `README.md`, `MARKETING.md` (if present). Do not reference or build on prior conversation context. Treat this as a new session regardless of what preceded it.
+
 ### 1. Discover what exists
 
 Before generating anything, read:

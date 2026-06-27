@@ -9,6 +9,8 @@ Usage: `/flow-ship` · `/flow-ship --dry-run`
 
 ## Instructions
 
+**Start fresh.** Read only from the project files — `CLAUDE.md`, `SPECIFICATIONS.md`, `README.md`. Do not reference or build on prior conversation context. Treat this as a new session regardless of what preceded it.
+
 1. **Discover the release mechanism.** Read CLAUDE.md for: deploy commands, CI/CD trigger patterns (git tag push is common), Docker/container steps, npm publish, cloud deploy scripts. If the mechanism isn't documented, ask before proceeding.
 
 2. **Validate.**
