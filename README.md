@@ -2,8 +2,6 @@
 
 A set of Claude Code slash commands for a conversational, spec-driven development workflow. Works in any project — .NET, Node, Python, whatever — by reading from two plain markdown files (`SPECIFICATIONS.md` and `CLAUDE.md`) that live in your project.
 
-Works alongside [Card Pilot](https://github.com/cardpilot) — `flow-*` commands are fast and conversational; Card Pilot's `card-*` commands are rigorous and formal. Use both: pick the right tool for the complexity of the work.
-
 ---
 
 ## Table of Contents
@@ -20,7 +18,6 @@ Works alongside [Card Pilot](https://github.com/cardpilot) — `flow-*` commands
   - [/flow-ship](#flow-ship)
   - [/flow-review](#flow-review)
   - [/flow-lint](#flow-lint)
-- [When to use Card Pilot instead](#when-to-use-card-pilot-instead)
 - [Project-Specific Commands](#project-specific-commands)
 - [Updating](#updating)
 
@@ -342,19 +339,6 @@ Enforce the CLAUDE.md hierarchy rules and SPECIFICATIONS.md format. Catches prob
 **Severity levels:** `ERROR` (must fix — breaks `/flow` parsing or creates contradiction), `WARNING` (should fix — will cause drift over time), `INFO` (consider — best practice not met).
 
 **`--fix`** auto-corrects only safe mechanical issues: status keyword casing, spec heading punctuation (`:` → `—`). Never modifies CLAUDE.md content or resolves ambiguous issues — those require human judgment.
-
----
-
-## When to use Card Pilot instead
-
-`flow-*` commands are optimized for fast, conversational work. Reach for [Card Pilot](https://github.com/cardpilot) when the work needs:
-
-- **Formal investigation** — you need to prove technical feasibility before committing to an approach
-- **Business sign-off** — decisions need stakeholder approval, not just your sign-off
-- **Multi-week features** — complex enough that you want a full Problem → Proposal → Approach → Investigation → Plan arc before writing code
-- **PR-based delivery** — Card Pilot's `card-implement` manages feature branches, PR creation, and review cycles
-
-Both toolkits read `SPECIFICATIONS.md` and follow the same `CLAUDE.md` conventions. Use `/flow --add` to capture specs quickly; use `/card-spec` when you need the full 5-phase exploration.
 
 ---
 
