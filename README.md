@@ -19,6 +19,7 @@ Works alongside [Card Pilot](https://github.com/cardpilot) — `flow-*` commands
   - [/flow](#flow)
   - [/flow-ship](#flow-ship)
   - [/flow-review](#flow-review)
+  - [/flow-lint](#flow-lint)
 - [When to use Card Pilot instead](#when-to-use-card-pilot-instead)
 - [Project-Specific Commands](#project-specific-commands)
 - [Updating](#updating)
@@ -102,6 +103,8 @@ Establish the minimal end-to-end skeleton so every subsequent spec builds on a w
 ...
 ```
 
+**Spec archival** — when a spec is marked `DONE`, `/flow` moves it to the `## Archive` section at the bottom of the file. The spec number is never reused. This keeps the active backlog scannable while preserving the full history. Commits, PRs, and notes that cite a spec number (e.g., "closes Spec 2.3") remain meaningful because the archived spec is still in the same file.
+
 **Status vocabulary** — exactly one of these per spec, no other values:
 
 | Status | Meaning |
@@ -146,6 +149,10 @@ The architectural and operational context that Claude Code reads in every sessio
 - Git history or who changed what
 - Ephemeral task state
 
+**Keeping the hierarchy healthy:** Run `/flow-lint` periodically to catch drift — subdirectory files that have grown too large, sections that duplicate root content, or specs with invalid status keywords.
+
+**MARKETING.md** — for user-facing projects, `/flow-init` generates a `MARKETING.md` with positioning, target audience, key messages, feature highlights, and pricing. Update the Feature Highlights table whenever a spec ships a user-facing capability. `/flow-review --marketing` audits it; `/flow-lint` checks for shipped specs that haven't been reflected in the marketing doc.
+
 ---
 
 ## The Development Cycle
@@ -189,6 +196,16 @@ This keeps you in control of direction without having to micromanage implementat
 ---
 
 ## Commands
+
+| Command | Description |
+|---|---|
+| `/flow-init [concept]` | Bootstrap any project with `SPECIFICATIONS.md` + `CLAUDE.md` hierarchy |
+| `/flow [spec# \| --ideas \| --add \| --clean \| description]` | Implement specs, manage backlog, brainstorm |
+| `/flow-ship [--dry-run]` | Cut a release — reads deploy conventions from `CLAUDE.md` |
+| `/flow-review [--docs \| --ux \| --marketing \| --product]` | Audit docs, UX, marketing, or product |
+| `/flow-lint [--claude \| --specs \| --fix]` | Enforce CLAUDE.md hierarchy rules and SPECIFICATIONS.md validity |
+
+---
 
 ### /flow-init
 
@@ -290,6 +307,41 @@ Structured audit from multiple perspectives.
 **`--product`** — Power-user perspective. Identifies friction, missing features, over-complexity, and likely drop-off points. Outputs 5-10 prioritized observations with concrete suggestions. Offers to draft top items as specs.
 
 When run without flags, all four lenses run in sequence (docs → product → ux → marketing) with a cross-lens summary at the end.
+
+---
+
+### /flow-lint
+
+Enforce the CLAUDE.md hierarchy rules and SPECIFICATIONS.md format. Catches problems before they cause confusion.
+
+```
+/flow-lint               # full audit
+/flow-lint --claude      # CLAUDE.md hierarchy only
+/flow-lint --specs       # SPECIFICATIONS.md only
+/flow-lint --fix         # audit + auto-fix safe mechanical issues
+```
+
+**What it checks:**
+
+*CLAUDE.md hierarchy:*
+- Root CLAUDE.md exists and is under 200 lines
+- Root has required sections: `## Architecture`, `## Development Rules`, `## Project Structure`
+- Subdirectory CLAUDE.md files are under 100 lines each
+- Subdirectory files don't duplicate `##` section headings from root (content loaded twice = drift risk)
+- Layers with 10+ source files have a subdirectory CLAUDE.md
+
+*SPECIFICATIONS.md:*
+- Spec 0.1 (Walking Skeleton) is present
+- No duplicate spec numbers
+- Every spec heading matches `### Spec X.Y — Title`
+- Every spec has exactly one `**Status:**` line
+- Status keyword is one of: `DONE · IN PROGRESS · PARTIAL · NOT STARTED · SUPERSEDED`
+- DONE specs have no unchecked `- [ ]` acceptance criteria remaining
+- Non-DONE specs with all `- [x]` items are flagged (status probably needs updating)
+
+**Severity levels:** `ERROR` (must fix — breaks `/flow` parsing or creates contradiction), `WARNING` (should fix — will cause drift over time), `INFO` (consider — best practice not met).
+
+**`--fix`** auto-corrects only safe mechanical issues: status keyword casing, spec heading punctuation (`:` → `—`). Never modifies CLAUDE.md content or resolves ambiguous issues — those require human judgment.
 
 ---
 
