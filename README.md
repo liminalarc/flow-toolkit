@@ -121,9 +121,9 @@ Establish the minimal end-to-end skeleton so every subsequent spec builds on a w
 - `/flow 1.2` finds and loads Spec 1.2 directly
 - `/flow --clean` normalizes status keywords and heading formats to match the spec above
 
-### CLAUDE.md — the rules
+### CLAUDE.md — the guardrails
 
-The architectural and operational context that Claude Code reads in every session. Two tiers:
+Engineering principles and architectural context that Claude Code reads in every session. Not a list of restrictions — a set of principles that keep every session pointed in the same direction: TDD mandate, testing stack, architecture decisions, commit format, named patterns. The goal is that Claude never has to ask "how do we do things here?"
 
 **Root `CLAUDE.md`** (always loads):
 - Architecture overview — what the system is and the key decisions that constrain future work
