@@ -43,6 +43,8 @@ chmod +x install.sh
 
 Commands are copied to `~/.claude/commands/` and appear in the `/` picker in every project. Restart Claude Code after installing.
 
+> ⚠️ **The installer overwrites.** It copies every `commands/*.md` over the versions in `~/.claude/commands/` and `~/.claude-company/commands/` with `--force`. If you've edited a toolkit command in place (e.g. customized `flow.md` for one machine), those local edits will be lost on the next install. Keep customizations as separate, project-prefixed commands in a project's `.claude/commands/` (see [Project-Specific Commands](#project-specific-commands)) — or fork the toolkit and edit the source `commands/` files so your changes survive `git pull` + install.
+
 ---
 
 ## Starting a New Project
@@ -466,4 +468,6 @@ git pull
 ./install.sh
 ```
 
-Restart Claude Code after updating. The install script overwrites the previous versions in `~/.claude/commands/`.
+Restart Claude Code after updating.
+
+> ⚠️ **Updating overwrites your installed commands.** The install script force-copies the toolkit's `commands/*.md` over whatever is in `~/.claude/commands/` and `~/.claude-company/commands/`. Any in-place edits you made to an installed command are replaced. If you've been customizing a command, make the change in the toolkit's source `commands/` files (so it persists across updates) or keep it as a project-prefixed command in the project's own `.claude/commands/`.
