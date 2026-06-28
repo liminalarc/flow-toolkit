@@ -15,6 +15,7 @@ A set of Claude Code slash commands for a conversational, spec-driven developmen
 - [Commands](#commands)
   - [/flow-init](#flow-init)
   - [/flow](#flow)
+  - [/flow-hunt](#flow-hunt)
   - [/flow-ship](#flow-ship)
   - [/flow-review](#flow-review)
   - [/flow-lint](#flow-lint)
@@ -99,7 +100,7 @@ Every token in Claude's context window is either signal or noise. The toolkit is
 
 The result: a session that starts sharp and stays sharp, because the structure of the project files keeps Claude's working set lean by default.
 
-**Every command reinforces this.** Each of the five commands opens with an explicit instruction to ignore prior conversation context and read only from the project files. You can chain `/flow-init` → `/flow` → `/flow-lint` without a `/clear` in between — each one starts fresh on its own.
+**Every command reinforces this.** Each of the six commands opens with an explicit instruction to ignore prior conversation context and read only from the project files. You can chain `/flow-init` → `/flow` → `/flow-lint` without a `/clear` in between — each one starts fresh on its own.
 
 ## The Three Files
 
@@ -229,7 +230,8 @@ During the day:
   [spec done, status set to DONE]
 
   /flow --add                    → capture an idea that came up
-  /flow --ideas                  → brainstorm new features
+  /flow --ideas                  → quick brainstorm, three lenses
+  /flow-hunt --deep              → researched opportunity report
 
 Friday afternoon:
   /flow-ship                     → validate everything and cut the release
@@ -259,6 +261,7 @@ This keeps you in control of direction without having to micromanage implementat
 |---|---|
 | `/flow-init [concept]` | Bootstrap any project with `SPECIFICATIONS.md` + `CLAUDE.md` hierarchy |
 | `/flow [spec# \| --ideas \| --add \| --clean \| description]` | Implement specs, manage backlog, brainstorm |
+| `/flow-hunt [--deep \| focus area]` | Hunt new feature opportunities through a domain-grounded persona panel |
 | `/flow-ship [--dry-run]` | Cut a release — reads deploy conventions from `CLAUDE.md` |
 | `/flow-review [--docs \| --ux \| --marketing \| --product]` | Audit docs, UX, marketing, or product |
 | `/flow-lint [--claude \| --specs \| --fix]` | Enforce CLAUDE.md hierarchy rules and SPECIFICATIONS.md validity |
@@ -307,7 +310,7 @@ Spec number or free-form description. If the description maps to an existing spe
 ```
 /flow --ideas
 ```
-Three lenses: **Sellable** (acquisition/retention/WTP), **Profitable** (cost reduction or pricing tier), **Easy wins** (high-leverage, low-effort). Reads the backlog first to avoid re-suggesting what's already planned. Offers to draft the best ones into specs.
+Three lenses: **Sellable** (acquisition/retention/WTP), **Profitable** (cost reduction or pricing tier), **Easy wins** (high-leverage, low-effort). Reads the backlog first to avoid re-suggesting what's already planned. Offers to draft the best ones into specs. For a deeper, researched, domain-grounded version, use [`/flow-hunt`](#flow-hunt).
 
 **Add a new spec:**
 ```
@@ -320,6 +323,30 @@ Conversational spec capture. Claude asks what it is, who it's for, and what succ
 /flow --clean
 ```
 Enforces the status vocabulary, fixes heading formats, removes orphaned lines. Shows a diff before writing.
+
+---
+
+### /flow-hunt
+
+The deep, outside-the-backlog twin of `/flow --ideas`. Where `--ideas` is a fast three-lens brainstorm, `/flow-hunt` grounds itself in *this* project's domain, then produces a researched, scored opportunity report.
+
+```
+/flow-hunt                     → opportunity report from project docs + model knowledge
+/flow-hunt --deep              → same, plus live fan-out web research
+/flow-hunt social retention    → narrow the hunt to a focus area
+/flow-hunt --deep arccos       → narrowed hunt with web research
+```
+
+**What makes it portable:** before hunting, it *derives the domain frame* from your project's own `CLAUDE.md`, `MARKETING.md`, `README.md`, and `SPECIFICATIONS.md` — there's no hardcoded industry. Specifically it synthesizes:
+
+- **A product thesis** — the one-line strategic filter every idea is tested against
+- **A persona panel** — 3-5 lenses Claude reasons *as* (power user, domain expert, product expert, competitive analyst), named for your domain
+- **A comparable/competitor set** — pulled from your positioning docs
+- **Research dimensions** — the 4-6 angles worth investigating for your field (competitor intel, user pain points, domain frontier, adjacent signals, behavior & retention)
+
+It checkpoints that frame for your correction before going deep, grounds against `SPECIFICATIONS.md` to avoid duplicates, scores each opportunity on **Impact × Effort**, and ends every opportunity with a `/flow --add`-ready spec seed. With `--deep` it runs live web searches and cites sources; offline it reasons from the docs and model knowledge. It proposes only — never writes specs or code.
+
+> This generalizes the project-specific `gs-opportunity-hunt` pattern (a Cortex Golf command) into a portable command that adapts to any domain.
 
 ---
 
@@ -414,9 +441,12 @@ Project-level commands live in `.claude/commands/` inside the project root. They
   commands/
     gs-facility-discover.md   # find golf facilities near a location
     gs-facility-onboard.md    # drive a facility through the import pipeline
+    gs-opportunity-hunt.md    # golf-specific feature ideation (now generalized — see below)
 ```
 
 These are project-specific and not installed globally. They only appear when Claude Code is working in that project. Name them with a project prefix to keep them distinct from toolkit commands in the `/` picker.
+
+**When a project command is worth generalizing:** Cortex Golf's `gs-opportunity-hunt` — a persona-driven, web-researched feature-ideation command — proved useful enough to lift into the portable toolkit as [`/flow-hunt`](#flow-hunt). The portable version derives its domain frame (personas, competitors, research dimensions, product thesis) from each project's own docs instead of hardcoding the domain. Keep a `gs-`/project-prefixed command only when it depends on something truly project-specific; if the pattern is generic with the domain swapped out, it belongs in the toolkit.
 
 ---
 
