@@ -450,7 +450,7 @@ Enforce the CLAUDE.md hierarchy rules and SPECIFICATIONS.md format. Catches prob
 *SPECIFICATIONS.md:*
 - Spec 0.1 (Walking Skeleton) is present
 - No duplicate spec numbers (checked across both `SPECIFICATIONS.md` and `SPECIFICATIONS-ARCHIVE.md`)
-- Every spec heading matches `### Spec X.Y — Title`
+- Every spec heading matches `### Spec A.B — Title` (alphanumeric — e.g. `2.37a`, `P.10`, `BL.12`)
 - Every spec has exactly one `**Status:**` line
 - Status keyword is one of: `DONE · IN PROGRESS · PARTIAL · NOT STARTED · SUPERSEDED`
 - DONE specs have no unchecked `- [ ]` acceptance criteria remaining
@@ -480,7 +480,7 @@ All four exit instantly when they don't apply (non-spec file, non-commit command
 
 **`flow-spec-guard.sh`** validates on every edit to a spec file:
 
-- Spec headings match `### Spec X.Y — Title` (em dash, title required)
+- Spec headings match `### Spec A.B — Title` — alphanumeric spec number (e.g. `2.37a`, `P.10`, `BL.12`), em dash, title required
 - Every spec has exactly one `**Status:**` line
 - Status is exactly one of `DONE · IN PROGRESS · PARTIAL · NOT STARTED · SUPERSEDED`
 - No duplicate spec numbers — within the file *and* against the archive sidecar (this also protects archive reference integrity: numbers are never reused)
