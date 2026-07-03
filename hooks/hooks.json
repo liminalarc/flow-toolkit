@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "bash \"__HOOKS_DIR__/flow-spec-guard.sh\"" },
+          { "type": "command", "command": "bash \"__HOOKS_DIR__/flow-claude-guard.sh\"" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "bash \"__HOOKS_DIR__/flow-commit-guard.sh\"" }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"__HOOKS_DIR__/flow-session-brief.sh\"" }
+        ]
+      }
+    ]
+  }
+}

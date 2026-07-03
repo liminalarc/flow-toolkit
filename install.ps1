@@ -1,19 +1,23 @@
-# install.ps1 — Install flow-toolkit commands into Claude Code's global commands directory
+# install.ps1 — Install flow-toolkit commands and hooks into Claude Code's global config
 # Run from the repo root: .\install.ps1
 
-$targets = @(
-    "$env:USERPROFILE\.claude\commands",
-    "$env:USERPROFILE\.claude-company\commands"
+$profiles = @(
+    "$env:USERPROFILE\.claude",
+    "$env:USERPROFILE\.claude-company"
 )
 
 $commands = Get-ChildItem -Path ".\commands\*.md"
+$hookScripts = Get-ChildItem -Path ".\hooks\*.sh" -ErrorAction SilentlyContinue
 
-foreach ($target in $targets) {
-    $profileName = Split-Path (Split-Path $target -Parent) -Leaf
-    if (-not (Test-Path (Split-Path $target -Parent))) {
+foreach ($profileDir in $profiles) {
+    $profileName = Split-Path $profileDir -Leaf
+    if (-not (Test-Path $profileDir)) {
         Write-Host "Skipping $profileName (profile directory does not exist)"
         continue
     }
+
+    # --- Commands ---
+    $target = Join-Path $profileDir "commands"
     if (-not (Test-Path $target)) {
         New-Item -ItemType Directory -Path $target -Force | Out-Null
     }
@@ -21,6 +25,61 @@ foreach ($target in $targets) {
         Copy-Item -Path $file.FullName -Destination $target -Force
     }
     Write-Host "Installed $($commands.Count) commands to $target"
+
+    # --- Hook scripts ---
+    if (-not $hookScripts) { continue }
+    $hooksDir = Join-Path $profileDir "hooks"
+    if (-not (Test-Path $hooksDir)) {
+        New-Item -ItemType Directory -Path $hooksDir -Force | Out-Null
+    }
+    foreach ($script in $hookScripts) {
+        Copy-Item -Path $script.FullName -Destination $hooksDir -Force
+    }
+    Write-Host "Installed $($hookScripts.Count) hook script(s) to $hooksDir"
+
+    # --- Hook registration: additive merge of hooks/hooks.json into settings.json ---
+    # Per-script idempotency: a script already mentioned anywhere in settings.json
+    # (any path, any registration style) is never added again.
+    $settingsPath = Join-Path $profileDir "settings.json"
+    $hooksDirFwd = $hooksDir -replace '\\', '/'
+    $fragRaw = (Get-Content ".\hooks\hooks.json" -Raw).Replace('__HOOKS_DIR__', $hooksDirFwd)
+    $frag = $fragRaw | ConvertFrom-Json
+
+    $raw = if (Test-Path $settingsPath) { Get-Content $settingsPath -Raw } else { "{}" }
+    $settings = $raw | ConvertFrom-Json
+    if ($null -eq $settings) { $settings = New-Object PSObject }
+    if (-not $settings.PSObject.Properties['hooks']) {
+        $settings | Add-Member -MemberType NoteProperty -Name hooks -Value (New-Object PSObject)
+    }
+
+    $added = @()
+    foreach ($evt in $frag.hooks.PSObject.Properties) {
+        foreach ($entry in $evt.Value) {
+            $newHooks = @($entry.hooks | Where-Object {
+                $name = [regex]::Match($_.command, 'flow-[a-z-]+\.sh').Value
+                $name -and ($raw -notmatch [regex]::Escape($name))
+            })
+            if ($newHooks.Count -eq 0) { continue }
+            if (-not $settings.hooks.PSObject.Properties[$evt.Name]) {
+                $settings.hooks | Add-Member -MemberType NoteProperty -Name $evt.Name -Value @()
+            }
+            $newEntry = $entry | Select-Object *
+            $newEntry.hooks = $newHooks
+            $settings.hooks.($evt.Name) = @($settings.hooks.($evt.Name)) + $newEntry
+            $added += ($newHooks | ForEach-Object { [regex]::Match($_.command, 'flow-[a-z-]+\.sh').Value })
+        }
+    }
+
+    if ($added.Count -gt 0) {
+        if (Test-Path $settingsPath) {
+            Copy-Item $settingsPath "$settingsPath.bak" -Force
+        }
+        $settings | ConvertTo-Json -Depth 16 | Set-Content $settingsPath -Encoding UTF8
+        Write-Host "Registered hooks in ${settingsPath}: $($added -join ', ') (backup: settings.json.bak)"
+    }
+    else {
+        Write-Host "All toolkit hooks already registered in $settingsPath"
+    }
 }
 
 Write-Host ""
