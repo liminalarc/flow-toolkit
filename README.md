@@ -18,7 +18,9 @@ A set of Claude Code slash commands for a conversational, spec-driven developmen
   - [/flow-hunt](#flow-hunt)
   - [/flow-ship](#flow-ship)
   - [/flow-review](#flow-review)
+  - [/flow-pr](#flow-pr)
   - [/flow-lint](#flow-lint)
+- [Hooks](#hooks)
 - [Project-Specific Commands](#project-specific-commands)
 - [Updating](#updating)
 
@@ -41,7 +43,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
-Commands are copied to `~/.claude/commands/` and appear in the `/` picker in every project. Restart Claude Code after installing.
+Commands are copied to `~/.claude/commands/` and appear in the `/` picker in every project. The installer also registers the toolkit's [hooks](#hooks) in `~/.claude/settings.json` (an additive merge — your existing settings are preserved and backed up to `settings.json.bak` first). Restart Claude Code after installing.
 
 > ⚠️ **The installer overwrites.** It copies every `commands/*.md` over the versions in `~/.claude/commands/` and `~/.claude-company/commands/` with `--force`. If you've edited a toolkit command in place (e.g. customized `flow.md` for one machine), those local edits will be lost on the next install. Keep customizations as separate, project-prefixed commands in a project's `.claude/commands/` (see [Project-Specific Commands](#project-specific-commands)) — or fork the toolkit and edit the source `commands/` files so your changes survive `git pull` + install.
 
@@ -235,6 +237,9 @@ During the day:
   /flow --ideas                  → quick brainstorm, three lenses
   /flow-hunt --deep              → researched opportunity report
 
+Before merging a branch or PR:
+  /flow-pr                       → spec fidelity + code quality + test coverage
+
 Friday afternoon:
   /flow-ship                     → validate everything and cut the release
 
@@ -266,6 +271,7 @@ This keeps you in control of direction without having to micromanage implementat
 | `/flow-hunt [--deep \| focus area]` | Hunt new feature opportunities through a domain-grounded persona panel |
 | `/flow-ship [--dry-run]` | Cut a release — reads deploy conventions from `CLAUDE.md` |
 | `/flow-review [--docs \| --ux \| --marketing \| --product]` | Audit docs, UX, marketing, or product |
+| `/flow-pr [pr# \| branch] [--spec \| --quality \| --tests]` | Spec-aware review of a PR or branch diff, with clean-code and test-coverage checks |
 | `/flow-lint [--claude \| --specs \| --fix]` | Enforce CLAUDE.md hierarchy rules and SPECIFICATIONS.md validity |
 
 ---
@@ -397,6 +403,30 @@ When run without flags, all four lenses run in sequence (docs → product → ux
 
 ---
 
+### /flow-pr
+
+Spec-aware PR review. Where GitHub's generic review asks "is this good code?", `/flow-pr` asks "is this the code the spec asked for, built the way this project builds things?"
+
+```
+/flow-pr                  # review current branch vs main
+/flow-pr 42               # review GitHub PR #42 (via gh)
+/flow-pr feature/auth     # review a branch by name
+/flow-pr --spec           # spec fidelity only
+/flow-pr --quality        # clean code + correctness only
+/flow-pr --tests          # test coverage only
+```
+
+**Four review dimensions:**
+
+1. **Spec fidelity** — finds the spec the diff claims to implement (from the PR title, branch name, or commit messages), walks its acceptance criteria one by one (✅ satisfied / ⬜ not addressed / ❌ contradicted), flags scope creep, and checks the bookkeeping: status updated, CLAUDE.md updated if new patterns shipped.
+2. **Correctness** — bugs, edge cases, and a quick security pass on the changed code only.
+3. **Clean Code** — intent-revealing naming, small single-purpose functions, no duplication or dead code, comments that explain *why*. Judged against `CLAUDE.md`'s named patterns first, general principles second — a locally-clean function in a foreign style is still a finding.
+4. **Tests** — every behavior change must have a test change (the TDD check), tests assert behavior not implementation, and the suite actually runs. If coverage tooling is configured, reports coverage on the changed files only.
+
+**Output:** a verdict (`READY` / `READY WITH NITS` / `NEEDS WORK`), the spec scorecard, and findings grouped `BLOCKER` / `SHOULD FIX` / `NIT` — each with a `file:line` and a concrete fix. A failing test suite is an automatic `NEEDS WORK`. It never posts to GitHub, approves, or merges unless you explicitly ask.
+
+---
+
 ### /flow-lint
 
 Enforce the CLAUDE.md hierarchy rules and SPECIFICATIONS.md format. Catches problems before they cause confusion.
@@ -430,6 +460,51 @@ Enforce the CLAUDE.md hierarchy rules and SPECIFICATIONS.md format. Catches prob
 **Severity levels:** `ERROR` (must fix — breaks `/flow` parsing or creates contradiction), `WARNING` (should fix — will cause drift over time), `INFO` (consider — best practice not met).
 
 **`--fix`** auto-corrects safe mechanical issues: status keyword casing, spec heading punctuation, and archive migration (inline → sidecar file when archive exceeds 20 specs). Never modifies CLAUDE.md content or resolves ambiguous issues — those require human judgment.
+
+---
+
+## Hooks
+
+Where `/flow-lint` is the audit you run on demand, hooks are the seatbelt that's always on. A [Claude Code hook](https://docs.anthropic.com/en/docs/claude-code/hooks) is a script that fires automatically on events in Claude's loop — the toolkit uses them to enforce its file-format invariants deterministically, with zero tokens spent and no reliance on Claude remembering the rules.
+
+### The hook suite
+
+| Hook | Event | What it does |
+|---|---|---|
+| `flow-spec-guard.sh` | After every file edit | Validates `SPECIFICATIONS.md` / `SPECIFICATIONS-ARCHIVE.md` format the moment it changes |
+| `flow-claude-guard.sh` | After every file edit | Enforces CLAUDE.md line caps — 200 root, 150 subdirectory |
+| `flow-commit-guard.sh` | Before every `git commit` | Conventional Commit message format + spec file must be valid to commit + soft nudge on spec-less work |
+| `flow-session-brief.sh` | Session start | Injects a one-line backlog orientation into every new session |
+
+All four exit instantly when they don't apply (non-spec file, non-commit command, project without a spec file) — running them globally costs nothing in projects that don't use the toolkit.
+
+**`flow-spec-guard.sh`** validates on every edit to a spec file:
+
+- Spec headings match `### Spec X.Y — Title` (em dash, title required)
+- Every spec has exactly one `**Status:**` line
+- Status is exactly one of `DONE · IN PROGRESS · PARTIAL · NOT STARTED · SUPERSEDED`
+- No duplicate spec numbers — within the file *and* against the archive sidecar (this also protects archive reference integrity: numbers are never reused)
+- `DONE` specs have no unchecked `- [ ]` acceptance criteria
+
+On failure the guard blocks with the error list, and — this is the key difference from a git hook — **Claude reads the errors and fixes the file in the same turn**. Format drift gets corrected the moment it's introduced instead of surfacing weeks later in a lint run.
+
+**`flow-claude-guard.sh`** catches guardrail bloat at the moment of creation. A CLAUDE.md over its cap isn't a style problem — it's wasted context in every session, forever. When Claude pushes a file over the limit, the block message tells it to trim now: move detail to subdirectory files, delete what's derivable from code.
+
+**`flow-commit-guard.sh`** runs three checks before any commit: the message follows Conventional Commits (`/flow-ship` derives version bumps from commit types, so a malformed message silently breaks releases); `SPECIFICATIONS.md` passes validation (catches hand edits that bypassed the edit-time guard); and — as a note to Claude, never a block — flags commits that stage source changes while no spec is `IN PROGRESS`.
+
+**`flow-session-brief.sh`** injects ~30 tokens of orientation into each new session in a flow project:
+
+```
+flow-toolkit: Spec 1.1 — User Authentication is IN PROGRESS · 12 NOT STARTED · 8 DONE — run /flow for the board
+```
+
+*Deliberately not included:* a `Stop`-event "did you update the checklist?" nudge. It can't reliably distinguish work-in-progress from forgetfulness, so it fires constantly on normal WIP — a hook that cries wolf gets disabled. The commit guard's soft nudge covers the same ground at the moment that actually matters.
+
+### How they're installed
+
+The install scripts copy `hooks/*.sh` to `~/.claude/hooks/` and merge the registrations from `hooks/hooks.json` into `~/.claude/settings.json`. The merge is **additive and idempotent**: your existing permissions and hooks are untouched, a `settings.json.bak` backup is written first, and each hook is registered at most once no matter how many times you re-run the installer. Hook scripts are written in bash and run everywhere — on Windows, Claude Code executes hooks through Git Bash (which you already have, since you cloned this repo).
+
+**To remove:** delete the entries whose command mentions a `flow-*.sh` script from `~/.claude/settings.json` and the scripts from `~/.claude/hooks/`.
 
 ---
 
