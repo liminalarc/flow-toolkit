@@ -3,7 +3,8 @@
 #
 # Fires after every file edit. If the edited file is SPECIFICATIONS.md or
 # SPECIFICATIONS-ARCHIVE.md, validates the flow-toolkit spec format:
-#   - headings match "### Spec X.Y — Title" (em dash, title required)
+#   - headings match "### Spec A.B — Title" where A and B are alphanumeric
+#     (letters, digits, hyphens — e.g. "2.37a", "P.10", "BL-12") with em dash
 #   - every spec has exactly one **Status:** line
 #   - status is one of: DONE, IN PROGRESS, PARTIAL, NOT STARTED, SUPERSEDED
 #   - no duplicate spec numbers (within the file and across the archive sidecar)
@@ -51,7 +52,7 @@ else
 fi
 othernums=""
 if [ -f "$other" ]; then
-    othernums=$(sed -nE 's/^### Spec ([0-9]+\.[0-9]+).*/\1/p' "$other" | tr '\n' ' ')
+    othernums=$(sed -nE 's/^### Spec ([A-Za-z0-9][A-Za-z0-9]*[.][A-Za-z0-9-]+).*/\1/p' "$other" | tr '\n' ' ')
 fi
 
 errors=$(awk -v othernums="$othernums" '
@@ -75,8 +76,8 @@ BEGIN {
 /^### Spec/ {
     flush_spec()
     in_spec = 1; spec_line = NR; status_count = 0; status_val = ""; status_line = 0; unchecked = 0
-    if ($0 ~ /^### Spec [0-9]+\.[0-9]+ — .+/) {
-        match($0, /[0-9]+\.[0-9]+/)
+    if ($0 ~ /^### Spec [A-Za-z0-9][A-Za-z0-9]*[.][A-Za-z0-9-]+ — .+/) {
+        match($0, /[A-Za-z0-9][A-Za-z0-9]*[.][A-Za-z0-9-]+/)
         spec_id = substr($0, RSTART, RLENGTH)
         if (spec_id in SEEN)
             errs = errs sprintf("  line %d: duplicate spec number %s (first used at line %d)\n", NR, spec_id, SEEN[spec_id])
@@ -86,7 +87,7 @@ BEGIN {
             errs = errs sprintf("  line %d: spec number %s already exists in the sibling specifications file — spec numbers are never reused\n", NR, spec_id)
     } else {
         spec_id = sprintf("(line %d)", NR)
-        errs = errs sprintf("  line %d: malformed spec heading — expected \"### Spec X.Y — Title\" (em dash, title required): %s\n", NR, $0)
+        errs = errs sprintf("  line %d: malformed spec heading — expected \"### Spec A.B — Title\" (alphanumeric A.B, em dash, title required): %s\n", NR, $0)
     }
     next
 }
@@ -114,7 +115,7 @@ if [ -n "$errors" ]; then
     {
         echo "flow-toolkit spec guard: $base failed validation:"
         printf '%s\n' "$errors"
-        echo "Fix these issues in $FILE now. Reference format: heading \"### Spec X.Y — Title\", one \"**Status:**\" line per spec with exactly one of DONE, IN PROGRESS, PARTIAL, NOT STARTED, SUPERSEDED."
+        echo "Fix these issues in $FILE now. Reference format: heading \"### Spec A.B — Title\" (alphanumeric A.B, em dash required), one \"**Status:**\" line per spec with exactly one of DONE, IN PROGRESS, PARTIAL, NOT STARTED, SUPERSEDED."
     } >&2
     exit 2
 fi
