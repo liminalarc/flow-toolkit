@@ -94,7 +94,7 @@ That's the whole loop. Everything else is detail.
 
 Every token in Claude's context window is either signal or noise. The toolkit is designed to keep the ratio high — so you get more useful work per session without burning budget on irrelevant history.
 
-**Enforced size limits.** Root `CLAUDE.md` is capped at 200 lines; subdirectory files at 150. `/flow-lint` catches drift before it compounds. A bloated guardrail file isn't just a style problem — it's wasted context on every session, forever.
+**Enforced size limits.** Root `CLAUDE.md` is capped at 300 lines; subdirectory files at 200. Projects that need more room can raise either cap in a repo-root `.flow-toolkit.json` (see below). `/flow-lint` catches drift before it compounds. A bloated guardrail file isn't just a style problem — it's wasted context on every session, forever.
 
 **Only the active backlog loads.** Completed specs are archived out of `SPECIFICATIONS.md` as they're done. Claude reads 15 active specs, not 150 historical ones. The archive is preserved for reference integrity (spec numbers never reused) but stays out of the working context.
 
@@ -441,9 +441,9 @@ Enforce the CLAUDE.md hierarchy rules and SPECIFICATIONS.md format. Catches prob
 **What it checks:**
 
 *CLAUDE.md hierarchy:*
-- Root CLAUDE.md exists and is under 200 lines
+- Root CLAUDE.md exists and is under the root cap (default 300 lines; configurable — see [Customizing the CLAUDE.md line caps](#customizing-the-claudemd-line-caps))
 - Root has required sections: `## Architecture`, `## Development Rules`, `## Project Structure`
-- Subdirectory CLAUDE.md files are under 150 lines each
+- Subdirectory CLAUDE.md files are under the subdirectory cap (default 200 lines each; configurable)
 - Subdirectory files don't duplicate `##` section headings from root (content loaded twice = drift risk)
 - Layers with 10+ source files have a subdirectory CLAUDE.md
 
@@ -472,7 +472,7 @@ Where `/flow-lint` is the audit you run on demand, hooks are the seatbelt that's
 | Hook | Event | What it does |
 |---|---|---|
 | `flow-spec-guard.sh` | After every file edit | Validates `SPECIFICATIONS.md` / `SPECIFICATIONS-ARCHIVE.md` format the moment it changes |
-| `flow-claude-guard.sh` | After every file edit | Enforces CLAUDE.md line caps — 200 root, 150 subdirectory |
+| `flow-claude-guard.sh` | After every file edit | Enforces CLAUDE.md line caps — 300 root, 200 subdirectory by default ([configurable per project](#customizing-the-claudemd-line-caps)) |
 | `flow-commit-guard.sh` | Before every `git commit` | Conventional Commit message format + spec file must be valid to commit + soft nudge on spec-less work |
 | `flow-session-brief.sh` | Session start | Injects a one-line backlog orientation into every new session |
 
@@ -488,7 +488,7 @@ All four exit instantly when they don't apply (non-spec file, non-commit command
 
 On failure the guard blocks with the error list, and — this is the key difference from a git hook — **Claude reads the errors and fixes the file in the same turn**. Format drift gets corrected the moment it's introduced instead of surfacing weeks later in a lint run.
 
-**`flow-claude-guard.sh`** catches guardrail bloat at the moment of creation. A CLAUDE.md over its cap isn't a style problem — it's wasted context in every session, forever. When Claude pushes a file over the limit, the block message tells it to trim now: move detail to subdirectory files, delete what's derivable from code.
+**`flow-claude-guard.sh`** catches guardrail bloat at the moment of creation. A CLAUDE.md over its cap isn't a style problem — it's wasted context in every session, forever. When Claude pushes a file over the limit, the block message tells it to trim now: move detail to subdirectory files, delete what's derivable from code. The caps default to 300 lines (root) and 200 (subdirectory), and are [configurable per project](#customizing-the-claudemd-line-caps) when a codebase genuinely needs more room.
 
 **`flow-commit-guard.sh`** runs three checks before any commit: the message follows Conventional Commits (`/flow-ship` derives version bumps from commit types, so a malformed message silently breaks releases); `SPECIFICATIONS.md` passes validation (catches hand edits that bypassed the edit-time guard); and — as a note to Claude, never a block — flags commits that stage source changes while no spec is `IN PROGRESS`.
 
@@ -505,6 +505,27 @@ flow-toolkit: Spec 1.1 — User Authentication is IN PROGRESS · 12 NOT STARTED 
 The install scripts copy `hooks/*.sh` to `~/.claude/hooks/` and merge the registrations from `hooks/hooks.json` into `~/.claude/settings.json`. The merge is **additive and idempotent**: your existing permissions and hooks are untouched, a `settings.json.bak` backup is written first, and each hook is registered at most once no matter how many times you re-run the installer. Hook scripts are written in bash and run everywhere — on Windows, Claude Code executes hooks through Git Bash (which you already have, since you cloned this repo).
 
 **To remove:** delete the entries whose command mentions a `flow-*.sh` script from `~/.claude/settings.json` and the scripts from `~/.claude/hooks/`.
+
+### Customizing the CLAUDE.md line caps
+
+The line caps enforced by `flow-claude-guard.sh` (and reported by `/flow-lint`) default to **300 lines** for the root `CLAUDE.md` and **200 lines** for each subdirectory `CLAUDE.md`. These defaults suit most projects — the whole point of the cap is that every line loads into context on *every* session, so leaner is better.
+
+When a codebase genuinely needs more room, raise either cap per project with a `.flow-toolkit.json` file at the **repo root** (next to `.git`):
+
+```json
+{
+  "claudeMd": {
+    "rootMax": 400,
+    "subdirMax": 250
+  }
+}
+```
+
+- Either key may be omitted to keep its default.
+- The file is read fresh on every edit — no reinstall needed. Commit it so the whole team (and CI) shares the same caps.
+- Precedence is simply: the value in `.flow-toolkit.json` if present, otherwise the built-in default.
+
+Both the always-on guard hook and the on-demand `/flow-lint` audit read the same config, so they never disagree. Raising a cap is a deliberate, visible act — when the guard blocks at the default, its message points you at this knob; when it blocks against a raised cap, the message names the config file the limit came from.
 
 ---
 

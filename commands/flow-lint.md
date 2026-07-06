@@ -31,7 +31,7 @@ For each finding, record: **severity** (`ERROR` / `WARNING` / `INFO`), **locatio
 | Check | Severity | Condition |
 |---|---|---|
 | Root CLAUDE.md exists | ERROR | File is missing — without it, `/flow` and `/flow-init` have no anchor. Run `/flow-init` to create it. |
-| Root is under 200 lines | WARNING | Line count > 200. Root loads in every session — bloat increases token cost and dilutes focus. |
+| Root is under the cap | WARNING | Line count exceeds the root cap (default 300; a project may override it via `rootMax` in `.flow-toolkit.json` at the repo root). Root loads in every session — bloat increases token cost and dilutes focus. |
 | Contains `## Architecture` | WARNING | Section heading missing. |
 | Contains `## Development Rules` | WARNING | Section heading missing. |
 | Contains `## Project Structure` | WARNING | Section heading missing. |
@@ -45,7 +45,7 @@ For each subdirectory CLAUDE.md found:
 
 | Check | Severity | Condition |
 |---|---|---|
-| Under 150 lines | WARNING | Subdirectory files are additive on top of root; bloat compounds. |
+| Under the subdirectory cap | WARNING | Line count exceeds the subdirectory cap (default 200; overridable via `subdirMax` in `.flow-toolkit.json`). Subdirectory files are additive on top of root; bloat compounds. |
 | Not referenced in root | INFO | Root's pointer section or Project Structure doesn't mention this directory. |
 | Duplicates a root `##` section heading | ERROR | Find all `##` headings in the subdirectory file. If any heading text exactly matches a `##` heading in the root, it's a duplication — this content will be loaded twice and may contradict the root over time. List the duplicated headings. |
 | Contains `## Architecture` or `## Development Rules` or `## Project Structure` | WARNING | These are root-level sections. A subdirectory file should only have layer-specific patterns, not top-level structure. |

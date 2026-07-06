@@ -31,7 +31,7 @@ Use args as the starting concept if provided. Otherwise ask 2-3 questions (maxim
 
 ### 3. Generate root CLAUDE.md
 
-Keep under 200 lines. Include:
+Keep under 300 lines (the default root cap; a project may raise it via `rootMax` in `.flow-toolkit.json`). Include:
 
 **`## Architecture`** — 4-8 bullets covering key decisions and patterns. Specific enough to constrain future choices; short enough to skim in 60 seconds.
 
