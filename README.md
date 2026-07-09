@@ -1,6 +1,6 @@
 # flow-toolkit
 
-A set of Claude Code slash commands for a conversational, spec-driven development workflow. Works in any project — .NET, Node, Python, whatever — by reading from two plain markdown files (`SPECIFICATIONS.md` and `CLAUDE.md`) that live in your project.
+A set of Claude Code slash commands for a conversational, spec-driven development workflow. Works in any project — .NET, Node, Python, whatever — by reading plain markdown that lives in your project: `CLAUDE.md` for the rules, and a **spec model** = a lightweight index (the backlog) plus one detail file per spec. Track the backlog locally or on an external board (e.g. Azure DevOps) via a small config file — same spec files either way.
 
 ---
 
@@ -8,9 +8,10 @@ A set of Claude Code slash commands for a conversational, spec-driven developmen
 
 - [Install](#install)
 - [Quick Start](#quick-start)
-- [The Two Files](#the-two-files)
-  - [SPECIFICATIONS.md — the backlog](#specificationsmd--the-backlog)
-  - [CLAUDE.md — the rules](#claudemd--the-rules)
+- [The Project Files](#the-project-files)
+  - [The spec model — index + detail files](#the-spec-model--index--detail-files)
+  - [CLAUDE.md — the guardrails](#claudemd--the-guardrails)
+  - [.flow/config.yml — the backend](#flowconfigyml--the-backend)
 - [The Development Cycle](#the-development-cycle)
 - [Commands](#commands)
   - [/flow-init](#flow-init)
@@ -63,10 +64,10 @@ Claude will ask 2-3 focused questions (stack, layers, user-facing or internal?),
 
 - **`CLAUDE.md`** — root guardrails (architecture, dev rules, project structure)
 - **`server/CLAUDE.md`**, **`web/CLAUDE.md`**, etc. — one lean file per layer
-- **`SPECIFICATIONS.md`** — Spec 0.1 (Walking Skeleton) + 3-5 Phase 1 specs derived from your concept
+- **`SPECIFICATIONS.md`** (the index) + **`specs/<id>.md`** detail files — Spec 0.1 (Walking Skeleton) + 3-5 Phase 1 specs derived from your concept
 - **`MARKETING.md`** — positioning, target audience, feature highlights (user-facing projects only)
 
-**On an existing project:** `/flow-init` reads what's already there and offers to extend, not replace. Safe to run at any time.
+**Greenfield vs. adopting:** on a new project `/flow-init` scaffolds the Walking Skeleton; on an **existing** codebase it reads what's there, **skips the skeleton**, and seeds a real backlog instead (`--adopt` to force, `--greenfield` to override). Safe to run at any time. To track the backlog on an ADO board instead of a local `SPECIFICATIONS.md`, run `/flow-init --backend ado`.
 
 ---
 
@@ -96,7 +97,7 @@ Every token in Claude's context window is either signal or noise. The toolkit is
 
 **Enforced size limits.** Root `CLAUDE.md` is capped at 300 lines; subdirectory files at 200. Projects that need more room can raise either cap in a repo-root `.flow-toolkit.json` (see below). `/flow-lint` catches drift before it compounds. A bloated guardrail file isn't just a style problem — it's wasted context on every session, forever.
 
-**Only the active backlog loads.** Completed specs are archived out of `SPECIFICATIONS.md` as they're done. Claude reads 15 active specs, not 150 historical ones. The archive is preserved for reference integrity (spec numbers never reused) but stays out of the working context.
+**Index in, one detail file at a time.** The backlog is a lightweight index; the full spec detail lives in per-spec `specs/<id>.md` files. `/flow` loads the tiny index to orient, then reads only the one detail file it's working on — not 150 historical specs. Completed specs archive out of the index (ids never reused) but stay out of the working context.
 
 **Subdirectory scoping.** The `CLAUDE.md` hierarchy means working in `server/` loads root + `server/CLAUDE.md` — not `web/`, not `admin/`. Claude gets exactly the layer-specific context it needs, nothing it doesn't.
 
@@ -106,45 +107,65 @@ The result: a session that starts sharp and stays sharp, because the structure o
 
 **Every command reinforces this.** Each of the six commands opens with an explicit instruction to ignore prior conversation context and read only from the project files. You can chain `/flow-init` → `/flow` → `/flow-lint` without a `/clear` in between — each one starts fresh on its own.
 
-## The Three Files
+## The Project Files
 
-Every project using flow-toolkit has three plain markdown files. `/flow-init` generates them; you evolve them over time.
+Every project using flow-toolkit has a `CLAUDE.md` hierarchy and a **spec model** — an index plus one detail file per spec. User-facing projects add `MARKETING.md`. `/flow-init` generates them; you evolve them over time.
 
-### SPECIFICATIONS.md — the backlog
+### The spec model — index + detail files
 
-The single source of truth for what to build. Structured as phases → specs, each with a status, user story, and acceptance criteria.
+Specs are stored as **an index (the backlog) + one `specs/<id>.md` detail file per spec.** The split keeps the working set lean: `/flow` reads the tiny index to see the whole backlog, then loads only the one detail file it's working on.
 
-**Format:**
+**The index** is the lifecycle ledger — id, title, status, phase grouping, order (= priority within a phase), and a link to each detail file. **Status lives only here** (single source of truth). In local mode it's `SPECIFICATIONS.md`:
 
 ```markdown
 # Project Name — Specifications
 
+> Index only. Each spec's detail is in `specs/<id>.md`. **Status here is the
+> single source of truth** for lifecycle — edit it as work moves.
+
 ## Phase 0 — Foundation
-
-### Spec 0.1 — Walking Skeleton
-**Status:** NOT STARTED
-
-Establish the minimal end-to-end skeleton so every subsequent spec builds on a working system.
-
-**User story:** As a developer, I can run the app locally and reach every layer of the stack.
-
-**Acceptance criteria:**
-- [ ] Build succeeds
-- [ ] All layers communicate end-to-end
-- [ ] Local setup documented in README
-- [ ] Basic CI passes
+- **0.1** Walking Skeleton — `DONE` — [detail](specs/0.1.md)
 
 ## Phase 1 — Core Features
+- **1.1** User Authentication — `IN PROGRESS` — [detail](specs/1.1.md)
+- **1.2** Password Reset — `NOT STARTED` — [detail](specs/1.2.md)
 
-### Spec 1.1 — User Authentication
-**Status:** IN PROGRESS
-
-...
+## Archive
+- **0.0** Spike: auth options — `SUPERSEDED` — [detail](specs/archive/0.0.md)
 ```
 
-**Spec archival** — when a spec is marked `DONE`, `/flow` moves it to the archive. New projects use a `## Archive` section at the bottom of `SPECIFICATIONS.md`. Once that section grows past 20 specs, `/flow-lint` flags it and `/flow-lint --fix` migrates automatically to a `SPECIFICATIONS-ARCHIVE.md` sidecar file — keeping the active backlog lean while preserving every spec number for reference integrity. Commits, PRs, and notes that cite a spec number (e.g., "closes Spec 2.3") remain meaningful forever.
+**A detail file** (`specs/<id>.md`) holds everything else — and carries **no status field** (status is owned by the index):
 
-**Status vocabulary** — exactly one of these per spec, no other values:
+```markdown
+---
+id: 1.1
+title: User Authentication
+links: []
+---
+
+## Problem
+<why this exists; what "shipped" means>
+
+## Value
+As a <role> I want <capability> so that <benefit>.
+
+## Scope
+**In:** ...   **Out:** ...
+
+## Acceptance criteria
+- [ ] <criterion> — <how proven>
+
+## Plan (thin slices)
+## Decisions
+## Verification / evidence
+## Progress log
+```
+
+**Value is a user story** — `As a <role> I want <capability> so that <benefit>`. Consistent across specs on purpose, so a future analysis can group the backlog by persona and benefit.
+
+**Spec archival** — when a spec is `DONE`/`SUPERSEDED`, `/flow` moves its index entry to the `## Archive` section and relocates its detail file to `specs/archive/<id>.md`. The id is never reused — commits, PRs, and notes that cite an id (e.g. "closes 2.3") stay meaningful forever.
+
+**Status vocabulary** — flow's own, single-source, exactly one per index entry:
 
 | Status | Meaning |
 |---|---|
@@ -154,14 +175,16 @@ Establish the minimal end-to-end skeleton so every subsequent spec builds on a w
 | `DONE` | All acceptance criteria met |
 | `SUPERSEDED` | Replaced by a different spec |
 
-**Numbering convention:** `Phase.Spec` — so Spec 1.2 is the second spec in Phase 1. Walking Skeleton is always Spec 0.1. Use whole numbers for phases (0, 1, 2) and sequential numbers within phases (1, 2, 3...). No two specs share a number.
+**Numbering:** `Phase.Spec` (Spec 1.2 = second spec in Phase 1). Alphanumeric ids are allowed (`2.37a`, `P.10`, `BL-12`). No two specs share an id; the filename is `specs/<id>.md`.
 
-**The walking skeleton rule:** Spec 0.1 is always the walking skeleton — the minimal end-to-end system where all layers are wired together and reachable, even if they do nothing useful yet. Every project starts here. Subsequent specs add behavior to a proven skeleton rather than building in isolation.
+**The walking skeleton is greenfield-only:** on a brand-new project, Spec 0.1 is the walking skeleton — the minimal end-to-end system wired together and reachable. When you *adopt* flow into an existing codebase, there's nothing to stand up end-to-end, so `/flow-init` skips the skeleton and seeds a real backlog instead.
+
+**Coming from an older flow project?** If your `SPECIFICATIONS.md` still has inline `### Spec` blocks with `**Status:**` lines, run **`/flow-lint --migrate`** to convert it to the index + `specs/` model (dry-run by default, non-destructive).
 
 **How `/flow` reads the backlog:**
 - `/flow` shows all specs by status, IN PROGRESS first, then NOT STARTED grouped by phase
-- `/flow 1.2` finds and loads Spec 1.2 directly
-- `/flow --clean` normalizes status keywords and heading formats to match the spec above
+- `/flow 1.2` loads the `1.2` index entry + `specs/1.2.md` directly
+- `/flow --clean` normalizes the index entry format and status keywords
 
 ### CLAUDE.md — the guardrails
 
@@ -216,6 +239,36 @@ Rules:
 
 `/flow-lint` checks: README exists (ERROR if missing), has a local-setup section (ERROR), has prerequisites (WARNING), has test instructions (WARNING), and that Spec 0.1 DONE implies a real setup guide exists.
 
+### .flow/config.yml — the backend
+
+Optional. **Absent ⇒ local mode** — `SPECIFICATIONS.md` is the index and `/flow` owns the full lifecycle (the default; nothing to configure). Add `.flow/config.yml` only to track the backlog on an external board:
+
+```yaml
+flow:
+  lifecycle_authority: local    # DEFAULT — SPECIFICATIONS.md index owns status/priority/close
+                                # or: ado  — the ADO board owns lifecycle
+  spec_dir: specs               # where detail files live
+  ado:                          # only when lifecycle_authority: ado
+    org: https://dev.azure.com/<org>/   # the BOARD's org — may differ from the repo's remote
+    project: "<Project>"                # the BOARD's project — often NOT the repo's project
+    area: "<Area\\Path>"
+    item_type: "Work Item"
+    state_map:                          # board state -> canonical status (auto-built by /flow-init)
+      Backlog: NOT STARTED
+      Ready: NOT STARTED
+      "In Progress": IN PROGRESS
+      "Story Done": IN PROGRESS
+      Closed: DONE
+      Removed: SUPERSEDED
+```
+
+The **one axis** is `lifecycle_authority`:
+
+- **`local`** — the index is `SPECIFICATIONS.md`; ids are `Phase.Spec`. The status vocabulary is used directly; **no `state_map`** (there's nothing to translate).
+- **`ado`** — the **board is the index** (no `SPECIFICATIONS.md`); ids are the work-item numbers (`specs/642103.md`). The board owns the lifecycle state machine, so `state_map` translates each board state to a canonical token. `/flow-init --backend ado` builds it automatically from ADO **state categories** (`Proposed → NOT STARTED`, `InProgress → IN PROGRESS`, `Resolved → IN PROGRESS`, `Completed → DONE`, `Removed → SUPERSEDED`), so it works on any custom process. Flow's card writes are **propose-only** — it transitions state on your sign-off and refreshes one "Spec:" pointer comment, never reprioritizing, reassigning, or closing a card unprompted. The board may live in a **different ADO project/org than the repo**; only the `specs/<id>.md` detail files live in the repo.
+
+Either way the `specs/<id>.md` detail files are byte-for-byte the same shape — only *where lifecycle is owned* changes.
+
 ---
 
 ## The Development Cycle
@@ -266,13 +319,13 @@ This keeps you in control of direction without having to micromanage implementat
 
 | Command | Description |
 |---|---|
-| `/flow-init [concept]` | Bootstrap any project with `SPECIFICATIONS.md` + `CLAUDE.md` hierarchy |
+| `/flow-init [concept\|--adopt\|--backend ado]` | Bootstrap or adopt a project: spec index + `specs/` detail files + `CLAUDE.md` hierarchy |
 | `/flow [spec# \| --ideas \| --add \| --clean \| description]` | Implement specs, manage backlog, brainstorm |
 | `/flow-hunt [--deep \| focus area]` | Hunt new feature opportunities through a domain-grounded persona panel |
 | `/flow-ship [--dry-run]` | Cut a release — reads deploy conventions from `CLAUDE.md` |
 | `/flow-review [--docs \| --ux \| --marketing \| --product]` | Audit docs, UX, marketing, or product |
 | `/flow-pr [pr# \| branch] [--spec \| --quality \| --tests]` | Spec-aware review of a PR or branch diff, with clean-code and test-coverage checks |
-| `/flow-lint [--claude \| --specs \| --fix]` | Enforce CLAUDE.md hierarchy rules and SPECIFICATIONS.md validity |
+| `/flow-lint [--claude \| --specs \| --fix \| --migrate]` | Enforce CLAUDE.md hierarchy + spec index/detail integrity; migrate legacy specs |
 
 ---
 
@@ -290,7 +343,7 @@ Bootstrap a new project or update an existing one.
 2. Asks 2-3 focused questions: what does this do, what's the stack, what are the layers?
 3. Generates root `CLAUDE.md` with architecture, dev rules, feature checklist, and project structure
 4. Generates subdirectory `CLAUDE.md` files for each major layer (under 100 lines each)
-5. Generates `SPECIFICATIONS.md` with Spec 0.1 (Walking Skeleton) + 3-5 Phase 1 specs from your concept
+5. Generates the spec model — the `SPECIFICATIONS.md` index + a `specs/<id>.md` detail file per spec (Walking Skeleton only on greenfield; an existing codebase gets a real backlog, no skeleton). With `--backend ado`, writes `.flow/config.yml` instead of a local index.
 6. Explains the workflow and how the CLAUDE.md hierarchy works
 
 Re-run it as the project evolves — it reads what's there and offers to extend, not replace.
@@ -324,13 +377,13 @@ Three lenses: **Sellable** (acquisition/retention/WTP), **Profitable** (cost red
 ```
 /flow --add
 ```
-Conversational spec capture. Claude asks what it is, who it's for, and what success looks like — then drafts the spec in the standard format and shows it to you before writing to `SPECIFICATIONS.md`.
+Conversational spec capture. Claude asks what it is, who it's for, and what success looks like — then drafts **both** the index entry and the `specs/<id>.md` detail file (Value as a user story), and shows them before writing.
 
-**Normalize the spec file:**
+**Normalize the index:**
 ```
 /flow --clean
 ```
-Enforces the status vocabulary, fixes heading formats, removes orphaned lines. Shows a diff before writing.
+Normalizes the index: status vocabulary, entry format, and links to detail files. Shows a diff before writing.
 
 ---
 
@@ -447,19 +500,19 @@ Enforce the CLAUDE.md hierarchy rules and SPECIFICATIONS.md format. Catches prob
 - Subdirectory files don't duplicate `##` section headings from root (content loaded twice = drift risk)
 - Layers with 10+ source files have a subdirectory CLAUDE.md
 
-*SPECIFICATIONS.md:*
-- Spec 0.1 (Walking Skeleton) is present
-- No duplicate spec numbers (checked across both `SPECIFICATIONS.md` and `SPECIFICATIONS-ARCHIVE.md`)
-- Every spec heading matches `### Spec A.B — Title` (alphanumeric — e.g. `2.37a`, `P.10`, `BL.12`)
-- Every spec has exactly one `**Status:**` line
-- Status keyword is one of: `DONE · IN PROGRESS · PARTIAL · NOT STARTED · SUPERSEDED`
-- DONE specs have no unchecked `- [ ]` acceptance criteria remaining
-- Non-DONE specs with all `- [x]` items are flagged (status probably needs updating)
-- Inline `## Archive` section with more than 20 specs flagged — run `--fix` to migrate to `SPECIFICATIONS-ARCHIVE.md`
+*Spec model (index + detail files):*
+- Index entries match `- **<id>** <Title> — `STATUS` — [detail](specs/<id>.md)`, with a valid status and unique ids
+- Every index entry has a `specs/<id>.md`; every detail file is indexed (no orphans)
+- A detail file's front-matter `id` matches its filename, and it carries **no status** (single-source in the index)
+- Each detail file has the expected sections; `## Value` reads as a user story
+- DONE specs have no unchecked `- [ ]` acceptance criteria; the archive holds only DONE/SUPERSEDED
+- (Greenfield only) Walking Skeleton `0.1` is present
 
 **Severity levels:** `ERROR` (must fix — breaks `/flow` parsing or creates contradiction), `WARNING` (should fix — will cause drift over time), `INFO` (consider — best practice not met).
 
-**`--fix`** auto-corrects safe mechanical issues: status keyword casing, spec heading punctuation, and archive migration (inline → sidecar file when archive exceeds 20 specs). Never modifies CLAUDE.md content or resolves ambiguous issues — those require human judgment.
+**`--fix`** auto-corrects safe mechanical issues: index status-keyword casing, entry format, and archival (moving DONE/SUPERSEDED entries to `## Archive` + their detail files to `specs/archive/`). Never modifies CLAUDE.md content or resolves ambiguous issues.
+
+**`--migrate`** converts a legacy inline `SPECIFICATIONS.md` (`### Spec` blocks with `**Status:**` lines) to the index + `specs/<id>.md` model — dry-run by default, non-destructive (backs up, preserves unclassified content, idempotent).
 
 ---
 
@@ -471,7 +524,7 @@ Where `/flow-lint` is the audit you run on demand, hooks are the seatbelt that's
 
 | Hook | Event | What it does |
 |---|---|---|
-| `flow-spec-guard.sh` | After every file edit | Validates `SPECIFICATIONS.md` / `SPECIFICATIONS-ARCHIVE.md` format the moment it changes |
+| `flow-spec-guard.sh` | After every file edit | Validates the spec index entries and `specs/<id>.md` detail files the moment they change |
 | `flow-claude-guard.sh` | After every file edit | Enforces CLAUDE.md line caps — 300 root, 200 subdirectory by default ([configurable per project](#customizing-the-claudemd-line-caps)) |
 | `flow-commit-guard.sh` | Before every `git commit` | Conventional Commit message format + spec file must be valid to commit + soft nudge on spec-less work |
 | `flow-session-brief.sh` | Session start | Injects a one-line backlog orientation into every new session |
@@ -480,13 +533,11 @@ All four exit instantly when they don't apply (non-spec file, non-commit command
 
 **`flow-spec-guard.sh`** validates on every edit to a spec file:
 
-- Spec headings match `### Spec A.B — Title` — alphanumeric spec number (e.g. `2.37a`, `P.10`, `BL.12`), em dash, title required
-- Every spec has exactly one `**Status:**` line
-- Status is exactly one of `DONE · IN PROGRESS · PARTIAL · NOT STARTED · SUPERSEDED`
-- No duplicate spec numbers — within the file *and* against the archive sidecar (this also protects archive reference integrity: numbers are never reused)
-- `DONE` specs have no unchecked `- [ ]` acceptance criteria
+- On the **index** (`SPECIFICATIONS.md`): each entry matches `- **<id>** <Title> — `STATUS` — [detail](specs/<id>.md)` — alphanumeric id (e.g. `2.37a`, `P.10`, `BL-12`), em dashes, a valid status (`NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`), and no duplicate ids
+- On a **detail file** (`specs/<id>.md`): it carries **no** status field (status is single-source in the index), and its front-matter `id` matches the filename
+- A legacy inline `SPECIFICATIONS.md` is detected and passed with a one-line `/flow-lint --migrate` advisory — never blocked, so a pre-migration repo stays editable
 
-On failure the guard blocks with the error list, and — this is the key difference from a git hook — **Claude reads the errors and fixes the file in the same turn**. Format drift gets corrected the moment it's introduced instead of surfacing weeks later in a lint run.
+On failure the guard blocks with the error list, and — this is the key difference from a git hook — **Claude reads the errors and fixes the file in the same turn**. Format drift gets corrected the moment it's introduced instead of surfacing weeks later in a lint run. The parsing is unit-tested (`hooks/hooks.test.sh`).
 
 **`flow-claude-guard.sh`** catches guardrail bloat at the moment of creation. A CLAUDE.md over its cap isn't a style problem — it's wasted context in every session, forever. When Claude pushes a file over the limit, the block message tells it to trim now: move detail to subdirectory files, delete what's derivable from code. The caps default to 300 lines (root) and 200 (subdirectory), and are [configurable per project](#customizing-the-claudemd-line-caps) when a codebase genuinely needs more room.
 
