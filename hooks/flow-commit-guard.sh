@@ -24,8 +24,18 @@ RAW=$(printf '%s' "$INPUT" | grep -oE '"command"[[:space:]]*:[[:space:]]*"(\\.|[
 CMD=$(printf '%s' "$RAW" | sed -E 's/^"command"[[:space:]]*:[[:space:]]*"//; s/"$//')
 CMD=$(printf '%s' "$CMD" | awk '{ gsub(/\\"/, "\""); gsub(/\\n/, "\n"); gsub(/\\t/, "\t"); gsub(/\\\\/, "\\"); print }')
 
-# Only act on git commit.
-printf '%s' "$CMD" | grep -qE 'git[[:space:]]+commit' || exit 0
+# Only act on an actual `git commit` invocation — not any command that merely
+# contains the text "git commit" (a PR body, an echo, a grep pattern). Require
+# `git` at a command boundary (start of line, or after ; & |), allow git's
+# global options (-C <path>, -c <kv>, --opt[=val]) before the subcommand, and
+# require `commit` as a whole word. grep is line-oriented, so `^` also covers a
+# git-commit on its own line. This additionally catches `git -C <path> commit`,
+# which the old bare-substring match missed.
+# Residual (documented, not worth chasing): a heredoc/quoted line that itself
+# starts with `git commit`, and `git -c key="a b" commit` (a quoted space in an
+# option value), are edge cases this heuristic does not perfectly classify.
+git_commit_re='(^|[;&|])[[:space:]]*git([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+commit([[:space:]]|$)'
+printf '%s' "$CMD" | grep -qE "$git_commit_re" || exit 0
 
 # --- Check 1: Conventional Commit message format -----------------------------
 
