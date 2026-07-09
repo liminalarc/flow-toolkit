@@ -490,7 +490,7 @@ On failure the guard blocks with the error list, and — this is the key differe
 
 **`flow-claude-guard.sh`** catches guardrail bloat at the moment of creation. A CLAUDE.md over its cap isn't a style problem — it's wasted context in every session, forever. When Claude pushes a file over the limit, the block message tells it to trim now: move detail to subdirectory files, delete what's derivable from code. The caps default to 300 lines (root) and 200 (subdirectory), and are [configurable per project](#customizing-the-claudemd-line-caps) when a codebase genuinely needs more room.
 
-**`flow-commit-guard.sh`** runs three checks before any commit: the message follows Conventional Commits (`/flow-ship` derives version bumps from commit types, so a malformed message silently breaks releases); `SPECIFICATIONS.md` passes validation (catches hand edits that bypassed the edit-time guard); and — as a note to Claude, never a block — flags commits that stage source changes while no spec is `IN PROGRESS`.
+**`flow-commit-guard.sh`** runs three checks before any commit: the message follows Conventional Commits (`/flow-ship` derives version bumps from commit types, so a malformed message silently breaks releases); `SPECIFICATIONS.md` passes validation (catches hand edits that bypassed the edit-time guard); and — as a note to Claude, never a block — flags commits that stage source changes while no spec is `IN PROGRESS`. The Conventional-Commit check accepts an optional leading issue-tracker tag in brackets (e.g. `[#123] feat: …`, `[JIRA-45] fix: …`) so teams that prefix commits with a work-item id still pass; the type stays parseable for `/flow-ship`.
 
 **`flow-session-brief.sh`** injects ~30 tokens of orientation into each new session in a flow project:
 
