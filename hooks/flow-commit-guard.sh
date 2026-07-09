@@ -29,8 +29,11 @@ printf '%s' "$CMD" | grep -qE 'git[[:space:]]+commit' || exit 0
 
 # --- Check 1: Conventional Commit message format -----------------------------
 
-# Extract the subject line from the first -m. Handles both inline
+# Extract the subject line from the FIRST -m. Handles both inline
 # (-m "feat: thing") and heredoc (-m "$(cat <<'EOF' ... )") styles.
+# The prefix strip below is written to stop at the first -m (not a greedy
+# .* that runs to the last one), so a multi-paragraph commit
+# (-m subject -m body -m trailer) validates the subject, not the trailer.
 # If no message can be found (e.g. --amend without -m), skip this check.
 subject=""
 mline=$(printf '%s\n' "$CMD" | grep -m1 -E -- '-m[[:space:]]' || true)
@@ -39,7 +42,7 @@ if [ -n "$mline" ]; then
         # Heredoc: subject is the first line after the heredoc opener.
         subject=$(printf '%s\n' "$CMD" | awk '/<<-?['"'"'"]?[A-Za-z_]+/ { getline; print; exit }')
     else
-        subject=$(printf '%s' "$mline" | sed -E "s/.*-m[[:space:]]+//; s/^[\"']//; s/[\"']?[[:space:]]*$//")
+        subject=$(printf '%s' "$mline" | sed -E "s/^([^-]|-[^m])*-m[[:space:]]+//; s/^[\"']//; s/[\"']?[[:space:]]*$//")
     fi
 fi
 
