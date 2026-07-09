@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # flow-session-brief.sh — Claude Code SessionStart hook.
 #
-# If the project has a SPECIFICATIONS.md, prints a one-line backlog
+# If the project has a SPECIFICATIONS.md index, prints a one-line backlog
 # orientation to stdout, which Claude Code injects into the session context.
 # ~30 tokens of pure signal: what's in flight, what's queued.
 #
-# Projects without a spec file produce no output. Always exits 0.
+# Reads the index model first ("- **<id>** Title — `STATUS` — [detail](...)").
+# Falls back to the legacy inline format (### Spec + **Status:**) so a
+# pre-migration repo still gets a brief. ADO-backed projects (no local
+# SPECIFICATIONS.md) produce no output. Always exits 0.
 
 set -u
 
@@ -20,27 +23,34 @@ SPEC="$CWD/SPECIFICATIONS.md"
 [ -f "$SPEC" ] || exit 0
 
 awk '
-/^### Spec / {
-    heading = $0
-    sub(/^### /, "", heading)
+# New index format: "- **<id>** <Title> — `STATUS` — [detail](...)"
+match($0, /^- \*\*[A-Za-z0-9][A-Za-z0-9]*[.][A-Za-z0-9-]+\*\* .+ — `(NOT STARTED|IN PROGRESS|PARTIAL|DONE|SUPERSEDED)` —/) {
+    entries++
+    # title = between "** " and " — `"
+    t = $0
+    sub(/^- \*\*[A-Za-z0-9][A-Za-z0-9]*[.][A-Za-z0-9-]+\*\* /, "", t)
+    sub(/ — `.*/, "", t)
+    # status = inside the first backtick pair
+    s = $0
+    sub(/^.*— `/, "", s)
+    sub(/`.*/, "", s)
+    count[s]++
+    if (s == "IN PROGRESS") inprog = (inprog == "" ? t : inprog ", " t)
     next
 }
+# Legacy fallback: ### Spec heading + **Status:** line
+/^### Spec / { legacy_head = $0; sub(/^### /, "", legacy_head); next }
 /^\*\*Status:\*\*/ {
-    val = $0
-    sub(/^\*\*Status:\*\*[[:space:]]*/, "", val)
-    sub(/[[:space:]]+$/, "", val)
-    count[val]++
-    if (val == "IN PROGRESS" && heading != "") {
-        inprog = (inprog == "" ? heading : inprog ", " heading)
-    }
-    heading = ""
+    v = $0; sub(/^\*\*Status:\*\*[[:space:]]*/, "", v); sub(/[[:space:]]+$/, "", v)
+    legacy_count[v]++
+    if (v == "IN PROGRESS" && legacy_head != "") legacy_inprog = (legacy_inprog == "" ? legacy_head : legacy_inprog ", " legacy_head)
+    legacy_head = ""
+    next
 }
 END {
+    if (entries == 0) { inprog = legacy_inprog; for (k in legacy_count) count[k] = legacy_count[k] }
     line = "flow-toolkit: "
-    if (inprog != "")
-        line = line inprog " is IN PROGRESS"
-    else
-        line = line "no spec IN PROGRESS"
+    line = line (inprog != "" ? inprog " is IN PROGRESS" : "no spec IN PROGRESS")
     if (count["NOT STARTED"] > 0) line = line " · " count["NOT STARTED"] " NOT STARTED"
     if (count["PARTIAL"] > 0)     line = line " · " count["PARTIAL"] " PARTIAL"
     if (count["DONE"] > 0)        line = line " · " count["DONE"] " DONE"
