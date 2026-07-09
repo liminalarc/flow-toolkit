@@ -43,7 +43,7 @@ This is what makes the hunt fit *this* project. Read `CLAUDE.md`, `MARKETING.md`
 
 ### Phase 1 — Ground in what's built and planned
 
-Map `SPECIFICATIONS.md`: what's DONE, IN PROGRESS, NOT STARTED. Read `SPECIFICATIONS-ARCHIVE.md` if it exists. Build a model of the current feature surface so you don't propose duplicates. Note where the backlog is thin — those gaps are hunting grounds.
+Map the backlog from the index (`SPECIFICATIONS.md`, or the board in ADO mode): what's DONE, IN PROGRESS, NOT STARTED. Skim the `specs/<id>.md` detail files (and `specs/archive/`) for the current feature surface so you don't propose duplicates. Note where the backlog is thin — those gaps are hunting grounds.
 
 ### Phase 2 — Generate opportunities
 
