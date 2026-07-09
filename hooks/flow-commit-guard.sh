@@ -24,13 +24,26 @@ RAW=$(printf '%s' "$INPUT" | grep -oE '"command"[[:space:]]*:[[:space:]]*"(\\.|[
 CMD=$(printf '%s' "$RAW" | sed -E 's/^"command"[[:space:]]*:[[:space:]]*"//; s/"$//')
 CMD=$(printf '%s' "$CMD" | awk '{ gsub(/\\"/, "\""); gsub(/\\n/, "\n"); gsub(/\\t/, "\t"); gsub(/\\\\/, "\\"); print }')
 
-# Only act on git commit.
-printf '%s' "$CMD" | grep -qE 'git[[:space:]]+commit' || exit 0
+# Only act on an actual `git commit` invocation — not any command that merely
+# contains the text "git commit" (a PR body, an echo, a grep pattern). Require
+# `git` at a command boundary (start of line, or after ; & |), allow git's
+# global options (-C <path>, -c <kv>, --opt[=val]) before the subcommand, and
+# require `commit` as a whole word. grep is line-oriented, so `^` also covers a
+# git-commit on its own line. This additionally catches `git -C <path> commit`,
+# which the old bare-substring match missed.
+# Residual (documented, not worth chasing): a heredoc/quoted line that itself
+# starts with `git commit`, and `git -c key="a b" commit` (a quoted space in an
+# option value), are edge cases this heuristic does not perfectly classify.
+git_commit_re='(^|[;&|])[[:space:]]*git([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+commit([[:space:]]|$)'
+printf '%s' "$CMD" | grep -qE "$git_commit_re" || exit 0
 
 # --- Check 1: Conventional Commit message format -----------------------------
 
-# Extract the subject line from the first -m. Handles both inline
+# Extract the subject line from the FIRST -m. Handles both inline
 # (-m "feat: thing") and heredoc (-m "$(cat <<'EOF' ... )") styles.
+# The prefix strip below is written to stop at the first -m (not a greedy
+# .* that runs to the last one), so a multi-paragraph commit
+# (-m subject -m body -m trailer) validates the subject, not the trailer.
 # If no message can be found (e.g. --amend without -m), skip this check.
 subject=""
 mline=$(printf '%s\n' "$CMD" | grep -m1 -E -- '-m[[:space:]]' || true)
@@ -39,7 +52,7 @@ if [ -n "$mline" ]; then
         # Heredoc: subject is the first line after the heredoc opener.
         subject=$(printf '%s\n' "$CMD" | awk '/<<-?['"'"'"]?[A-Za-z_]+/ { getline; print; exit }')
     else
-        subject=$(printf '%s' "$mline" | sed -E "s/.*-m[[:space:]]+//; s/^[\"']//; s/[\"']?[[:space:]]*$//")
+        subject=$(printf '%s' "$mline" | sed -E "s/^([^-]|-[^m])*-m[[:space:]]+//; s/^[\"']//; s/[\"']?[[:space:]]*$//")
     fi
 fi
 
@@ -47,7 +60,7 @@ if [ -n "$subject" ]; then
     case "$subject" in
         Merge\ *|Revert\ *|fixup!*|squash!*) : ;;  # git-generated prefixes pass
         *)
-            if ! printf '%s' "$subject" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?!?: .+'; then
+            if ! printf '%s' "$subject" | grep -qE '^(\[[^]]+\] )?(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?!?: .+'; then
                 {
                     echo "flow-toolkit commit guard: commit message does not follow Conventional Commits:"
                     echo "  \"$subject\""
