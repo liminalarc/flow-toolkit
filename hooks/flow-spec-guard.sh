@@ -1,21 +1,28 @@
 #!/usr/bin/env bash
 # flow-spec-guard.sh — Claude Code PostToolUse hook (matcher: Edit|Write).
 #
-# Fires after every file edit. If the edited file is SPECIFICATIONS.md or
-# SPECIFICATIONS-ARCHIVE.md, validates the flow-toolkit spec format:
-#   - headings match "### Spec A.B — Title" where A and B are alphanumeric
-#     (letters, digits, hyphens — e.g. "2.37a", "P.10", "BL-12") with em dash
-#   - every spec has exactly one **Status:** line
-#   - status is one of: DONE, IN PROGRESS, PARTIAL, NOT STARTED, SUPERSEDED
-#   - no duplicate spec numbers (within the file and across the archive sidecar)
-#   - DONE specs have no unchecked "- [ ]" acceptance criteria
+# Fires after every file edit. Validates the flow-toolkit spec model:
 #
-# Exit 0 = file is fine (or not a spec file — the common case, costs nothing).
+#   * SPECIFICATIONS.md / SPECIFICATIONS-ARCHIVE.md (the INDEX): every backlog
+#     entry line matches
+#         - **<id>** <Title> — `STATUS` — [detail](<path>)
+#     where <id> is alphanumeric (e.g. "1.2", "0.1", "2.37a", "P.10", "BL-12"),
+#     STATUS is one of NOT STARTED / IN PROGRESS / PARTIAL / DONE / SUPERSEDED,
+#     and no id is duplicated within the file.
+#
+#   * <spec_dir>/<id>.md (a DETAIL file, default dir "specs"): carries NO status
+#     field (status is single-source in the index — a status here would drift),
+#     and its front-matter `id:` matches the filename stem.
+#
+# A legacy inline SPECIFICATIONS.md (### Spec blocks, **Status:** lines) is
+# detected and PASSED with a one-line advisory to run `/flow-lint --migrate` —
+# it is never blocked, so a pre-migration repo stays editable.
+#
+# Exit 0 = fine / not a spec file / legacy (advisory on stderr).
 # Exit 2 = validation failed; errors on stderr are fed back to Claude so it
 #          fixes the file in the same turn.
 #
-# Can also be invoked directly with a file argument (used by flow-commit-guard.sh):
-#   flow-spec-guard.sh path/to/SPECIFICATIONS.md
+# Direct-invocation form (used by flow-commit-guard.sh): flow-spec-guard.sh <file>
 
 set -u
 
@@ -23,99 +30,89 @@ if [ $# -ge 1 ]; then
     FILE="$1"
 else
     INPUT=$(cat 2>/dev/null || true)
-
-    # Extract tool_input.file_path from the hook JSON (first occurrence).
     RAW=$(printf '%s' "$INPUT" | grep -oE '"file_path"[[:space:]]*:[[:space:]]*"(\\.|[^"\\])*"' | head -n 1)
     [ -z "$RAW" ] && exit 0
-
     FILE=$(printf '%s' "$RAW" | sed -E 's/^"file_path"[[:space:]]*:[[:space:]]*"//; s/"$//')
-    # Unescape JSON string: \" -> ", \/ -> /, \\ -> \  (order matters: \\ last)
     FILE=$(printf '%s' "$FILE" | sed -e 's/\\"/"/g' -e 's/\\\//\//g' -e 's/\\\\/\\/g')
 fi
 # Normalize Windows backslashes so basename/dirname and -f work under Git Bash.
 FILE=$(printf '%s' "$FILE" | tr '\\' '/')
 
 base=$(basename "$FILE")
-case "$base" in
-    SPECIFICATIONS.md|SPECIFICATIONS-ARCHIVE.md) ;;
-    *) exit 0 ;;
-esac
 
+# Classify the file: index, detail, or neither.
+kind=""
+case "$base" in
+    SPECIFICATIONS.md|SPECIFICATIONS-ARCHIVE.md) kind="index" ;;
+    *.md)
+        # A detail file lives under a "specs/" path segment (the default spec_dir).
+        case "/$FILE" in
+            */specs/*) kind="detail" ;;
+        esac
+        ;;
+esac
+[ -z "$kind" ] && exit 0
 [ -f "$FILE" ] || exit 0
 
-# Spec numbers in the sibling file (active <-> archive), for cross-file duplicates.
-dir=$(dirname "$FILE")
-if [ "$base" = "SPECIFICATIONS.md" ]; then
-    other="$dir/SPECIFICATIONS-ARCHIVE.md"
-else
-    other="$dir/SPECIFICATIONS.md"
-fi
-othernums=""
-if [ -f "$other" ]; then
-    othernums=$(sed -nE 's/^### Spec ([A-Za-z0-9][A-Za-z0-9]*[.][A-Za-z0-9-]+).*/\1/p' "$other" | tr '\n' ' ')
+# --- Detail file: no status field, id matches filename ------------------------
+if [ "$kind" = "detail" ]; then
+    derr=""
+    if grep -qE '^\*\*Status:\*\*|^[[:space:]]*status:[[:space:]]*[^[:space:]]' "$FILE"; then
+        derr="${derr}  a detail file must not carry a status field — status is single-source in the index (remove the \`status:\`/\`**Status:**\` line)\n"
+    fi
+    stem=${base%.md}
+    idval=$(sed -nE 's/^id:[[:space:]]*"?([^"[:space:]]+)"?[[:space:]]*$/\1/p' "$FILE" | head -n 1)
+    if [ -n "$idval" ] && [ "$idval" != "$stem" ]; then
+        derr="${derr}  front-matter id \"$idval\" does not match filename \"$stem\" (specs/<id>.md)\n"
+    fi
+    if [ -n "$derr" ]; then
+        {
+            echo "flow-toolkit spec guard: $base failed detail-file validation:"
+            printf '%b' "$derr"
+            echo "Reference: specs/<id>.md carries id/title front-matter and the sections Problem/Value/Scope/Acceptance criteria/Plan/Decisions/Verification/Progress log — but NEVER a status (that lives only in the index)."
+        } >&2
+        exit 2
+    fi
+    exit 0
 fi
 
-errors=$(awk -v othernums="$othernums" '
-function flush_spec() {
-    if (!in_spec) return
-    if (status_count == 0)
-        errs = errs sprintf("  line %d: Spec %s has no **Status:** line\n", spec_line, spec_id)
-    else if (status_count > 1)
-        errs = errs sprintf("  line %d: Spec %s has %d **Status:** lines — must have exactly one\n", spec_line, spec_id, status_count)
-    if (status_count >= 1 && !(status_val in VALID))
-        errs = errs sprintf("  line %d: invalid status \"%s\" — must be exactly one of: DONE, IN PROGRESS, PARTIAL, NOT STARTED, SUPERSEDED\n", status_line, status_val)
-    if (status_count >= 1 && status_val == "DONE" && unchecked > 0)
-        errs = errs sprintf("  line %d: Spec %s is DONE but still has %d unchecked \"- [ ]\" acceptance criteria\n", spec_line, spec_id, unchecked)
-}
+# --- Index file ---------------------------------------------------------------
+
+# Legacy inline format: ### Spec blocks and no new-style "- **<id>**" entries.
+# Advise migration; do not block (migration is a deliberate action).
+if grep -q '^### Spec ' "$FILE" && ! grep -qE '^- \*\*[A-Za-z0-9]' "$FILE"; then
+    echo "flow-toolkit spec guard: $base looks like a legacy inline spec file (### Spec blocks). Run \`/flow-lint --migrate\` to convert it to the index + specs/<id>.md model. (Not blocking.)" >&2
+    exit 0
+fi
+
+errors=$(awk '
 BEGIN {
-    VALID["DONE"]; VALID["IN PROGRESS"]; VALID["PARTIAL"]; VALID["NOT STARTED"]; VALID["SUPERSEDED"]
-    n = split(othernums, arr, " ")
-    for (i = 1; i <= n; i++) if (arr[i] != "") OTHER[arr[i]]
-    in_spec = 0; errs = ""
+    VALID["NOT STARTED"]; VALID["IN PROGRESS"]; VALID["PARTIAL"]; VALID["DONE"]; VALID["SUPERSEDED"]
+    errs = ""
 }
-/^### Spec/ {
-    flush_spec()
-    in_spec = 1; spec_line = NR; status_count = 0; status_val = ""; status_line = 0; unchecked = 0
-    if ($0 ~ /^### Spec [A-Za-z0-9][A-Za-z0-9]*[.][A-Za-z0-9-]+ — .+/) {
-        match($0, /[A-Za-z0-9][A-Za-z0-9]*[.][A-Za-z0-9-]+/)
-        spec_id = substr($0, RSTART, RLENGTH)
-        if (spec_id in SEEN)
-            errs = errs sprintf("  line %d: duplicate spec number %s (first used at line %d)\n", NR, spec_id, SEEN[spec_id])
+/^- \*\*/ {
+    line = $0
+    if (line ~ /^- \*\*[A-Za-z0-9][A-Za-z0-9]*[.][A-Za-z0-9-]+\*\* .+ — `(NOT STARTED|IN PROGRESS|PARTIAL|DONE|SUPERSEDED)` — \[[^]]+\]\(.+\)$/) {
+        s = line; sub(/^- \*\*/, "", s)
+        match(s, /^[A-Za-z0-9][A-Za-z0-9]*[.][A-Za-z0-9-]+/)
+        id = substr(s, RSTART, RLENGTH)
+        if (id in SEEN)
+            errs = errs sprintf("  line %d: duplicate id %s (first used at line %d)\n", NR, id, SEEN[id])
         else
-            SEEN[spec_id] = NR
-        if (spec_id in OTHER)
-            errs = errs sprintf("  line %d: spec number %s already exists in the sibling specifications file — spec numbers are never reused\n", NR, spec_id)
+            SEEN[id] = NR
     } else {
-        spec_id = sprintf("(line %d)", NR)
-        errs = errs sprintf("  line %d: malformed spec heading — expected \"### Spec A.B — Title\" (alphanumeric A.B, em dash, title required): %s\n", NR, $0)
+        errs = errs sprintf("  line %d: malformed index entry — expected \"- **<id>** <Title> — `STATUS` — [detail](specs/<id>.md)\" with STATUS one of NOT STARTED, IN PROGRESS, PARTIAL, DONE, SUPERSEDED: %s\n", NR, line)
     }
     next
 }
-/^\*\*Status:\*\*/ {
-    if (in_spec) {
-        status_count++
-        if (status_count == 1) {
-            status_line = NR
-            val = $0
-            sub(/^\*\*Status:\*\*[[:space:]]*/, "", val)
-            sub(/[[:space:]]+$/, "", val)
-            status_val = val
-        }
-    }
-    next
-}
-/^[[:space:]]*- \[ \]/ { if (in_spec) unchecked++ }
-END {
-    flush_spec()
-    printf "%s", errs
-}
+END { printf "%s", errs }
 ' "$FILE")
 
 if [ -n "$errors" ]; then
     {
-        echo "flow-toolkit spec guard: $base failed validation:"
+        echo "flow-toolkit spec guard: $base failed index validation:"
         printf '%s\n' "$errors"
-        echo "Fix these issues in $FILE now. Reference format: heading \"### Spec A.B — Title\" (alphanumeric A.B, em dash required), one \"**Status:**\" line per spec with exactly one of DONE, IN PROGRESS, PARTIAL, NOT STARTED, SUPERSEDED."
+        echo "Reference entry: \"- **<id>** <Title> — \`STATUS\` — [detail](specs/<id>.md)\" (alphanumeric id, em dash separators, valid STATUS, unique ids)."
     } >&2
     exit 2
 fi

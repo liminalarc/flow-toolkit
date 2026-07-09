@@ -5,11 +5,11 @@
 #   1. Commit message follows Conventional Commits — /flow-ship derives
 #      version bumps from commit types, so a malformed message silently
 #      breaks release versioning.
-#   2. SPECIFICATIONS.md (if present) passes format validation, so a broken
+#   2. SPECIFICATIONS.md (if present) passes index validation, so a broken
 #      spec file can't be committed — catches hand edits that bypassed the
 #      PostToolUse guard.
 #   3. Soft nudge (never blocks): committing source changes while no spec is
-#      IN PROGRESS suggests untracked work.
+#      IN PROGRESS in the index suggests untracked work.
 #
 # Exit 0 = allow (non-commit commands, or all checks pass).
 # Exit 2 = block the commit; reason on stderr is fed back to Claude.
@@ -87,7 +87,9 @@ if [ -n "$CWD" ] && [ -f "$CWD/SPECIFICATIONS.md" ]; then
     fi
 
     # --- Check 3 (soft, never blocks): source work with no spec IN PROGRESS ---
-    if ! grep -q '^\*\*Status:\*\* IN PROGRESS' "$CWD/SPECIFICATIONS.md"; then
+    # Match the index entry form ("- **id** Title — `IN PROGRESS` — ...") and the
+    # legacy inline form ("**Status:** IN PROGRESS") so the nudge works pre/post migration.
+    if ! grep -qE '(`IN PROGRESS`|^\*\*Status:\*\* IN PROGRESS)' "$CWD/SPECIFICATIONS.md"; then
         staged_src=$(cd "$CWD" && git diff --cached --name-only 2>/dev/null | grep -vE '\.md$' | head -n 1 || true)
         if [ -n "$staged_src" ]; then
             printf '%s' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"flow-toolkit: this commit stages source changes but no spec in SPECIFICATIONS.md is IN PROGRESS. If this implements a spec, set its status; if it is unplanned work, consider capturing it with /flow --add. Proceeding with the commit."}}'
