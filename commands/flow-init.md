@@ -1,200 +1,189 @@
 ---
-description: "Bootstrap any project with SPECIFICATIONS.md + CLAUDE.md + MARKETING.md — /flow-init [concept]"
+description: "Bootstrap or adopt a project: index + specs/ detail files, CLAUDE.md, config — /flow-init [concept|--adopt|--greenfield|--backend ado]"
 ---
 # Init
 
-Bootstrap a new project or onboard an existing one into the spec-driven workflow. Creates `SPECIFICATIONS.md` (backlog starting with Spec 0.1 — Walking Skeleton), a `CLAUDE.md` hierarchy (root + one lean file per major layer), and optionally `MARKETING.md` for user-facing products. Safe to re-run — reads existing files and extends rather than replaces.
+Bootstrap a new project or onboard an existing one into the spec-driven workflow. Creates the **spec model** (an index + one `specs/<id>.md` detail file per spec), a `CLAUDE.md` hierarchy (root + one lean file per major layer), optionally `MARKETING.md` for user-facing products, and optionally `.flow/config.yml` when the backlog is tracked outside the repo (e.g. an ADO board). Safe to re-run — reads existing files and extends rather than replaces.
 
-Usage: `/flow-init` · `/flow-init <concept description>`
+Usage:
+- `/flow-init` — detect the project shape and bootstrap conversationally
+- `/flow-init <concept description>` — greenfield bootstrap from a one-line concept
+- `/flow-init --greenfield` — force new-project mode (scaffold a Walking Skeleton)
+- `/flow-init --adopt` — force existing-project mode (no Walking Skeleton)
+- `/flow-init --backend ado` — configure an ADO-tracked backlog (writes `.flow/config.yml`)
+
+## The spec model this creates
+
+- **The index** — the lifecycle ledger (id, title, status, phase, link). **Status lives only here.** In `local` mode it's `SPECIFICATIONS.md`; in `ado` mode the board *is* the index (no `SPECIFICATIONS.md`).
+- **`specs/<id>.md`** — one detail file per spec (Problem, Value user story, Scope, AC, Plan, Decisions, Verification, Progress log). **No status field.** Backend-neutral.
+- **Canonical status vocabulary:** `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
 ## Instructions
 
-**Start fresh.** Read only from the project files — `CLAUDE.md`, `SPECIFICATIONS.md`, `README.md`, `MARKETING.md` (if present). Do not reference or build on prior conversation context. Treat this as a new session regardless of what preceded it.
+**Start fresh.** Read only from the project files — `CLAUDE.md`, `SPECIFICATIONS.md`, `specs/`, `README.md`, `MARKETING.md`, `.flow/config.yml` (if present). Do not build on prior conversation context.
 
-### 1. Discover what exists
+### 1. Discover what exists + pick the mode
 
-Before generating anything, read:
-- `CLAUDE.md` in the current directory (if present)
-- `SPECIFICATIONS.md` (if present)
-- `MARKETING.md` (if present)
-- Top-level directory structure
+Read the current directory: root `CLAUDE.md`, `SPECIFICATIONS.md` or `specs/`, `README.md`, `MARKETING.md`, `.flow/config.yml`, and the top-level directory structure.
 
-If the key files look complete and well-formed, offer to **extend** (add specs, update architecture, refresh marketing) rather than regenerate.
+Decide **greenfield vs. brownfield**:
+- **Greenfield** — an empty or near-empty repo (no meaningful source), or `--greenfield`, or the user describes a brand-new concept. → scaffold a **Walking Skeleton** (Spec 0.1) + 3-5 Phase-1 specs.
+- **Brownfield / adopt** — substantial existing source, or a `CLAUDE.md`/`README.md` describing a running system, or `--adopt`. → **no Walking Skeleton** (there's nothing to stand up end-to-end; the system already runs). Seed the backlog from real upcoming work instead.
+
+When source already exists, default to **adopt** and *ask to confirm* before emitting a skeleton — never scaffold a skeleton into a live codebase. A flag overrides the guess.
+
+If the key files already look complete and well-formed, offer to **extend** rather than regenerate.
 
 ### 2. Understand the project
 
-Use args as the starting concept if provided. Otherwise ask 2-3 questions (maximum):
+Use args as the starting concept if provided. Otherwise ask up to 3 questions:
 - What does this project do? (one sentence)
 - Tech stack — language(s), frameworks, key libraries?
-- Main layers/apps — how many distinct runnable things? (e.g., API + SPA, CLI tool, microservices + frontend)
-- Is this user-facing (public product, paying customers, website)? — determines whether to generate MARKETING.md
+- Main layers/apps — how many distinct runnable things?
+- Is it user-facing (public product, paying customers, website)? — determines MARKETING.md.
 
-### 3. Generate root CLAUDE.md
+### 3. Choose the backend + scaffold `.flow/config.yml`
 
-Keep under 300 lines (the default root cap; a project may raise it via `rootMax` in `.flow-toolkit.json`). Include:
+Default is **`local`** — no config file needed; `SPECIFICATIONS.md` is the index and flow owns the lifecycle. Skip to step 4 unless the backlog is tracked outside the repo.
 
-**`## Architecture`** — 4-8 bullets covering key decisions and patterns. Specific enough to constrain future choices; short enough to skim in 60 seconds.
+If the backlog lives in an external tracker (`--backend ado`, or the user says so), write `.flow/config.yml`:
 
-**`## Development Rules`** — Adapted to the stack:
-- TDD is mandatory — write the failing test first, then make it pass
-- Testing stack (based on tech choices)
-- Async all the way (if applicable), thin vertical slices, no premature abstractions, no comments unless WHY is non-obvious
-- Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`
+```yaml
+flow:
+  lifecycle_authority: ado
+  spec_dir: specs
+  ado:
+    org: https://dev.azure.com/<org>/
+    project: "<Project>"
+    area: "<Area\\Path>"
+    item_type: "Work Item"
+    state_map:            # board state -> canonical token (see auto-discovery below)
+      "<State>": <CANONICAL>
+```
 
-**`## Spec Status Vocabulary`** — `DONE · IN PROGRESS · PARTIAL · NOT STARTED · SUPERSEDED`
+**Auto-discover the ADO config (preferred over hand-authoring):**
 
-**`## Feature Completion Checklist`** — Items tailored to what exists in this project. Always include: update SPECIFICATIONS.md status + archive the spec; update CLAUDE.md patterns if new conventions introduced. If MARKETING.md exists, add: update MARKETING.md feature highlights if user-facing capabilities changed.
+1. **Board coordinates are independent of the repo.** The board frequently lives in a **different ADO project — even a different org — than the git remote.** Do **not** infer org/project from the git remote; use it at most as a hint the user confirms. Ask for / confirm `org`, `project`, and let the user pick the `area` path from a query.
+2. **Build `state_map` from state *categories*, not state names.** Query the work-item type's states and each state's **category** (`az boards` / the `wit_*` MCP), then map mechanically — this works on *any* custom process without knowing its state names:
 
-**`## Project Structure`** — Directory tree with one-line descriptions.
+   | ADO state category | canonical token |
+   |---|---|
+   | Proposed | `NOT STARTED` |
+   | InProgress | `IN PROGRESS` |
+   | Resolved | `IN PROGRESS` (built, awaiting verify) |
+   | Completed | `DONE` |
+   | Removed | `SUPERSEDED` |
 
-**`## See Also`** — "See subdirectory CLAUDE.md files for detailed patterns: [list layers]"
+3. **MCP-first, `az` CLI fallback, prompt-and-paste if both are unavailable** (headless/unauthed) — never emit a half-built map silently.
+4. Show the generated `.flow/config.yml` and confirm before writing.
 
-### 4. Generate subdirectory CLAUDE.md files
+> **Extending to other trackers:** each backend adapter (`github-issues`, `jira`, …) ships its own `discover_config()` — the "backend introspects itself" pattern. Only `ado` exists today.
 
-For each major layer (e.g., `server/`, `web/`, `api/`, `frontend/`, `src/`): create a lean `CLAUDE.md` (under 100 lines) covering only patterns specific to that layer:
-- Only things you can't derive from reading the code (non-obvious conventions, named patterns, things that differ from framework defaults)
-- No duplication with the root file
-- **How the hierarchy works**: root always loads; subdirectory files load in addition to root when Claude works within that directory. Stack additively — root universal rules + layer-specific details. Never repeat root content in a subdirectory file.
+In `ado` mode, **do not create `SPECIFICATIONS.md`** — the board is the index. Still create the `specs/` directory for detail files.
 
-### 5. Generate or update README.md
+### 4. Generate root CLAUDE.md
 
-A README is the front door to the project — a new developer should be able to clone the repo and have the app running locally by following it, with no outside knowledge required.
+Keep under 300 lines (the root cap; a project may raise it via `rootMax` in `.flow-toolkit.json`). Include:
 
-Read the existing README if present. If it already has robust local-setup coverage, offer to extend. If it's missing or thin, generate it.
+- **`## Architecture`** — 4-8 bullets on key decisions and patterns.
+- **`## Development Rules`** — adapted to the stack: TDD mandate, testing stack, thin slices, no premature abstractions, conventional commits (`feat:`/`fix:`/`chore:`/`docs:`/`refactor:`/`test:`, optionally with a leading `[#id]` tag when the backlog is external).
+- **`## Spec Status Vocabulary`** — `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
+- **`## Feature Completion Checklist`** — tailored; always include: update the index status + archive the detail file; update `specs/<id>.md` Progress/Decisions; update CLAUDE.md patterns if new conventions introduced. If MARKETING.md exists, add its feature-highlights update.
+- **`## Project Structure`** — directory tree with one-line descriptions (include `specs/`).
+- **`## See Also`** — pointer to subdirectory CLAUDE.md files.
 
-**Required sections** (adapt headings to the project's conventions, content to the stack):
+### 5. Generate subdirectory CLAUDE.md files
+
+For each major layer (`server/`, `web/`, `src/`, …): a lean `CLAUDE.md` (under 200 lines) with only layer-specific patterns — nothing derivable from the code, no duplication with root. Root always loads; subdirectory files load additively when Claude works in that directory.
+
+### 6. Generate or update README.md
+
+The README is the front door — a new developer clones and reaches a running app by following it alone. Read the existing one; extend if robust, generate if thin. Required sections (adapt to the stack): Prerequisites, Local Setup (numbered, every command exact), Environment Variables, Running the App, Running Tests, Docker (if applicable), Deployment. Every command exact and runnable; name any required secret and where to get it. For monorepos, a root README pointing to per-layer READMEs.
+
+(In greenfield mode, "Local setup documented in README" is the Walking Skeleton's primary acceptance criterion — README and skeleton ship together.)
+
+### 7. Generate the spec model
+
+Create the `specs/` directory. Then:
+
+**Greenfield** — write the index `SPECIFICATIONS.md` starting with the Walking Skeleton, and a `specs/<id>.md` detail file for each seeded spec:
 
 ```markdown
-# [Project Name]
-
-[One paragraph: what it is, who it's for, and the one thing that makes it different.]
-
-## Prerequisites
-
-[List everything a new dev needs installed before cloning: runtime versions (Node 20, .NET 10, Python 3.11), Docker, CLI tools, accounts. Be specific about versions.]
-
-## Local Setup
-
-[Step-by-step: clone → install dependencies → configure environment → run. Number every step. Don't assume any step is obvious.]
-
-### Environment Variables
-
-[List every required env var with a description and example value. Point to any .env.example files.]
-
-## Running the App
-
-[Exact commands to start the app locally — one block per runnable thing (API, web, worker). Include the URL where it's reachable.]
-
-## Running Tests
-
-[Exact commands to run the test suite. If there are multiple test layers (unit, integration, E2E), show each separately.]
-
-## Docker
-
-[If applicable: `docker compose up` instructions, what services start, which ports they use, any first-run steps.]
-
-## Deployment
-
-[High-level: how does code get to production? CI/CD trigger, release process, or manual steps. Link to a runbook if one exists.]
-```
-
-Rules for README generation:
-- Every command in the README must be exact and runnable — no pseudocode, no elided steps.
-- If a step requires a secret or account credential, say what it is and where to get it; don't just say `[configure your env]`.
-- "Local setup documented in README" is the primary acceptance criterion for Spec 0.1 — the README and the walking skeleton ship together.
-- For monorepos or multi-app projects, add a top-level README pointing to per-layer README files; each layer gets its own README with app-specific setup.
-
-### 6. Generate SPECIFICATIONS.md
-
-```
 # [Project Name] — Specifications
 
+> Index only. Each spec's detail is in `specs/<id>.md`. **Status here is the
+> single source of truth** for lifecycle — edit it as work moves.
+
 ## Phase 0 — Foundation
+- **0.1** Walking Skeleton — `NOT STARTED` — [detail](specs/0.1.md)
 
-### Spec 0.1 — Walking Skeleton
-**Status:** NOT STARTED
+## Phase 1 — Core Features
+- **1.1** [First core feature] — `NOT STARTED` — [detail](specs/1.1.md)
 
-Establish the minimal end-to-end skeleton so every subsequent spec builds on a working system. All layers wired together and reachable, even if they do nothing useful yet.
+## Archive
+```
 
-**User story:** As a developer, I can run [Project Name] locally and reach every layer of the stack end to end.
+Seed 3-5 Phase-1 specs from the concept (high-level; the user evolves them with `/flow --add`). The Walking Skeleton's `specs/0.1.md`:
 
-**Acceptance criteria:**
-- [ ] [Stack-specific: e.g., build succeeds, dev server starts, containers healthy]
+```markdown
+---
+id: 0.1
+title: Walking Skeleton
+links: []
+---
+
+## Problem
+Establish the minimal end-to-end skeleton so every subsequent spec builds on a working system — all layers wired together and reachable, even if they do nothing useful yet.
+
+## Value
+As a developer I want to run [Project] locally and reach every layer end to end so that subsequent specs add behavior to a proven skeleton rather than building in isolation.
+
+## Scope
+**In:** minimal wiring across all layers; local run; basic CI.
+**Out:** real features (later specs).
+
+## Acceptance criteria
+- [ ] [Stack-specific: build succeeds / dev server starts / containers healthy]
 - [ ] All layers communicate end-to-end
 - [ ] Local setup documented in README
 - [ ] Basic CI passes (lint + tests, even if minimal)
+
+## Plan (thin slices)
+1. [ ] <slice>
+
+## Decisions
+
+## Verification / evidence
+
+## Progress log
 ```
 
-Add 3-5 Phase 1 specs derived from the concept. Keep them high-level — the user evolves them with `/flow --add`.
+**Brownfield / adopt** — **no Walking Skeleton.** Write the index seeded from real upcoming work (or leave it with just the header + `## Archive` and let the user add specs). Derive a few candidate specs from the existing code/CLAUDE.md if useful; each gets a `specs/<id>.md`. Number from `1.1` (or a phase that fits the existing roadmap).
 
-Always append an Archive section at the end:
+**ADO mode** — no `SPECIFICATIONS.md` (the board is the index). Create `specs/` and, if adopting existing work items, offer to write a `specs/<id>.md` for each in-flight item keyed by work-item number.
 
-```
-## Archive
+The detail template for every non-skeleton spec is the one in `/flow --add`.
 
-Specs are moved here after completion. Spec numbers are never reused — preserved
-so commits, PRs, and notes that cite a spec number remain meaningful over time.
-```
+### 8. Generate MARKETING.md (user-facing projects only)
 
-Note: this inline archive is right for new projects. Once it grows past 20 specs, `/flow-lint` will suggest migrating to a `SPECIFICATIONS-ARCHIVE.md` sidecar file — run `/flow-lint --fix` to split automatically.
+If user-facing, generate `MARKETING.md` (positioning, audience, key messages, feature highlights, pricing). Skip for internal tools/CLIs/libraries — ask first.
 
-### 7. Generate MARKETING.md (user-facing projects only)
-
-If the project is user-facing (public product, website, or paying customers), generate `MARKETING.md`. Skip and say so for internal tools, CLIs, or libraries with no direct end-customers.
-
-```markdown
-# [Project Name] — Marketing
-
-## Positioning
-
-**One-liner:** [What it is and who it's for — one sentence]
-**Problem we solve:** [The specific pain, in the customer's language]
-**How we're different:** [Key differentiator vs. the obvious alternatives]
-
-## Target Audience
-
-**Primary:** [Role · context · pain point]
-**Secondary:** [Role · context · pain point]
-
-## Key Messages
-
-1. [Outcome-focused message, not feature-focused]
-2. [Message 2]
-3. [Message 3]
-
-## Feature Highlights
-
-| Feature | User Outcome |
-|---|---|
-| [Feature] | [What it does for the user] |
-
-## Pricing
-
-[Tiers and what's included, or "Free / TBD" if not yet decided]
-
-## Channels
-
-[Where customers find this — SEO, social, direct sales, partnerships, etc.]
-```
-
-Fill in what can be inferred from the concept; mark unknowns as `[TBD]`. This doc grows over time — run `/flow-review --marketing` to audit it periodically. Update Feature Highlights whenever a spec ships a user-facing capability.
-
-### 8. Explain the workflow
+### 9. Explain the workflow
 
 Tell the user:
-- `/flow` — implement a spec, manage backlog, or brainstorm
-- `/flow-ship` — cut a release when work is validated
-- `/flow-review` — audit docs, UX, marketing, or product
-- `/flow-lint` — check CLAUDE.md hierarchy health and SPECIFICATIONS.md validity
-- `/flow-init` — re-run to update these files as the project evolves
-- **Spec archival**: when a spec is DONE, `/flow` moves it to the `## Archive` section — number preserved, never reused
-- For more rigorous spec work (formal investigation, business sign-off, multi-week features): use `/card-spec` → `/card-implement`
+- `/flow` — implement a spec, manage backlog, brainstorm
+- `/flow-ship` — cut a release
+- `/flow-review` — audit docs, UX, marketing, product
+- `/flow-lint` — check the CLAUDE.md hierarchy + index↔detail integrity; `--migrate` converts a legacy inline `SPECIFICATIONS.md` to the index + `specs/` model
+- `/flow-init` — re-run to update as the project evolves
+- Status lives in the index (or the board); detail lives in `specs/<id>.md`; archived specs move to `specs/archive/<id>.md` — id never reused.
 
 ## Rules
 
 - Never overwrite files without reading them first and confirming intent.
 - Subdirectory CLAUDE.md files must be additive — no duplication with root.
-- SPECIFICATIONS.md must stay in the standard format so `/flow` can read it.
-- Walking skeleton (Spec 0.1) is always the first spec.
-- Archive section is always the last section in SPECIFICATIONS.md.
-- Skip MARKETING.md for internal/developer tools — don't generate it by default, ask.
+- The index and detail files must stay in the standard format so `/flow` and the hooks can read them.
+- **Walking Skeleton is greenfield-only** — never scaffold it into an existing codebase.
+- **Status is single-source** (index/board); never write status into a `specs/<id>.md`.
+- ADO config: board coordinates are explicit (not inferred from the git remote); build `state_map` from state categories; confirm before writing `.flow/config.yml`.
+- Skip MARKETING.md for internal/developer tools — ask, don't assume.
