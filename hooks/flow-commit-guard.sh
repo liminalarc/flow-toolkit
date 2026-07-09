@@ -50,7 +50,7 @@ if [ -n "$subject" ]; then
     case "$subject" in
         Merge\ *|Revert\ *|fixup!*|squash!*) : ;;  # git-generated prefixes pass
         *)
-            if ! printf '%s' "$subject" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?!?: .+'; then
+            if ! printf '%s' "$subject" | grep -qE '^(\[[^]]+\] )?(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?!?: .+'; then
                 {
                     echo "flow-toolkit commit guard: commit message does not follow Conventional Commits:"
                     echo "  \"$subject\""
