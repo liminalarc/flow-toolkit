@@ -34,15 +34,17 @@ flow:
                                 # or: ado  — the ADO board owns lifecycle
   spec_dir: specs               # where detail files live
   ado:                          # only when lifecycle_authority: ado
-    org: https://dev.azure.com/<org>/
-    project: "<Project>"
+    org: https://dev.azure.com/<org>/   # the BOARD's org — may differ from the repo's remote
+    project: "<Project>"                # the BOARD's project — often NOT the repo's project
     area: "<Area\\Path>"
     item_type: "Work Item"
-    state_map: { Backlog: not-started, Ready: not-started, "In Progress": in-progress, "Story Done": resolved, Closed: done, Removed: superseded }
+    state_map: …                        # tracker state -> canonical status (see below)
 ```
 
-- **`local`** (default) → the index is `SPECIFICATIONS.md`; `flow` owns the full lifecycle. Spec ids are `Phase.Spec` (`1.2`, `0.1`, alphanumeric like `2.37a` allowed).
-- **`ado`** → the **board is the index** (no `SPECIFICATIONS.md`); spec ids are the work-item numbers (`specs/642103.md`). Flow's card writes are **propose-only**: it transitions `System.State` on your sign-off and refreshes a single "Spec:" pointer comment, and **never** reprioritizes, reassigns, sets iteration, or closes a card unprompted. Prefer the tracking MCP tools (`wit_*`); if a call is unavailable or returns 401/403, announce the fallback and use the `az boards` CLI — never silently no-op (a green run that did nothing is the worst failure). If both fail, stop and report.
+**Status vocabulary is flow's own, single-source:** `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
+
+- **`local`** (default) → the index is `SPECIFICATIONS.md`; `flow` owns the full lifecycle and the index uses the canonical vocabulary **directly — no `state_map`** (there's nothing to translate). Spec ids are `Phase.Spec` (`1.2`, `0.1`, alphanumeric like `2.37a` allowed).
+- **`ado`** → the **board is the index** (no `SPECIFICATIONS.md`); spec ids are the work-item numbers (`specs/642103.md`). The tracker owns the state machine, so `state_map` translates each **board state -> a canonical token** (defined once in `.flow/config.yml`, scaffolded by `/flow-init` — the command docs reference the vocabulary, they don't re-list the map). The board may live in a **different ADO project/org than this repo** — the `ado` coordinates are independent of the git remote; only the `specs/<id>.md` detail files live in this repo. Flow's card writes are **propose-only**: it transitions `System.State` on your sign-off and refreshes a single "Spec:" pointer comment, and **never** reprioritizes, reassigns, sets iteration, or closes a card unprompted. Prefer the tracking MCP tools (`wit_*`); if a call is unavailable or returns 401/403, announce the fallback and use the `az boards` CLI — never silently no-op (a green run that did nothing is the worst failure). If both fail, stop and report.
 
 ## Instructions
 
