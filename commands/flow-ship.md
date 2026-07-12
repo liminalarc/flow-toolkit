@@ -18,6 +18,7 @@ Usage: `/flow-ship` · `/flow-ship --dry-run`
    - Tests pass locally (run the test command from CLAUDE.md)
    - Build succeeds
    - CLAUDE.md patterns are current
+   - **No unreconciled deferrals** — every `DONE` spec was reconciled (per the deferral protocol); a spec with an open deferral is not shippable
    - Any project-specific pre-ship steps documented in CLAUDE.md
 
 3. **Determine the version.** Read recent tags (`git tag --sort=-v:refname | head -10`) and commits (`git log --oneline -20`). The version bump is **commit-derived** (the reliable, mechanical signal):
