@@ -34,9 +34,10 @@ FILE=$(printf '%s' "$FILE" | tr '\\' '/')
 [ "$(basename "$FILE")" = "CLAUDE.md" ] || exit 0
 [ -f "$FILE" ] || exit 0
 
-# Global memory files (~/.claude/CLAUDE.md etc.) are not project guardrails.
+# Global memory files (~/.claude/CLAUDE.md, or any ~/.claude-<account>/CLAUDE.md
+# for a multi-account setup) are not project guardrails — skip the cap.
 case "$FILE" in
-    */.claude/*|*/.claude-company/*) exit 0 ;;
+    */.claude/*|*/.claude-*/*) exit 0 ;;
 esac
 
 lines=$(wc -l < "$FILE" | tr -d '[:space:]')
