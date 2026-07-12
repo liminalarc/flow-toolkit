@@ -46,7 +46,9 @@ chmod +x install.sh
 
 Commands are copied to `~/.claude/commands/` and appear in the `/` picker in every project. The installer also registers the toolkit's [hooks](#hooks) in `~/.claude/settings.json` (an additive merge — your existing settings are preserved and backed up to `settings.json.bak` first). Restart Claude Code after installing.
 
-> ⚠️ **The installer overwrites.** It copies every `commands/*.md` over the versions in `~/.claude/commands/` and `~/.claude-company/commands/` with `--force`. If you've edited a toolkit command in place (e.g. customized `flow.md` for one machine), those local edits will be lost on the next install. Keep customizations as separate, project-prefixed commands in a project's `.claude/commands/` (see [Project-Specific Commands](#project-specific-commands)) — or fork the toolkit and edit the source `commands/` files so your changes survive `git pull` + install.
+**Multiple Claude accounts on one machine?** The installer auto-detects every Claude profile directory and installs into each — the canonical `~/.claude`, any sibling like `~/.claude-work`, and whatever `$CLAUDE_CONFIG_DIR` points at. It prints the detected profiles as it runs. No account names are hardcoded, so adding or removing an account needs no change to the install scripts.
+
+> ⚠️ **The installer overwrites.** It copies every `commands/*.md` over the versions in each detected profile's `commands/` with `--force`. If you've edited a toolkit command in place (e.g. customized `flow.md` for one machine), those local edits will be lost on the next install. Keep customizations as separate, project-prefixed commands in a project's `.claude/commands/` (see [Project-Specific Commands](#project-specific-commands)) — or fork the toolkit and edit the source `commands/` files so your changes survive `git pull` + install.
 
 ---
 
@@ -555,7 +557,7 @@ flow-toolkit: Spec 1.1 — User Authentication is IN PROGRESS · 12 NOT STARTED 
 
 ### How they're installed
 
-The install scripts copy `hooks/*.sh` to `~/.claude/hooks/` and merge the registrations from `hooks/hooks.json` into `~/.claude/settings.json`. The merge is **additive and idempotent**: your existing permissions and hooks are untouched, a `settings.json.bak` backup is written first, and each hook is registered at most once no matter how many times you re-run the installer. Hook scripts are written in bash and run everywhere — on Windows, Claude Code executes hooks through Git Bash (which you already have, since you cloned this repo).
+For each detected profile, the install scripts copy `hooks/*.sh` to that profile's `hooks/` and merge the registrations from `hooks/hooks.json` into its `settings.json` (e.g. `~/.claude/hooks/` and `~/.claude/settings.json` for the default profile). The merge is **additive and idempotent**: your existing permissions and hooks are untouched, a `settings.json.bak` backup is written first, and each hook is registered at most once no matter how many times you re-run the installer. Hook scripts are written in bash and run everywhere — on Windows, Claude Code executes hooks through Git Bash (which you already have, since you cloned this repo).
 
 **To remove:** delete the entries whose command mentions a `flow-*.sh` script from `~/.claude/settings.json` and the scripts from `~/.claude/hooks/`.
 
@@ -619,4 +621,4 @@ git pull
 
 Restart Claude Code after updating.
 
-> ⚠️ **Updating overwrites your installed commands.** The install script force-copies the toolkit's `commands/*.md` over whatever is in `~/.claude/commands/` and `~/.claude-company/commands/`. Any in-place edits you made to an installed command are replaced. If you've been customizing a command, make the change in the toolkit's source `commands/` files (so it persists across updates) or keep it as a project-prefixed command in the project's own `.claude/commands/`.
+> ⚠️ **Updating overwrites your installed commands.** The install script force-copies the toolkit's `commands/*.md` over whatever is in each detected profile's `commands/` directory. Any in-place edits you made to an installed command are replaced. If you've been customizing a command, make the change in the toolkit's source `commands/` files (so it persists across updates) or keep it as a project-prefixed command in the project's own `.claude/commands/`.

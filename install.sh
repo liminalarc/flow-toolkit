@@ -4,10 +4,38 @@
 
 set -e
 
-PROFILES=(
-    "$HOME/.claude"
-    "$HOME/.claude-company"
-)
+# Discover Claude profile directories instead of hardcoding account names.
+# A machine set up with multiple Claude accounts keeps each account's config in
+# its own dir — the canonical ~/.claude plus siblings like ~/.claude-work, and/or
+# whatever $CLAUDE_CONFIG_DIR points at. We install into every one that exists and
+# looks like a real Claude config dir, so adding/removing an account needs no edit here.
+PROFILES=()
+add_profile() {
+    local d="$1"
+    [ -d "$d" ] || return
+    # Canonicalize so the same dir reached two ways (e.g. $CLAUDE_CONFIG_DIR as a
+    # Windows path vs. the glob's Unix path under Git Bash) compares and serializes
+    # as one form — this also keeps backslashes out of the JSON we later emit.
+    d=$(cd "$d" 2>/dev/null && pwd) || return
+    local p
+    for p in "${PROFILES[@]}"; do [ "$p" = "$d" ] && return; done
+    # keep the canonical ~/.claude, or any dir that looks like a Claude config dir
+    if [ "$(basename "$d")" = ".claude" ] || [ -f "$d/settings.json" ] || [ -d "$d/commands" ] || [ -d "$d/projects" ]; then
+        PROFILES+=("$d")
+    fi
+}
+
+[ -n "$CLAUDE_CONFIG_DIR" ] && add_profile "$CLAUDE_CONFIG_DIR"
+for d in "$HOME"/.claude "$HOME"/.claude-*; do
+    add_profile "$d"
+done
+
+if [ "${#PROFILES[@]}" -eq 0 ]; then
+    echo "No Claude config directories found under $HOME (looked for .claude and .claude-*)."
+    exit 1
+fi
+echo "Detected Claude profile(s): $(for p in "${PROFILES[@]}"; do basename "$p"; done | paste -sd, -)"
+echo ""
 
 count=$(ls commands/*.md 2>/dev/null | wc -l)
 hook_count=$(ls hooks/*.sh 2>/dev/null | wc -l)

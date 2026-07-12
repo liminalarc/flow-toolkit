@@ -1,10 +1,32 @@
 # install.ps1 — Install flow-toolkit commands and hooks into Claude Code's global config
 # Run from the repo root: .\install.ps1
 
-$profiles = @(
-    "$env:USERPROFILE\.claude",
-    "$env:USERPROFILE\.claude-company"
-)
+# Discover Claude profile directories instead of hardcoding account names.
+# A machine set up with multiple Claude accounts keeps each account's config in
+# its own dir — the canonical ~/.claude plus siblings like ~/.claude-work, and/or
+# whatever $CLAUDE_CONFIG_DIR points at. We install into every one that exists and
+# looks like a real Claude config dir, so adding/removing an account needs no edit here.
+function Test-ClaudeProfile($dir) {
+    if (-not (Test-Path $dir)) { return $false }
+    if ((Split-Path $dir -Leaf) -eq ".claude") { return $true }   # canonical, even if bare
+    (Test-Path (Join-Path $dir "settings.json")) -or
+    (Test-Path (Join-Path $dir "commands")) -or
+    (Test-Path (Join-Path $dir "projects"))
+}
+
+$candidates = New-Object System.Collections.Generic.List[string]
+if ($env:CLAUDE_CONFIG_DIR) { $candidates.Add($env:CLAUDE_CONFIG_DIR) }
+Get-ChildItem -Path $env:USERPROFILE -Directory -Filter ".claude*" -Force -ErrorAction SilentlyContinue |
+    ForEach-Object { $candidates.Add($_.FullName) }
+
+$profiles = @($candidates | Sort-Object -Unique | Where-Object { Test-ClaudeProfile $_ })
+
+if ($profiles.Count -eq 0) {
+    Write-Host "No Claude config directories found under $env:USERPROFILE (looked for .claude and .claude-*)."
+    exit 1
+}
+Write-Host "Detected Claude profile(s): $(( $profiles | ForEach-Object { Split-Path $_ -Leaf }) -join ', ')"
+Write-Host ""
 
 $commands = Get-ChildItem -Path ".\commands\*.md"
 $hookScripts = Get-ChildItem -Path ".\hooks\*.sh" -ErrorAction SilentlyContinue
