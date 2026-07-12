@@ -307,7 +307,7 @@ Any time:
 2. **Plan** — Claude proposes thin vertical slices, the files/layers touched, the test strategy
 3. **Checkpoint** — you review and approve (or redirect) the plan
 4. **Build** — test-first, small commits, surfaces decisions as they come up
-5. **Done** — spec marked DONE, CLAUDE.md updated if new patterns were introduced, validation checklist handed off
+5. **Done** — before marking DONE, Claude restarts every local service the change touched and runs an automated smoke test of the changed behavior end-to-end (not just unit tests), then shows you a brief pass/fail verification checklist; then the spec is marked DONE, CLAUDE.md updated if new patterns were introduced, validation checklist handed off
 
 This keeps you in control of direction without having to micromanage implementation.
 
