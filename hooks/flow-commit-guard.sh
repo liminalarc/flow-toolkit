@@ -86,6 +86,18 @@ if [ -n "$CWD" ] && [ -f "$CWD/SPECIFICATIONS.md" ]; then
         exit 2
     fi
 
+    # --- Check 2b: no DONE spec may carry an unreconciled deferral ------------
+    # The deferral DONE-gating rule, enforced at commit time in local mode (the
+    # index tells us which specs are DONE). Same helper /flow-lint and /flow-ship
+    # use, so the rule is defined once. (ado mode has no SPECIFICATIONS.md here,
+    # so status lives on the board — gating falls to /flow-lint and /flow-ship.)
+    if [ -f "$SCRIPT_DIR/flow-preflight.sh" ]; then
+        if ! bash "$SCRIPT_DIR/flow-preflight.sh" resolved --repo "$CWD"; then
+            echo "flow-toolkit commit guard: reconcile the deferral(s) above (or change the spec's status) before committing." >&2
+            exit 2
+        fi
+    fi
+
     # --- Check 3 (soft, never blocks): source work with no spec IN PROGRESS ---
     # Match the index entry form ("- **id** Title — `IN PROGRESS` — ...") and the
     # legacy inline form ("**Status:** IN PROGRESS") so the nudge works pre/post migration.

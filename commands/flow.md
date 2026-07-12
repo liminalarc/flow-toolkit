@@ -86,6 +86,10 @@ Show the draft (index line + detail) and confirm before writing.
 id: <id>
 title: <Title>
 links: []            # related spec ids or external URLs
+# deferrals:         # OPTIONAL — omit entirely if nothing was deferred.
+#   - what: "<what was cut>"
+#     why: "<the reason>"
+#     to: <id|built>  # `built` (done here) or the spec id that now owns it
 ---
 
 ## Problem
@@ -141,7 +145,7 @@ Show a diff before writing. (In ado mode the board owns lifecycle — there's no
    If at any point you're about to drop or narrow something the spec put in scope, **run the deferral protocol** (below) — don't narrow scope silently.
 
 4. **Definition of done.**
-   - **Reconcile deferrals** — every in-scope item you didn't build has been run through the deferral protocol (built here, or re-homed to a spec by user decision) and cross-linked. This **must be clear before the spec reaches `DONE`.**
+   - **Reconcile deferrals** — every in-scope item you didn't build has been run through the deferral protocol (built here, or re-homed to a spec by user decision), cross-linked, and recorded in the spec's `deferrals:` front-matter with a resolved `to`. This is **machine-checked** (`flow-preflight.sh resolved`): the commit guard blocks a `DONE` spec with an open deferral, so it **must** be clear before the spec reaches `DONE`.
    - **Restart & smoke-test** — before flipping status, get the change actually running and exercise it. **Restart every local service the change touched** (use the run/dev commands in `CLAUDE.md`/`README.md`) so nothing is serving stale code. Then **run an automated smoke test yourself wherever it's feasible** — drive the changed behavior end-to-end (hit the endpoint, run the flow, exercise the CLI/UI), not just the unit suite. Where automation genuinely isn't possible (e.g. a manual-only device/UX step), say so and list it for the user rather than skipping silently. Finish by showing the user a **brief verification checklist**: each acceptance criterion with what you smoke-tested to prove it (✅ / ⚠️), plus any items they should confirm manually. Only proceed to `DONE` once this passes.
    - **Status** → `DONE` in the index (local), or transition the card's `System.State` (ado, propose-only) after the user confirms.
    - Update `specs/<id>.md`: tick the AC checkboxes, append Decisions/Verification, add a Progress-log entry with the commit SHA(s); commit it. The detail file — not a tracker comment thread — is the canonical working record.
@@ -160,10 +164,21 @@ For each deferral, prompt the user:
 
 1. **Does it really need to be deferred, and why?** State the reason you'd defer it (cost, a missing dependency, scope creep, risk) so the user can weigh it rather than rubber-stamp it.
 2. Then take their decision:
-   - **(a) Do it in this spec** — if it's feasible now, build it. Prefer this when the work is small or genuinely core to the spec's value.
-   - **(b) Re-home it** — capture it in a **new spec** or an **existing/related spec** (extend its Scope). Cross-link both ways: the current spec's Decisions note *what* went *where* and *why*; the receiving spec notes its origin in Problem/`links`.
+   - **(a) Do it in this spec** — if it's feasible now, build it. Prefer this when the work is small or genuinely core to the spec's value. → the deferral resolves to `built`.
+   - **(b) Re-home it** — capture it in a **new spec** or an **existing/related spec** (extend its Scope). Cross-link both ways: the current spec's Decisions note *what* went *where* and *why*; the receiving spec notes its origin in Problem/`links`. → the deferral resolves to the receiving spec's `<id>` (which must exist — re-homing to a new spec means creating it first).
 
-Each deferral is its **own** decision — don't batch a bunch under one blanket "deferred to later." Record every decision in the detail file's Decisions section. A spec cannot reach `DONE` with an unreconciled deferral.
+**Record every deferral as a machine-readable trace, not just prose.** On each decision, write an entry to the spec's `deferrals:` front-matter (create the key on first use; omit it entirely when nothing was deferred):
+
+```yaml
+deferrals:
+  - what: "import from file"        # what was cut
+    why: "scope; paste-only shipped" # the reason
+    to: 1.6                          # `built`, or the receiving spec id
+```
+
+The Decisions section stays the human narrative; the front-matter is the enforceable trace. Each deferral is its **own** decision — don't batch a bunch under one blanket "deferred to later."
+
+**The `DONE`-gating rule (now mechanically enforced):** a spec cannot reach `DONE` while any `deferrals:` entry is unresolved — `to` must be `built` or an id whose spec exists. The `flow-preflight.sh resolved` helper enforces this at commit time (the commit guard blocks it in local mode), in `/flow-lint`, and in `/flow-ship`'s preflight. So an unreconciled deferral is a hard stop, not a reminder.
 
 ## Rules
 
@@ -171,7 +186,7 @@ Each deferral is its **own** decision — don't batch a bunch under one blanket 
 - TDD — test first, per `CLAUDE.md`.
 - **Status is single-source** — the index (local) or the board (ado). Never write a status into a `specs/<id>.md` detail file.
 - **Detail files are backend-neutral** — the same shape in every mode.
-- **No silent deferrals** — the deferral protocol is mandatory: surface what you're deferring + why, get a per-item decision (build-now or re-home), cross-link, and record it. Never narrow a spec's scope unilaterally; deferrals gate `DONE`.
+- **No silent deferrals** — the deferral protocol is mandatory: surface what you're deferring + why, get a per-item decision (build-now or re-home), cross-link, and record it as a `deferrals:` front-matter entry (the enforceable trace). Never narrow a spec's scope unilaterally; deferrals gate `DONE` mechanically (`flow-preflight.sh resolved` — enforced at commit, in `/flow-lint`, and in `/flow-ship`).
 - Never ship from here. `/flow-ship` is the separate, deliberate release step.
 - ado mode: flow owns *spec content* (`specs/<id>.md`); the board + humans own *card lifecycle*. Never reprioritize, reassign, set iteration, or close a card unprompted — the only card writes are the sign-off state transition and the single refreshed "Spec:" pointer comment. On card-AC vs detail conflict, surface the diff — never silently overwrite. MCP-first, `az` CLI fallback; on a write failure announce it and fall back or stop, never a silent no-op.
 - If the work depends on an unfinished spec, stop and say so.
