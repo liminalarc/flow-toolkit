@@ -86,9 +86,9 @@ In `ado` mode, **do not create `SPECIFICATIONS.md`** — the board is the index.
 Keep under 300 lines (the root cap; a project may raise it via `rootMax` in `.flow-toolkit.json`). Include:
 
 - **`## Architecture`** — 4-8 bullets on key decisions and patterns.
-- **`## Development Rules`** — adapted to the stack: TDD mandate, testing stack, thin slices, no premature abstractions, conventional commits (`feat:`/`fix:`/`chore:`/`docs:`/`refactor:`/`test:`, optionally with a leading `[#id]` tag when the backlog is external), **no silent deferrals** (never narrow a spec's scope silently — surface each deferred in-scope item with its reason, get a per-item build-now-or-re-home decision, cross-link, and record it; deferrals gate `DONE`).
+- **`## Development Rules`** — adapted to the stack: TDD mandate, testing stack, thin slices, no premature abstractions, conventional commits (`feat:`/`fix:`/`chore:`/`docs:`/`refactor:`/`test:`, optionally with a leading `[#id]` tag when the backlog is external), **no silent deferrals** (never narrow a spec's scope silently — surface each deferred in-scope item with its reason, get a per-item build-now-or-re-home decision, cross-link, and record it as a `deferrals:` front-matter entry; deferrals gate `DONE`, mechanically — the commit guard, `/flow-lint`, and `/flow-ship` all block a `DONE` spec with an unresolved deferral).
 - **`## Spec Status Vocabulary`** — `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
-- **`## Feature Completion Checklist`** — tailored; always include: **deferrals reconciled** (every in-scope item was built or re-homed by user decision and cross-linked — no silent scope narrowing); **restart affected local services + smoke-test** (restart every service the change touched so nothing serves stale code, then drive the changed behavior end-to-end — Claude-automated wherever feasible — and show a brief pass/fail verification checklist before marking DONE); update the index status + archive the detail file; update `specs/<id>.md` Progress/Decisions; update CLAUDE.md patterns if new conventions introduced. If MARKETING.md exists, add its feature-highlights update.
+- **`## Feature Completion Checklist`** — tailored; always include: **deferrals reconciled** (every in-scope item was built or re-homed by user decision, cross-linked, and recorded in the spec's `deferrals:` front-matter with a resolved `to` — machine-checked; no silent scope narrowing); **restart affected local services + smoke-test** (restart every service the change touched so nothing serves stale code, then drive the changed behavior end-to-end — Claude-automated wherever feasible — and show a brief pass/fail verification checklist before marking DONE); update the index status + archive the detail file; update `specs/<id>.md` Progress/Decisions; update CLAUDE.md patterns if new conventions introduced. If MARKETING.md exists, add its feature-highlights update.
 - **`## Project Structure`** — directory tree with one-line descriptions (include `specs/`).
 - **`## See Also`** — pointer to subdirectory CLAUDE.md files.
 
@@ -130,6 +130,10 @@ Seed 3-5 Phase-1 specs from the concept (high-level; the user evolves them with 
 id: 0.1
 title: Walking Skeleton
 links: []
+# deferrals:         # OPTIONAL — omit unless something in scope was deferred.
+#   - what: "<what was cut>"
+#     why: "<the reason>"
+#     to: <id|built>  # `built` (done here) or the spec id that now owns it
 ---
 
 ## Problem

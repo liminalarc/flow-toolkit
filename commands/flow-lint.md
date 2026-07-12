@@ -77,6 +77,15 @@ Record for each finding: **severity** (`ERROR`/`WARNING`/`INFO`), **location** (
 | Value is a user story | INFO | `## Value` should read `As a <role> I want <capability> so that <benefit>`. |
 | DONE spec has no unchecked AC | WARNING | Index says DONE but `specs/<id>.md` still has `- [ ]` acceptance criteria. |
 | Non-DONE spec with all AC checked | INFO | All `- [x]` but status isn't DONE — probably needs a status update. |
+| Deferrals front-matter well-formed | ERROR | A `deferrals:` entry is missing `what`, `why`, or `to`. Run `flow-preflight.sh wellformed <file>` per detail file. |
+| DONE spec has no unreconciled deferral | ERROR | Index (local) / board (ado) says DONE but a `deferrals:` entry has an unresolved `to` (not `built`, and no spec with that id exists). Run `flow-preflight.sh resolved` — see below. |
+
+**Deferral checks use the shared helper** (`flow-preflight.sh`) so the rule is identical to the commit guard and `/flow-ship`. Locate it in your Claude profile's hooks dir — try `$CLAUDE_CONFIG_DIR/hooks/flow-preflight.sh`, then `~/.claude/hooks/flow-preflight.sh`, then `~/.claude-*/hooks/flow-preflight.sh`. If none is found, say so and fall back to reading the front-matter yourself against the rule above — never silently skip the deferral checks.
+
+- **Well-formedness** (both backends): `flow-preflight.sh wellformed specs/<id>.md` for each detail file.
+- **DONE-gating**:
+  - **local**: `flow-preflight.sh resolved --repo .` reads `SPECIFICATIONS.md` for the DONE set itself.
+  - **ado**: the board owns status, so query the DONE work items first, then pass them: `flow-preflight.sh resolved --repo . --done <id,id,...>`.
 
 ### Step 3b: README.md (skip if `--claude` or `--specs`)
 

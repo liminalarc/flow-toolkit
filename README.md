@@ -143,6 +143,10 @@ Specs are stored as **an index (the backlog) + one `specs/<id>.md` detail file p
 id: 1.1
 title: User Authentication
 links: []
+# deferrals:         # OPTIONAL — present only if something in scope was deferred
+#   - what: "SSO login"
+#     why: "scope; password login shipped first"
+#     to: 1.4         # `built` (done here), or the spec id that now owns it
 ---
 
 ## Problem
@@ -166,6 +170,17 @@ As a <role> I want <capability> so that <benefit>.
 **Value is a user story** — `As a <role> I want <capability> so that <benefit>`. Consistent across specs on purpose, so a future analysis can group the backlog by persona and benefit.
 
 **Spec archival** — when a spec is `DONE`/`SUPERSEDED`, `/flow` moves its index entry to the `## Archive` section and relocates its detail file to `specs/archive/<id>.md`. The id is never reused — commits, PRs, and notes that cite an id (e.g. "closes 2.3") stay meaningful forever.
+
+**Deferrals — the machine-checkable trace.** When work in a spec's scope gets cut, the [deferral protocol](#the-development-cycle) records it as a structured `deferrals:` front-matter entry — not just prose — so "no unreconciled deferrals" becomes a *mechanical* check instead of something a reader has to notice:
+
+```yaml
+deferrals:
+  - what: "import from file"          # what was cut
+    why: "scope; paste-only shipped"  # the reason
+    to: 1.6                           # `built` (done here), or the spec id that now owns it
+```
+
+The rule: **a spec cannot reach `DONE` while any deferral has an unresolved `to`** (not `built`, and no spec with that id exists). This is enforced identically in three places by one shared helper (`flow-preflight.sh`): the commit guard blocks it (local mode), `/flow-lint` reports it, and `/flow-ship`'s preflight gates on it. The trace lives in `specs/<id>.md`, so it works the same in ado mode (where status is on the board). No deferrals? Omit the key — there's no ceremony for specs that didn't defer anything.
 
 **Status vocabulary** — flow's own, single-source, exactly one per index entry:
 
@@ -313,7 +328,7 @@ Any time:
 
 This keeps you in control of direction without having to micromanage implementation.
 
-**No silent deferrals.** Scope only ever narrows by *your* decision, never Claude's. The moment Claude is about to drop or narrow something the spec put in scope — at plan-time, mid-build, or at done-time — it stops and runs the **deferral protocol**: it states *why* it would defer (cost, a missing dependency, scope creep, risk) and asks you to decide, per item, whether to **build it here** or **re-home it** to a new or related spec (cross-linked both ways, recorded in the detail file's Decisions). Each deferred item is its own decision — nothing gets batched under a blanket "later." A spec **cannot reach `DONE` with an unreconciled deferral**, and `/flow-ship` refuses to release a `DONE` spec that has one — so "quietly built less than asked" stops being a failure mode the workflow allows.
+**No silent deferrals.** Scope only ever narrows by *your* decision, never Claude's. The moment Claude is about to drop or narrow something the spec put in scope — at plan-time, mid-build, or at done-time — it stops and runs the **deferral protocol**: it states *why* it would defer (cost, a missing dependency, scope creep, risk) and asks you to decide, per item, whether to **build it here** or **re-home it** to a new or related spec (cross-linked both ways, recorded in the detail file's Decisions *and* as a structured `deferrals:` front-matter entry). Each deferred item is its own decision — nothing gets batched under a blanket "later." Because the trace is machine-readable, a spec **cannot reach `DONE` with an unreconciled deferral** — the commit guard, `/flow-lint`, and `/flow-ship` all block it — so "quietly built less than asked" stops being a failure mode the workflow allows.
 
 **Cross-cutting specs** (touching multiple independent layers like server + web): Claude locks the API contract in the plan step, then spawns one isolated agent per layer to build in parallel against that contract. Layers merge after and the seam is verified.
 
@@ -426,13 +441,16 @@ Cut a release. Reads `CLAUDE.md` for this project's deploy mechanism — works w
 
 **What it does:**
 1. Reads `CLAUDE.md` to discover the release mechanism
-2. Validates: no uncommitted changes, tests pass, build succeeds, CLAUDE.md is current, no unreconciled deferrals on `DONE` specs, any project-specific pre-ship steps
+2. Runs a **programmatic preflight** — each pre-req is a discrete check with an explicit ✅/❌ and a defined behavior on ❌ (never a silent pass; a check it can't evaluate is a ⚠️ that blocks). The checks sort into three classes:
+   - **Auto-remediable (git state)** — on the default branch, clean tree, up to date with origin. On failure it detects the situation and **offers** the fix as a confirm-first prompt (merging a feature branch is always a prompt, never automatic).
+   - **Gate-able** — every spec in the release is `DONE` (derived from the `[#id]` commit tags since the last tag, cross-checked against the index/board) and CI is green on the release commit (queried via `gh` — polled or reported, never assumed).
+   - **Judgment** — no unreconciled deferrals on the release's `DONE` specs (surfaced, can't be auto-fixed).
 3. Reads recent tags + commits to propose a version bump (major/minor/patch based on conventional commits)
 4. **Confirms the version with you** before tagging
 5. Executes the release
 6. Reports the tag/version and what to verify after deploy
 
-`--dry-run` runs all validation and prints what would happen without tagging or deploying.
+The git-state and deferral checks are the same shared `flow-preflight.sh` helper the commit guard and `/flow-lint` use, so a check is defined once. `--dry-run` runs the full preflight and prints the computed version, changelog, and tag without tagging or deploying.
 
 ---
 
@@ -509,6 +527,7 @@ Enforce the CLAUDE.md hierarchy rules and SPECIFICATIONS.md format. Catches prob
 - Every index entry has a `specs/<id>.md`; every detail file is indexed (no orphans)
 - A detail file's front-matter `id` matches its filename, and it carries **no status** (single-source in the index)
 - Each detail file has the expected sections; `## Value` reads as a user story
+- Any `deferrals:` front-matter is well-formed, and no `DONE` spec has an unresolved deferral (the `DONE`-gating rule — same `flow-preflight.sh` the guards and `/flow-ship` use)
 - DONE specs have no unchecked `- [ ]` acceptance criteria; the archive holds only DONE/SUPERSEDED
 - (Greenfield only) Walking Skeleton `0.1` is present
 
@@ -530,22 +549,24 @@ Where `/flow-lint` is the audit you run on demand, hooks are the seatbelt that's
 |---|---|---|
 | `flow-spec-guard.sh` | After every file edit | Validates the spec index entries and `specs/<id>.md` detail files the moment they change |
 | `flow-claude-guard.sh` | After every file edit | Enforces CLAUDE.md line caps — 300 root, 200 subdirectory by default ([configurable per project](#customizing-the-claudemd-line-caps)) |
-| `flow-commit-guard.sh` | Before every `git commit` | Conventional Commit message format + spec file must be valid to commit + soft nudge on spec-less work |
+| `flow-commit-guard.sh` | Before every `git commit` | Conventional Commit message format + spec file must be valid to commit + no `DONE` spec with an unreconciled deferral + soft nudge on spec-less work |
 | `flow-session-brief.sh` | Session start | Injects a one-line backlog orientation into every new session |
 
 All four exit instantly when they don't apply (non-spec file, non-commit command, project without a spec file) — running them globally costs nothing in projects that don't use the toolkit.
 
+Alongside them the installer copies **`flow-preflight.sh`** — not an event hook but a shared, unit-tested helper that is the *single source of truth* for three machine-checkable rules: `git-state` (release-branch hygiene), `resolved` (the deferral `DONE`-gating rule), and `wellformed` (deferral front-matter shape). The spec/commit guards, `/flow-lint`, and `/flow-ship` all call it, so a rule is defined once and can't drift between the always-on guard and the on-demand command. A human can run it directly too (`bash ~/.claude/hooks/flow-preflight.sh git-state --repo .`).
+
 **`flow-spec-guard.sh`** validates on every edit to a spec file:
 
 - On the **index** (`SPECIFICATIONS.md`): each entry matches `- **<id>** <Title> — `STATUS` — [detail](specs/<id>.md)` — alphanumeric id (e.g. `2.37a`, `P.10`, `BL-12`), em dashes, a valid status (`NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`), and no duplicate ids
-- On a **detail file** (`specs/<id>.md`): it carries **no** status field (status is single-source in the index), and its front-matter `id` matches the filename
+- On a **detail file** (`specs/<id>.md`): it carries **no** status field (status is single-source in the index), its front-matter `id` matches the filename, and any `deferrals:` entries are well-formed (each has `what`/`why`/`to`) — delegated to `flow-preflight.sh`
 - A legacy inline `SPECIFICATIONS.md` is detected and passed with a one-line `/flow-lint --migrate` advisory — never blocked, so a pre-migration repo stays editable
 
 On failure the guard blocks with the error list, and — this is the key difference from a git hook — **Claude reads the errors and fixes the file in the same turn**. Format drift gets corrected the moment it's introduced instead of surfacing weeks later in a lint run. The parsing is unit-tested (`hooks/hooks.test.sh`).
 
 **`flow-claude-guard.sh`** catches guardrail bloat at the moment of creation. A CLAUDE.md over its cap isn't a style problem — it's wasted context in every session, forever. When Claude pushes a file over the limit, the block message tells it to trim now: move detail to subdirectory files, delete what's derivable from code. The caps default to 300 lines (root) and 200 (subdirectory), and are [configurable per project](#customizing-the-claudemd-line-caps) when a codebase genuinely needs more room.
 
-**`flow-commit-guard.sh`** runs three checks before any commit: the message follows Conventional Commits (`/flow-ship` derives version bumps from commit types, so a malformed message silently breaks releases); `SPECIFICATIONS.md` passes validation (catches hand edits that bypassed the edit-time guard); and — as a note to Claude, never a block — flags commits that stage source changes while no spec is `IN PROGRESS`. The Conventional-Commit check accepts an optional leading issue-tracker tag in brackets (e.g. `[#123] feat: …`, `[JIRA-45] fix: …`) so teams that prefix commits with a work-item id still pass; the type stays parseable for `/flow-ship`.
+**`flow-commit-guard.sh`** runs four checks before any commit: the message follows Conventional Commits (`/flow-ship` derives version bumps from commit types, so a malformed message silently breaks releases); `SPECIFICATIONS.md` passes validation (catches hand edits that bypassed the edit-time guard); no `DONE` spec carries an unreconciled deferral (the `DONE`-gating rule, via `flow-preflight.sh` — local mode, where the index reveals which specs are `DONE`); and — as a note to Claude, never a block — flags commits that stage source changes while no spec is `IN PROGRESS`. The Conventional-Commit check accepts an optional leading issue-tracker tag in brackets (e.g. `[#123] feat: …`, `[JIRA-45] fix: …`) so teams that prefix commits with a work-item id still pass; the type stays parseable for `/flow-ship`.
 
 **`flow-session-brief.sh`** injects ~30 tokens of orientation into each new session in a flow project:
 

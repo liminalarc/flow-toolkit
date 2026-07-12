@@ -73,6 +73,13 @@ if [ "$kind" = "detail" ]; then
         } >&2
         exit 2
     fi
+    # Deferral front-matter must be well-formed (each entry has what/why/to).
+    # Delegated to the shared helper so the rule is defined once; its stderr
+    # passes through and Claude fixes the file in the same turn.
+    SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+    if [ -f "$SCRIPT_DIR/flow-preflight.sh" ]; then
+        bash "$SCRIPT_DIR/flow-preflight.sh" wellformed "$FILE" || exit 2
+    fi
     exit 0
 fi
 
