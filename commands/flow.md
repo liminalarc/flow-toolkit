@@ -138,7 +138,10 @@ Show a diff before writing. (In ado mode the board owns lifecycle — there's no
    - **Single-layer specs**: build inline, test-first, commit per slice.
    - **Cross-cutting specs** (multiple independent layers): after sign-off, spawn one worktree-isolated agent per layer with its slice + the full contract; run in parallel, merge, verify the seam. Skip layers with no independent work.
 
+   If at any point you're about to drop or narrow something the spec put in scope, **run the deferral protocol** (below) — don't narrow scope silently.
+
 4. **Definition of done.**
+   - **Reconcile deferrals** — every in-scope item you didn't build has been run through the deferral protocol (built here, or re-homed to a spec by user decision) and cross-linked. This **must be clear before the spec reaches `DONE`.**
    - **Status** → `DONE` in the index (local), or transition the card's `System.State` (ado, propose-only) after the user confirms.
    - Update `specs/<id>.md`: tick the AC checkboxes, append Decisions/Verification, add a Progress-log entry with the commit SHA(s); commit it. The detail file — not a tracker comment thread — is the canonical working record.
    - **Archive** (local): move the index entry to the `## Archive` section and relocate its detail file to `<spec_dir>/archive/<id>.md`. The id is never reused — reference integrity for commits/PRs is preserved.
@@ -148,12 +151,26 @@ Show a diff before writing. (In ado mode the board owns lifecycle — there's no
    - ado only: refresh the single "Spec:" pointer comment (`Spec: specs/<id>.md @ <sha>`) rather than posting a fresh comment each time.
    - Hand off with a summary; `/flow-ship` cuts the release when ready.
 
+### The deferral protocol
+
+A **deferral** is any moment you're about to *not* build something the spec put in scope, or to add a "future / for now / out of scope / noted, not built" narrowing — at plan-time, mid-build, or at done-time. When you hit one, **stop and surface it**. Never narrow scope silently.
+
+For each deferral, prompt the user:
+
+1. **Does it really need to be deferred, and why?** State the reason you'd defer it (cost, a missing dependency, scope creep, risk) so the user can weigh it rather than rubber-stamp it.
+2. Then take their decision:
+   - **(a) Do it in this spec** — if it's feasible now, build it. Prefer this when the work is small or genuinely core to the spec's value.
+   - **(b) Re-home it** — capture it in a **new spec** or an **existing/related spec** (extend its Scope). Cross-link both ways: the current spec's Decisions note *what* went *where* and *why*; the receiving spec notes its origin in Problem/`links`.
+
+Each deferral is its **own** decision — don't batch a bunch under one blanket "deferred to later." Record every decision in the detail file's Decisions section. A spec cannot reach `DONE` with an unreconciled deferral.
+
 ## Rules
 
 - Checkpoint after the plan — never write code before sign-off.
 - TDD — test first, per `CLAUDE.md`.
 - **Status is single-source** — the index (local) or the board (ado). Never write a status into a `specs/<id>.md` detail file.
 - **Detail files are backend-neutral** — the same shape in every mode.
+- **No silent deferrals** — the deferral protocol is mandatory: surface what you're deferring + why, get a per-item decision (build-now or re-home), cross-link, and record it. Never narrow a spec's scope unilaterally; deferrals gate `DONE`.
 - Never ship from here. `/flow-ship` is the separate, deliberate release step.
 - ado mode: flow owns *spec content* (`specs/<id>.md`); the board + humans own *card lifecycle*. Never reprioritize, reassign, set iteration, or close a card unprompted — the only card writes are the sign-off state transition and the single refreshed "Spec:" pointer comment. On card-AC vs detail conflict, surface the diff — never silently overwrite. MCP-first, `az` CLI fallback; on a write failure announce it and fall back or stop, never a silent no-op.
 - If the work depends on an unfinished spec, stop and say so.

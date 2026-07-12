@@ -86,9 +86,9 @@ In `ado` mode, **do not create `SPECIFICATIONS.md`** — the board is the index.
 Keep under 300 lines (the root cap; a project may raise it via `rootMax` in `.flow-toolkit.json`). Include:
 
 - **`## Architecture`** — 4-8 bullets on key decisions and patterns.
-- **`## Development Rules`** — adapted to the stack: TDD mandate, testing stack, thin slices, no premature abstractions, conventional commits (`feat:`/`fix:`/`chore:`/`docs:`/`refactor:`/`test:`, optionally with a leading `[#id]` tag when the backlog is external).
+- **`## Development Rules`** — adapted to the stack: TDD mandate, testing stack, thin slices, no premature abstractions, conventional commits (`feat:`/`fix:`/`chore:`/`docs:`/`refactor:`/`test:`, optionally with a leading `[#id]` tag when the backlog is external), **no silent deferrals** (never narrow a spec's scope silently — surface each deferred in-scope item with its reason, get a per-item build-now-or-re-home decision, cross-link, and record it; deferrals gate `DONE`).
 - **`## Spec Status Vocabulary`** — `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
-- **`## Feature Completion Checklist`** — tailored; always include: update the index status + archive the detail file; update `specs/<id>.md` Progress/Decisions; update CLAUDE.md patterns if new conventions introduced. If MARKETING.md exists, add its feature-highlights update.
+- **`## Feature Completion Checklist`** — tailored; always include: **deferrals reconciled** (every in-scope item was built or re-homed by user decision and cross-linked — no silent scope narrowing); update the index status + archive the detail file; update `specs/<id>.md` Progress/Decisions; update CLAUDE.md patterns if new conventions introduced. If MARKETING.md exists, add its feature-highlights update.
 - **`## Project Structure`** — directory tree with one-line descriptions (include `specs/`).
 - **`## See Also`** — pointer to subdirectory CLAUDE.md files.
 

@@ -311,6 +311,8 @@ Any time:
 
 This keeps you in control of direction without having to micromanage implementation.
 
+**No silent deferrals.** Scope only ever narrows by *your* decision, never Claude's. The moment Claude is about to drop or narrow something the spec put in scope — at plan-time, mid-build, or at done-time — it stops and runs the **deferral protocol**: it states *why* it would defer (cost, a missing dependency, scope creep, risk) and asks you to decide, per item, whether to **build it here** or **re-home it** to a new or related spec (cross-linked both ways, recorded in the detail file's Decisions). Each deferred item is its own decision — nothing gets batched under a blanket "later." A spec **cannot reach `DONE` with an unreconciled deferral**, and `/flow-ship` refuses to release a `DONE` spec that has one — so "quietly built less than asked" stops being a failure mode the workflow allows.
+
 **Cross-cutting specs** (touching multiple independent layers like server + web): Claude locks the API contract in the plan step, then spawns one isolated agent per layer to build in parallel against that contract. Layers merge after and the seam is verified.
 
 ---
@@ -422,7 +424,7 @@ Cut a release. Reads `CLAUDE.md` for this project's deploy mechanism — works w
 
 **What it does:**
 1. Reads `CLAUDE.md` to discover the release mechanism
-2. Validates: no uncommitted changes, tests pass, build succeeds, CLAUDE.md is current, any project-specific pre-ship steps
+2. Validates: no uncommitted changes, tests pass, build succeeds, CLAUDE.md is current, no unreconciled deferrals on `DONE` specs, any project-specific pre-ship steps
 3. Reads recent tags + commits to propose a version bump (major/minor/patch based on conventional commits)
 4. **Confirms the version with you** before tagging
 5. Executes the release
