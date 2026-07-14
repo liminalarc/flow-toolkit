@@ -15,6 +15,9 @@ exit_is() { # desc expected actual
 out_has() { # desc needle haystack
     case "$3" in *"$2"*) pass=$((pass+1));; *) fail=$((fail+1)); echo "FAIL: $1 — output missing: $2"; echo "  got: $3";; esac
 }
+out_lacks() { # desc needle haystack
+    case "$3" in *"$2"*) fail=$((fail+1)); echo "FAIL: $1 — output should not contain: $2"; echo "  got: $3";; *) pass=$((pass+1));; esac
+}
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
@@ -113,6 +116,34 @@ bash "$GUARD" "$tmp/specs/1.3.md" 2>/dev/null; exit_is "detail id/filename misma
 
 echo "not a spec" > "$tmp/README.md"
 bash "$GUARD" "$tmp/README.md" 2>/dev/null; exit_is "non-spec file ignored" 0 $?
+
+# ---- flow-spec-guard: soft bloat warning (default budget 120 lines) ----
+# Over budget must WARN but never block (exit 0). No .flow-toolkit.json here, so
+# the default 120 applies (find_repo_root finds no .git in the temp dir).
+{ printf -- '---\nid: 3.1\ntitle: Big\n---\n## Problem\n'; for i in $(seq 1 200); do echo "line $i"; done; } > "$tmp/specs/3.1.md"
+bash "$GUARD" "$tmp/specs/3.1.md" 2>/dev/null; exit_is "over-budget detail warns but passes" 0 $?
+bw=$(bash "$GUARD" "$tmp/specs/3.1.md" 2>&1 >/dev/null)
+out_has "over-budget warning names the file" "3.1.md is" "$bw"
+out_has "over-budget warning cites soft budget" "soft budget 120" "$bw"
+
+# Under budget ⇒ silent pass (no warning text on stdout or stderr).
+{ printf -- '---\nid: 3.2\ntitle: Small\n---\n## Problem\nx\n'; } > "$tmp/specs/3.2.md"
+bash "$GUARD" "$tmp/specs/3.2.md" 2>/dev/null; exit_is "under-budget detail passes" 0 $?
+uq=$(bash "$GUARD" "$tmp/specs/3.2.md" 2>&1)
+out_lacks "under-budget is silent" "soft budget" "$uq"
+
+# Hook mode (stdin JSON) emits an additionalContext note for an over-budget file.
+hookout=$(printf '{"tool_input":{"file_path":"%s"}}' "$tmp/specs/3.1.md" | bash "$GUARD")
+out_has "hook-mode over-budget emits additionalContext" "additionalContext" "$hookout"
+
+# Configurable: spec.maxLines in .flow-toolkit.json raises the budget (git repo required
+# so find_repo_root locates the config). A 200-line file under a 500 budget is silent.
+cfgdir=$(mktemp -d); mkdir -p "$cfgdir/specs"; git -C "$cfgdir" init -q
+echo '{ "spec": { "maxLines": 500 } }' > "$cfgdir/.flow-toolkit.json"
+cp "$tmp/specs/3.1.md" "$cfgdir/specs/3.1.md"
+cq=$(bash "$GUARD" "$cfgdir/specs/3.1.md" 2>&1)
+out_lacks "configured budget suppresses warning" "soft budget" "$cq"
+rm -rf "$cfgdir"
 
 # ---- flow-session-brief: index + legacy ----
 cat > "$tmp/SPECIFICATIONS.md" <<'EOF'
