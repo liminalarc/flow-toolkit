@@ -1,5 +1,5 @@
 ---
-description: "Audit CLAUDE.md hierarchy + spec index/detail integrity; migrate legacy specs — /flow-lint [--claude|--specs|--fix|--migrate]"
+description: "Audit CLAUDE.md hierarchy + spec index/detail integrity; migrate legacy specs or a flat spec to dir form — /flow-lint [--claude|--specs|--fix|--migrate [id]]"
 ---
 # Lint
 
@@ -11,6 +11,7 @@ Usage:
 - `/flow-lint --specs` — spec model only (index + detail files)
 - `/flow-lint --fix` — full audit, then auto-fix what's safe (status keyword casing, entry/heading format, archive migration)
 - `/flow-lint --migrate` — convert a legacy inline `SPECIFICATIONS.md` to the index + `specs/<id>.md` model (dry-run by default; `--migrate --apply` writes)
+- `/flow-lint --migrate <id>` — convert one flat spec `specs/<id>.md` → the directory form `specs/<id>/<id>.md` so it can hold task files (dry-run by default; add `--apply` to write)
 
 ## Instructions
 
@@ -67,12 +68,15 @@ Record for each finding: **severity** (`ERROR`/`WARNING`/`INFO`), **location** (
 
 **Detail files (`<spec_dir>/*.md` + `<spec_dir>/archive/*.md`) — both modes:**
 
+Detail files come in two shapes: **flat** `specs/<id>.md`, or a **directory** `specs/<id>/` holding an orchestrator `<id>.md` plus task files `<id>.T<n>.md` (a big spec's per-task "how"). Resolve an id's detail to whichever exists — flat `specs/<id>.md` first, then `specs/<id>/<id>.md`. Task files are **not** separate index entries: they belong to their orchestrator's id, so they are never orphans.
+
 | Check | Severity | Condition |
 |---|---|---|
-| Every index entry has a detail file | ERROR | Index (or board) references `<id>` but `specs/<id>.md` is missing. |
-| Every detail file is indexed | WARNING | `specs/<id>.md` exists but no index entry / board item references it (orphan). |
-| Front-matter `id` matches filename | ERROR | `id:` in the file differs from `<id>` in the filename. |
-| No `status` in the detail file | ERROR | Status is single-source (index/board) — a `status:`/`**Status:**` in a detail file will drift. |
+| Every index entry has a detail file | ERROR | Index (or board) references `<id>` but neither `specs/<id>.md` nor `specs/<id>/<id>.md` exists. |
+| Every detail file is indexed | WARNING | A flat `specs/<id>.md` or an orchestrator `specs/<id>/<id>.md` exists with no index entry / board item (orphan). Task files `<id>.T<n>.md` are never orphans. |
+| Front-matter `id` matches filename | ERROR | `id:` in the file differs from `<id>` in the filename (for the orchestrator, `<id>`; for a task file, `<id>.T<n>`). |
+| No `status` in the detail file | ERROR | Status is single-source (index/board) — a `status:`/`**Status:**` in any detail file (orchestrator or task) will drift. |
+| Task file has a local AC | INFO | A `specs/<id>/<id>.T<n>.md` carries no `- [ ]` "done when" checkbox — the seam an implementer builds to and a verifier checks against. Advisory only (mirrors `flow-spec-guard.sh`'s soft nudge). |
 | Required sections present | WARNING | Missing any of `## Problem`, `## Value`, `## Scope`, `## Acceptance criteria`, `## Plan`, `## Decisions`, `## Verification`, `## Progress log`. |
 | Value is a user story | INFO | `## Value` should read `As a <role> I want <capability> so that <benefit>`. |
 | Detail file under the line budget | INFO | `specs/<id>.md` exceeds the soft spec budget (default 120; overridable via `spec.maxLines` in `.flow-toolkit.json`). Same nudge `flow-spec-guard.sh` emits on edit — run `/flow --condense <id>` to rewrite it losslessly (or raise the budget). Never an ERROR; specs legitimately vary. |
@@ -132,14 +136,27 @@ Safe, mechanical corrections only. **Always show a diff and confirm before writi
 Safe to auto-fix:
 - Status keyword normalization in the index (`done` → `DONE`, etc.).
 - Index entry format (spacing, backticks around status, link form).
-- Archive: move DONE/SUPERSEDED entries to `## Archive` and relocate their detail files to `<spec_dir>/archive/<id>.md`.
+- Archive: move DONE/SUPERSEDED entries to `## Archive` and relocate their detail — a flat `specs/<id>.md` → `specs/archive/<id>.md`, or a whole directory `specs/<id>/` → `specs/archive/<id>/` (orchestrator + every task file moved together).
 - Trailing whitespace / double blank lines in the index.
 
 Do **NOT** auto-fix: CLAUDE.md content, duplicate ids, missing sections/detail files (requires authoring), line-count issues, or moving a `status` out of a detail file (surface it; the human decides the true status).
 
 ### Step 6: Migrate (only if `--migrate`)
 
-Convert a **legacy inline `SPECIFICATIONS.md`** (specs written as `### Spec X.Y` blocks with `**Status:**`) to the index + `specs/<id>.md` model. **Dry-run by default;** `--migrate --apply` writes.
+Two conversions share the flag; the presence of an `<id>` argument selects which:
+
+#### 6a — `--migrate <id>`: flat spec → directory form
+
+Convert one flat spec `specs/<id>.md` → `specs/<id>/<id>.md` so a big spec can grow task files (`specs/<id>/<id>.T<n>.md`). Use it when a spec crosses the breakout guideline (≥3 tasks, or a task carrying its own AC). **Dry-run by default;** add `--apply` to write.
+
+1. Resolve `<id>`'s current detail. It may be active (`specs/<id>.md`) or archived (`specs/archive/<id>.md`) — migrate in place (an archived spec → `specs/archive/<id>/<id>.md`).
+2. Create the directory and **move** the file with `git mv` (preserve history): `specs/<id>.md` → `specs/<id>/<id>.md` (or the archive equivalent). Do not rewrite the file's contents — the orchestrator *is* the former flat spec.
+3. Update the index link for `<id>` to point at the new path (`[detail](specs/<id>/<id>.md)`), keeping the same id, title, status, and position.
+4. Do **not** invent task files — breakout is a manual, decision-by-decision act (`/flow` adds tasks against an approved plan). Migration only reshapes the container.
+
+**Safety:** dry-run prints the move + index-line change before any write; **idempotent** (if `specs/<id>/<id>.md` already exists, no-op with a note); halts if both flat and dir forms exist (ambiguous — the human resolves it). The id is unchanged, so every commit/PR citing `<id>` stays valid.
+
+#### 6b — `--migrate` (no id): legacy inline → index + detail model
 
 1. Parse each `### Spec X.Y — Title` block: `**Status:**`, description paragraph, `**User story:**`, `**Acceptance criteria:**`, and any extra prose.
 2. Write `specs/<id>.md` per the detail template (see `/flow --add`): `## Problem` ← description; `## Value` ← user story (append a `so that …` **TODO** if absent); `## Acceptance criteria` ← the AC list; `## Scope / Plan / Decisions / Verification / Progress log` ← empty scaffolds with `<!-- TODO -->`; any unrecognized content → preserved verbatim under `## Migrated (unclassified)` and flagged. **No `status` field** in the detail file.
@@ -163,4 +180,4 @@ flow-lint --migrate (dry run)
 - Always diff before writing; confirm if any change is ambiguous.
 - Report the line number for every finding when possible.
 - Five precise findings beat a wall of nitpicks. Over 20 findings → group and summarize.
-- `--migrate` is a one-time conversion; never run destructively — back up, dry-run first, and preserve every byte of unclassified content.
+- `--migrate` (either mode) never runs destructively — dry-run first; the legacy conversion backs up and preserves every byte of unclassified content, and the flat→dir conversion uses `git mv` and never rewrites file contents.

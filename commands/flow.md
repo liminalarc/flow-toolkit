@@ -25,6 +25,40 @@ Every flow project stores specs as **an index + one detail file per spec**:
 
 `/flow` reads the tiny index to see the backlog, then loads only the one `specs/<id>.md` in play — the working set stays lean by construction.
 
+### Two shapes: flat spec, or a spec directory
+
+A detail file has two shapes. Most specs are **flat** — `specs/<id>.md`. A spec that grows big earns a **directory**:
+
+```
+specs/1.7/
+  1.7.md       # orchestrator: the same detail file — Problem/Value/Scope/AC/Plan/Decisions/…
+  1.7.T1.md    # task file: the "how" for one slice + a local "done when" AC
+  1.7.T2.md
+```
+
+**Breakout guideline (manual, unenforced):** break a spec out into a directory when it reaches **≥3 tasks, or a task carrying its own acceptance criterion**. Below that, stay flat — thin slices, no premature abstraction. The hooks accept both shapes and enforce neither; you decide per spec. To reshape an existing flat spec, run `/flow-lint --migrate <id>` (git-moves `specs/<id>.md` → `specs/<id>/<id>.md`).
+
+The **orchestrator** `<id>.md` is an ordinary detail file (Problem/Value/Scope/AC/…) — it holds *why/what* and lists its tasks. Each **task file** holds *how* plus a local AC — the seam a per-task implementer builds to and a verifier checks against. A task file carries **no status and no deferrals** (both stay single-source on the orchestrator; the guards gate on the orchestrator alone).
+
+**Task-file template** (`specs/<id>/<id>.T<n>.md`):
+```markdown
+---
+id: <id>.T<n>
+title: <task title>
+---
+
+## Goal
+<the "how" — the approach for this slice; not restating the orchestrator's why>
+
+## Done when
+- [ ] <local acceptance criterion — the seam an implementer builds to / a verifier checks>
+
+## Notes
+<optional — links, gotchas, sequencing>
+```
+
+Everything else about detail files (no status, `id` matches the filename stem, terseness) applies to orchestrators and task files alike.
+
 ### Resolving the backend
 
 Read `.flow/config.yml` at the project root (absent ⇒ all defaults):
@@ -77,7 +111,7 @@ Co-author a new spec. Ask: what is it, who is it for, what does success look lik
 1. **Index entry** —
    - local: add a line under the right phase in `SPECIFICATIONS.md`: `- **<id>** <Title> — \`NOT STARTED\` — [detail](specs/<id>.md)`. Assign the next logical `Phase.Spec` number.
    - ado: create the work item (confirm the drafted fields first), then use the returned `#NNNNNN` as the id.
-2. **Detail file** — write `specs/<id>.md` from the template below (Problem, Value user story, Scope, Acceptance criteria populated; Plan/Decisions/Verification/Progress scaffolded).
+2. **Detail file** — write `specs/<id>.md` from the template below (Problem, Value user story, Scope, Acceptance criteria populated; Plan/Decisions/Verification/Progress scaffolded). If the spec is already big enough to warrant breakout (the guideline above — ≥3 tasks or a task with its own AC), create the **directory** form instead: the orchestrator `specs/<id>/<id>.md` plus its first task files `specs/<id>/<id>.T<n>.md` (task-file template above). The index line links to the orchestrator: `[detail](specs/<id>/<id>.md)`.
 
 Show the draft (index line + detail) and confirm before writing.
 
@@ -174,7 +208,7 @@ After any write the spec guard re-validates the file and re-checks the budget on
    - **Restart & smoke-test** — before flipping status, get the change actually running and exercise it. **Restart every local service the change touched** (use the run/dev commands in `CLAUDE.md`/`README.md`) so nothing is serving stale code. Then **run an automated smoke test yourself wherever it's feasible** — drive the changed behavior end-to-end (hit the endpoint, run the flow, exercise the CLI/UI), not just the unit suite. Where automation genuinely isn't possible (e.g. a manual-only device/UX step), say so and list it for the user rather than skipping silently. Finish by showing the user a **brief verification checklist**: each acceptance criterion with what you smoke-tested to prove it (✅ / ⚠️), plus any items they should confirm manually. Only proceed to `DONE` once this passes.
    - **Status** → `DONE` in the index (local), or transition the card's `System.State` (ado, propose-only) after the user confirms.
    - Update `specs/<id>.md`: tick the AC checkboxes, append Decisions/Verification, add a Progress-log entry with the commit SHA(s); commit it. The detail file — not a tracker comment thread — is the canonical working record.
-   - **Archive** (local): move the index entry to the `## Archive` section and relocate its detail file to `<spec_dir>/archive/<id>.md`. The id is never reused — reference integrity for commits/PRs is preserved.
+   - **Archive** (local): move the index entry to the `## Archive` section and relocate its detail — a flat `specs/<id>.md` → `<spec_dir>/archive/<id>.md`, or a whole directory `specs/<id>/` → `<spec_dir>/archive/<id>/` (orchestrator + every task file, moved together). The id is never reused — reference integrity for commits/PRs is preserved.
    - Update `CLAUDE.md` if new conventions were introduced.
    - Update `MARKETING.md` if the spec changed user-facing capabilities (if the file exists).
    - Run the project's feature completion checklist (from `CLAUDE.md`).
