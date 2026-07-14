@@ -188,20 +188,27 @@ After any write the spec guard re-validates the file and re-checks the budget on
 
 ### `/flow <spec id>` or `/flow <description>`
 
+**Autonomy — `checkpoint` (default) vs `auto-build`.** Before planning, resolve the spec's mode with the shared helper (locate `flow-preflight.sh` the way `/flow-ship`/`/flow-lint` do): `flow-preflight.sh autonomy specs/<id>.md --repo .` → `checkpoint | auto-build`. Precedence is defined once, in the helper: `.flow-toolkit.json` `autonomy.force` > the spec's `autonomy:` front-matter > `.flow-toolkit.json` `autonomy.default` > builtin `checkpoint`. **Autonomy controls exactly one thing — whether flow pauses for _plan approval_.** It never bypasses Claude Code's permission system, edits config, or self-approves; the `flow-verifier` (step 3) is the safety net that makes `auto-build` tolerable. `checkpoint` → pause for sign-off (step 2), verifier **advisory**. `auto-build` → skip the plan-approval pause and build, verifier **blocking** (nothing integrates unverified).
+
 1. **Understand.** Read the index entry for that id, and **if `specs/<id>.md` exists, read it and resume from its Plan/Progress log rather than re-deriving.** For free-form work, restate it and identify affected layers; ask 1-2 clarifying questions only when genuinely ambiguous.
 
    If a free-form description maps to an existing spec, say so and switch to it. If it's net-new and will produce commits, offer `/flow --add` first so there's an id to tag.
 
-2. **Plan + CHECKPOINT.** Concise plan: thin vertical slices, files/layers touched, test strategy, risks, open questions. **The plan you present IS the draft detail file** — include the **Value** user story so it can be weighed against other specs. **Stop for sign-off before writing any code.**
+2. **Plan + CHECKPOINT.** Concise plan: thin vertical slices, files/layers touched, test strategy, risks, open questions. **The plan you present IS the draft detail file** — include the **Value** user story so it can be weighed against other specs. **In `checkpoint` mode, stop for sign-off before writing any code.** In `auto-build`, do not pause for approval — but still write and commit the detail file first (auto-build skips the human gate, never the record).
 
-   On sign-off, write/update `specs/<id>.md` (Problem, Value, Scope, AC, Plan, Decisions) and commit it. Then set the item IN PROGRESS in the index (local) or, if `Backlog`/`Ready`, offer to transition the card (ado, with a comment noting work started) — only after sign-off. For cross-cutting work, sign-off is where the API contract / seam is locked so parallel layers build to the same interface.
+   On sign-off (checkpoint) or immediately (auto-build), write/update `specs/<id>.md` (Problem, Value, Scope, AC, Plan, Decisions) and commit it. Then set the item IN PROGRESS in the index (local) or, if `Backlog`/`Ready`, offer to transition the card (ado, with a comment noting work started) — checkpoint only after sign-off. For cross-cutting work, this is where the API contract / seam is locked so parallel layers build to the same interface.
 
 3. **Build test-first.** Follow the conventions in `CLAUDE.md` for this project. Keep commits small and **tag every commit's subject with the spec id as a leading bracket** — `[#<id>] type: subject` (e.g. `[#1.4] feat: …`). The id goes in the **subject line, not the body**, so `/flow-ship` derives the release's specs mechanically from `git log`; the commit guard accepts the leading tag and nudges the exact id when a spec is IN PROGRESS and it's missing. Surface decisions as you go.
 
-   - **Single-layer specs**: build inline, test-first, commit per slice.
-   - **Cross-cutting specs** (multiple independent layers): after sign-off, spawn one worktree-isolated agent per layer with its slice + the full contract; run in parallel, merge, verify the seam. Skip layers with no independent work.
+   How you dispatch depends on mode and shape:
+   - **`checkpoint`, single-layer**: build inline, test-first, commit per slice. The human is watching, so `flow-verifier` is an **advisory** check on the diff.
+   - **`auto-build`, or any cross-cutting spec**: dispatch one **`flow-implementer`** agent per task/layer against its local-AC contract (worktree-isolated when layers run in parallel). It builds to the seam and reports a diff — it never merges or touches lifecycle state (index/status/`deferrals:`). Skip layers with no independent work.
 
-   If at any point you're about to drop or narrow something the spec put in scope, **run the deferral protocol** (below) — don't narrow scope silently.
+   **Verifier gating before integration (the safety net).** For each task/layer, run one **`flow-verifier`** on the implementer's diff against that task's local AC; it returns a structured `PASS`/`FAIL` and **never fixes** (judges only):
+   - **`auto-build` → blocking.** A `FAIL` does not integrate. Give the implementer **one** bounded retry with the verifier's findings; if it still fails, **escalate** — that task falls back to `checkpoint` and you hand the verdict to the user. Merge only `PASS` diffs, then verify the seam.
+   - **`checkpoint` → advisory.** Surface the verdict + diff to the user (you're already paused for their call) rather than blocking.
+
+   If at any point you're about to drop or narrow something the spec put in scope, **run the deferral protocol** (below) — don't narrow scope silently. (An implementer that hits out-of-scope work reports it back; you run the protocol, not the agent.)
 
 4. **Definition of done.**
    - **Reconcile deferrals** — every in-scope item you didn't build has been run through the deferral protocol (built here, or re-homed to a spec by user decision), cross-linked, and recorded in the spec's `deferrals:` front-matter with a resolved `to`. This is **machine-checked** (`flow-preflight.sh resolved`): the commit guard blocks a `DONE` spec with an open deferral, so it **must** be clear before the spec reaches `DONE`.
@@ -241,7 +248,9 @@ The Decisions section stays the human narrative; the front-matter is the enforce
 
 ## Rules
 
-- Checkpoint after the plan — never write code before sign-off.
+- Checkpoint after the plan — in `checkpoint` mode never write code before sign-off; `auto-build` skips only the approval pause and still records the plan first.
+- **Autonomy gates only the plan-approval pause** — resolve it via `flow-preflight.sh autonomy` (precedence lives there). `auto-build` never bypasses Claude Code permissions, edits config, or self-approves; its safety net is the verifier.
+- **Nothing integrates unverified under `auto-build`** — a `flow-verifier` FAIL blocks; one bounded retry, then escalate to `checkpoint`. Verifiers judge, never fix; implementers build only to the task-local AC and never touch status/index/`deferrals:`.
 - TDD — test first, per `CLAUDE.md`.
 - **Status is single-source** — the index (local) or the board (ado). Never write a status into a `specs/<id>.md` detail file.
 - **Detail files are backend-neutral** — the same shape in every mode.
