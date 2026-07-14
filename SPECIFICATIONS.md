@@ -14,7 +14,7 @@
 
 ## Archive
 - **1.1** Concise spec authoring — `DONE` — [detail](specs/archive/1.1.md)
-- **1.2** Skills + sub-agents + spec orchestration architecture — `DONE` — [detail](specs/archive/1.2.md)
+- **1.2** Skills + sub-agents + spec orchestration architecture — `DONE` — [detail](specs/archive/1.2/1.2.md)
 - **1.3** Condense existing specs — single, project-wide, or check-only — `DONE` — [detail](specs/archive/1.3.md)
 - **1.4** Auto-tag commits with the active spec id — `DONE` — [detail](specs/archive/1.4.md)
 - **1.5** CI — run hook tests on push/PR — `DONE` — [detail](specs/archive/1.5.md)
