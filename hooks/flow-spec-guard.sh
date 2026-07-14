@@ -6,7 +6,9 @@
 #   * SPECIFICATIONS.md / SPECIFICATIONS-ARCHIVE.md (the INDEX): every backlog
 #     entry line matches
 #         - **<id>** <Title> — `STATUS` — [detail](<path>)
-#     where <id> is alphanumeric (e.g. "1.2", "0.1", "2.37a", "P.10", "BL-12"),
+#     where <id> is alphanumeric — either the dotted Phase.Spec scheme
+#     ("1.2", "0.1", "2.37a", "P.10") or a flat id ("10", "226", "21c", "T2",
+#     "BL-12", "N"); the leading dotted segment is optional,
 #     STATUS is one of NOT STARTED / IN PROGRESS / PARTIAL / DONE / SUPERSEDED,
 #     and no id is duplicated within the file.
 #
@@ -99,9 +101,9 @@ BEGIN {
 }
 /^- \*\*/ {
     line = $0
-    if (line ~ /^- \*\*[A-Za-z0-9][A-Za-z0-9]*[.][A-Za-z0-9-]+\*\* .+ — `(NOT STARTED|IN PROGRESS|PARTIAL|DONE|SUPERSEDED)` — \[[^]]+\]\(.+\)$/) {
+    if (line ~ /^- \*\*[A-Za-z0-9][A-Za-z0-9.-]*\*\* .+ — `(NOT STARTED|IN PROGRESS|PARTIAL|DONE|SUPERSEDED)` — \[[^]]+\]\(.+\)$/) {
         s = line; sub(/^- \*\*/, "", s)
-        match(s, /^[A-Za-z0-9][A-Za-z0-9]*[.][A-Za-z0-9-]+/)
+        match(s, /^[A-Za-z0-9][A-Za-z0-9.-]*/)
         id = substr(s, RSTART, RLENGTH)
         if (id in SEEN)
             errs = errs sprintf("  line %d: duplicate id %s (first used at line %d)\n", NR, id, SEEN[id])
