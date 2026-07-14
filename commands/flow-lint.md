@@ -75,7 +75,7 @@ Record for each finding: **severity** (`ERROR`/`WARNING`/`INFO`), **location** (
 | No `status` in the detail file | ERROR | Status is single-source (index/board) — a `status:`/`**Status:**` in a detail file will drift. |
 | Required sections present | WARNING | Missing any of `## Problem`, `## Value`, `## Scope`, `## Acceptance criteria`, `## Plan`, `## Decisions`, `## Verification`, `## Progress log`. |
 | Value is a user story | INFO | `## Value` should read `As a <role> I want <capability> so that <benefit>`. |
-| Detail file under the line budget | INFO | `specs/<id>.md` exceeds the soft spec budget (default 120; overridable via `spec.maxLines` in `.flow-toolkit.json`). Same nudge `flow-spec-guard.sh` emits on edit — tighten it (one job per section, no cross-section restatement) or raise the budget. Never an ERROR; specs legitimately vary. |
+| Detail file under the line budget | INFO | `specs/<id>.md` exceeds the soft spec budget (default 120; overridable via `spec.maxLines` in `.flow-toolkit.json`). Same nudge `flow-spec-guard.sh` emits on edit — run `/flow --condense <id>` to rewrite it losslessly (or raise the budget). Never an ERROR; specs legitimately vary. |
 | DONE spec has no unchecked AC | WARNING | Index says DONE but `specs/<id>.md` still has `- [ ]` acceptance criteria. |
 | Non-DONE spec with all AC checked | INFO | All `- [x]` but status isn't DONE — probably needs a status update. |
 | Deferrals front-matter well-formed | ERROR | A `deferrals:` entry is missing `what`, `why`, or `to`. Run `flow-preflight.sh wellformed <file>` per detail file. |

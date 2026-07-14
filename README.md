@@ -169,7 +169,7 @@ As a <role> I want <capability> so that <benefit>.
 
 **Value is a user story** — `As a <role> I want <capability> so that <benefit>`. Consistent across specs on purpose, so a future analysis can group the backlog by persona and benefit.
 
-**Specs are terse by rule.** A detail file is read into context every time its spec is worked, so bloat is wasted budget on every session. `/flow --add` authors to three rules — one job per section (no cross-section restatement — Value doesn't restate Problem, Plan doesn't restate the AC), the shortest lossless form (bullets over prose; terse ≠ dropping detail), and an append-only one-line Progress log. A soft budget (default 120 lines, `spec.maxLines` in `.flow-toolkit.json`) makes drift visible — `flow-spec-guard.sh` nudges on edit, `/flow-lint --specs` reports it — always a warning, never a block.
+**Specs are terse by rule.** A detail file is read into context every time its spec is worked, so bloat is wasted budget on every session. `/flow --add` authors to three rules — one job per section (no cross-section restatement — Value doesn't restate Problem, Plan doesn't restate the AC), the shortest lossless form (bullets over prose; terse ≠ dropping detail), and an append-only one-line Progress log. A soft budget (default 120 lines, `spec.maxLines` in `.flow-toolkit.json`) makes drift visible — `flow-spec-guard.sh` nudges on edit, `/flow-lint --specs` reports it — always a warning, never a block. To bring an existing or pre-rule spec into line, `/flow --condense <id>` rewrites it losslessly (or `--all` to migrate a whole backlog; `--check` to audit without rewriting).
 
 **Spec archival** — when a spec is `DONE`/`SUPERSEDED`, `/flow` moves its index entry to the `## Archive` section and relocates its detail file to `specs/archive/<id>.md`. The id is never reused — commits, PRs, and notes that cite an id (e.g. "closes 2.3") stay meaningful forever.
 
@@ -341,7 +341,7 @@ This keeps you in control of direction without having to micromanage implementat
 | Command | Description |
 |---|---|
 | `/flow-init [concept\|--adopt\|--backend ado]` | Bootstrap or adopt a project: spec index + `specs/` detail files + `CLAUDE.md` hierarchy |
-| `/flow [spec# \| --ideas \| --add \| --clean \| description]` | Implement specs, manage backlog, brainstorm |
+| `/flow [spec# \| --ideas \| --add \| --clean \| --condense \| description]` | Implement specs, manage backlog, brainstorm |
 | `/flow-hunt [--deep \| focus area]` | Hunt new feature opportunities through a domain-grounded persona panel |
 | `/flow-ship [--dry-run]` | Cut a release — reads deploy conventions from `CLAUDE.md` |
 | `/flow-review [--docs \| --ux \| --marketing \| --product]` | Audit docs, UX, marketing, or product |
@@ -405,6 +405,14 @@ Conversational spec capture. Claude asks what it is, who it's for, and what succ
 /flow --clean
 ```
 Normalizes the index: status vocabulary, entry format, and links to detail files. Shows a diff before writing.
+
+**Condense or audit existing specs:**
+```
+/flow --condense 2.3             # rewrite one spec to the terseness rules
+/flow --condense --all           # migrate a whole backlog
+/flow --condense --all --check   # audit only — report, don't rewrite
+```
+Rewrites bloated detail files to the terseness rules **losslessly** — the Progress log is copied verbatim and every acceptance criterion is preserved — with a per-spec diff you confirm before any write. `--check` reports terseness findings (including the cross-section restatement a line count can't catch) without writing. Where `/flow-lint --specs` flags the mechanical line budget, `--condense` is the judgment pass that fixes or audits it. It never changes a spec's status.
 
 ---
 
