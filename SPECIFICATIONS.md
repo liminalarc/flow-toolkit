@@ -10,7 +10,7 @@
 - **1.9** Migrate flow-pr to a skill with parallel-dimension sub-agents — `NOT STARTED` — [detail](specs/1.9.md)
 - **1.10** Plugin packaging + criterion-gated installer transition — `NOT STARTED` — [detail](specs/1.10.md)
 - **1.11** Migrate flow + flow-hunt to skills — `NOT STARTED` — [detail](specs/1.11.md)
-- **1.12** How-it-works diagrams + architecture doc — `IN PROGRESS` — [detail](specs/1.12.md)
+- **1.12** How-it-works diagrams + architecture doc — `NOT STARTED` — [detail](specs/1.12.md)
 
 ## Archive
 - **1.6** Task-file model — dual-shape specs/<id>/ across hooks + commands — `DONE` — [detail](specs/archive/1.6.md)
