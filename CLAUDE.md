@@ -65,7 +65,7 @@ flow-toolkit/
 ├── install.ps1          # Windows installer — must mirror install.sh
 ├── README.md            # The user-facing manual — the front door
 ├── SPECIFICATIONS.md    # The backlog index (status = single source of truth)
-└── specs/               # One detail file per spec; specs/archive/ for DONE/SUPERSEDED
+└── specs/               # One detail file per spec (flat specs/<id>.md, or a dir specs/<id>/ = orchestrator + <id>.T<n> task files); specs/archive/ for DONE/SUPERSEDED
 ```
 
 ## Releasing
