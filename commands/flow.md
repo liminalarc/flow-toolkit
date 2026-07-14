@@ -80,6 +80,14 @@ Co-author a new spec. Ask: what is it, who is it for, what does success look lik
 
 Show the draft (index line + detail) and confirm before writing.
 
+**Write it terse — a hard rule, not a preference.** A spec is read into context every time it's worked, so bloat is wasted budget on every session. Author to these rules and hold existing specs to them when you touch one:
+
+- **One job per section.** Each section says what no other does. Don't let Value restate Problem, Scope restate the acceptance criteria, or Plan restate them — cross-reference, don't repeat.
+- **Shortest form that keeps the detail.** Prefer a bullet to a sentence, a sentence to a paragraph; cut throat-clearing and restated context. Never drop a concrete acceptance detail to save space — terse ≠ lossy.
+- **Progress log is append-only one-liners** — one dated `` `<sha>` — <what landed> `` per entry, newest last; never rewrite it into prose.
+
+A soft budget (default 120 lines; `spec.maxLines` in `.flow-toolkit.json`) warns — never blocks — when a detail file drifts past terse; the spec guard and `/flow-lint --specs` surface it.
+
 **Detail file template** (`specs/<id>.md`):
 ```markdown
 ---
