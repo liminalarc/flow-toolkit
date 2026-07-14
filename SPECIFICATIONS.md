@@ -6,7 +6,7 @@
 
 ## Phase 1 — Features
 - **1.2** Skills + sub-agents + spec orchestration architecture — `NOT STARTED` — [detail](specs/1.2.md)
-- **1.3** Condense an existing spec on demand — `NOT STARTED` — [detail](specs/1.3.md)
+- **1.3** Condense existing specs — single, project-wide, or check-only — `IN PROGRESS` — [detail](specs/1.3.md)
 
 ## Archive
 - **1.1** Concise spec authoring — `DONE` — [detail](specs/archive/1.1.md)
