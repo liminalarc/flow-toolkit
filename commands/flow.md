@@ -162,7 +162,7 @@ After any write the spec guard re-validates the file and re-checks the budget on
 
    On sign-off, write/update `specs/<id>.md` (Problem, Value, Scope, AC, Plan, Decisions) and commit it. Then set the item IN PROGRESS in the index (local) or, if `Backlog`/`Ready`, offer to transition the card (ado, with a comment noting work started) — only after sign-off. For cross-cutting work, sign-off is where the API contract / seam is locked so parallel layers build to the same interface.
 
-3. **Build test-first.** Follow the conventions in `CLAUDE.md` for this project. Keep commits small and — if the project tags commits with a spec/work-item id — tag them. Surface decisions as you go.
+3. **Build test-first.** Follow the conventions in `CLAUDE.md` for this project. Keep commits small and **tag every commit's subject with the spec id as a leading bracket** — `[#<id>] type: subject` (e.g. `[#1.4] feat: …`). The id goes in the **subject line, not the body**, so `/flow-ship` derives the release's specs mechanically from `git log`; the commit guard accepts the leading tag and nudges the exact id when a spec is IN PROGRESS and it's missing. Surface decisions as you go.
 
    - **Single-layer specs**: build inline, test-first, commit per slice.
    - **Cross-cutting specs** (multiple independent layers): after sign-off, spawn one worktree-isolated agent per layer with its slice + the full contract; run in parallel, merge, verify the seam. Skip layers with no independent work.
