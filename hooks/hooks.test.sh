@@ -145,6 +145,93 @@ cq=$(bash "$GUARD" "$cfgdir/specs/3.1.md" 2>&1)
 out_lacks "configured budget suppresses warning" "soft budget" "$cq"
 rm -rf "$cfgdir"
 
+# ---- flow-spec-guard: dual-shape task files (1.6) ----
+# A big spec earns specs/<id>/ = orchestrator <id>.md + task files <id>.T<n>.md.
+# A task file keeps the no-status + id==stem checks and gains a SOFT local-AC
+# nudge; the orchestrator must validate as an ordinary detail file (the .T<n>
+# rule must not misfire on it).
+mkdir -p "$tmp/specs/1.7"
+
+# Orchestrator: ordinary detail file (id==stem, no status), no AC nudge even
+# though it carries no checkbox — it is not a task file.
+cat > "$tmp/specs/1.7/1.7.md" <<'EOF'
+---
+id: 1.7
+title: Orchestrator
+---
+## Problem
+x
+## Acceptance criteria
+- [ ] whole-spec AC
+EOF
+bash "$GUARD" "$tmp/specs/1.7/1.7.md" 2>/dev/null; exit_is "orchestrator dir detail passes" 0 $?
+orch=$(bash "$GUARD" "$tmp/specs/1.7/1.7.md" 2>&1)
+out_lacks "orchestrator gets no task-file AC nudge" "local AC" "$orch"
+
+# Task file with a local AC (a Done-when checkbox) → clean, silent.
+cat > "$tmp/specs/1.7/1.7.T1.md" <<'EOF'
+---
+id: 1.7.T1
+title: Task one
+---
+## Goal
+how
+## Done when
+- [ ] the seam works
+EOF
+bash "$GUARD" "$tmp/specs/1.7/1.7.T1.md" 2>/dev/null; exit_is "task file with local AC passes" 0 $?
+t1=$(bash "$GUARD" "$tmp/specs/1.7/1.7.T1.md" 2>&1)
+out_lacks "task file with AC is silent" "local AC" "$t1"
+
+# Task file with NO local AC → soft nudge, but still exit 0 (never blocks).
+cat > "$tmp/specs/1.7/1.7.T2.md" <<'EOF'
+---
+id: 1.7.T2
+title: Task two
+---
+## Goal
+how, but no done-when checkbox
+EOF
+bash "$GUARD" "$tmp/specs/1.7/1.7.T2.md" 2>/dev/null; exit_is "task file without AC still passes" 0 $?
+t2=$(bash "$GUARD" "$tmp/specs/1.7/1.7.T2.md" 2>&1)
+out_has "task file without AC nudges" "local AC" "$t2"
+
+# Task file carrying a status → blocks (no-status rule still applies).
+cat > "$tmp/specs/1.7/1.7.T3.md" <<'EOF'
+---
+id: 1.7.T3
+title: Task three
+---
+**Status:** DONE
+## Done when
+- [ ] x
+EOF
+bash "$GUARD" "$tmp/specs/1.7/1.7.T3.md" 2>/dev/null; exit_is "task file with status blocks" 2 $?
+
+# Task file id/stem mismatch → blocks.
+cat > "$tmp/specs/1.7/1.7.T4.md" <<'EOF'
+---
+id: 1.7.T9
+title: Wrong id
+---
+## Done when
+- [ ] x
+EOF
+bash "$GUARD" "$tmp/specs/1.7/1.7.T4.md" 2>/dev/null; exit_is "task file id/stem mismatch blocks" 2 $?
+
+# A flat spec whose name merely looks task-like (specs/2.T3.md, parent dir is
+# "specs" not "2") must NOT get the task-file AC nudge.
+cat > "$tmp/specs/2.T3.md" <<'EOF'
+---
+id: 2.T3
+title: Not a task
+---
+## Problem
+x
+EOF
+flat=$(bash "$GUARD" "$tmp/specs/2.T3.md" 2>&1)
+out_lacks "flat task-looking name gets no AC nudge" "local AC" "$flat"
+
 # ---- flow-session-brief: index + legacy ----
 cat > "$tmp/SPECIFICATIONS.md" <<'EOF'
 # Proj — Specifications

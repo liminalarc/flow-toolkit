@@ -14,7 +14,12 @@
 #
 #   * <spec_dir>/<id>.md (a DETAIL file, default dir "specs"): carries NO status
 #     field (status is single-source in the index — a status here would drift),
-#     and its front-matter `id:` matches the filename stem.
+#     and its front-matter `id:` matches the filename stem. A big spec may use
+#     the directory form <spec_dir>/<id>/ = orchestrator <id>.md + task files
+#     <id>.T<n>.md; both the orchestrator and each task file are detail files
+#     (same no-status + id==stem rules). A task file (stem .T<n> whose parent
+#     dir is named for the spec id) also gets a SOFT local-AC nudge — never a
+#     block — if it has no 'done when' checkbox.
 #
 # A legacy inline SPECIFICATIONS.md (### Spec blocks, **Status:** lines) is
 # detected and PASSED with a one-line advisory to run `/flow-lint --migrate` —
@@ -102,11 +107,29 @@ if [ "$kind" = "detail" ]; then
         bash "$SCRIPT_DIR/flow-preflight.sh" wellformed "$FILE" || exit 2
     fi
 
-    # --- Soft bloat warning (a nudge, NEVER a block) --------------------------
-    # A terse spec keeps the working set lean — the same principle behind the
-    # CLAUDE.md line caps, applied to detail files. Default budget 120 lines;
+    # --- Soft nudges (a nudge, NEVER a block) ---------------------------------
+    # Accumulate into one message so hook mode emits a single valid JSON note.
+    # All quote-free so they embed safely in the hook-note JSON string below.
+    soft=""
+
+    # Task-file local-AC presence. A big spec earns specs/<id>/ = orchestrator
+    # <id>.md + task files <id>.T<n>.md; a task file carries the "how" plus a
+    # local 'done when' contract (a checkbox) — the seam a per-task implementer
+    # builds to and a verifier checks against (D2). Nudge if it has none.
+    # Detection: stem ends .T<n> AND the parent dir is named for the spec id, so
+    # a flat specs/2.T3.md and the orchestrator specs/<id>/<id>.md never trip it.
+    stem_prefix=$(printf '%s' "$stem" | sed -nE 's/^(.+)\.T[0-9][0-9]*$/\1/p')
+    parent=$(basename "$(dirname "$FILE")")
+    if [ -n "$stem_prefix" ] && [ "$stem_prefix" = "$parent" ]; then
+        if ! grep -qE '^[[:space:]]*-[[:space:]]\[[ xX]\]' "$FILE"; then
+            soft="${soft}task file $base has no local AC — add a 'Done when' checkbox (- [ ] ...) so a per-task implementer/verifier has a seam to build and check against. "
+        fi
+    fi
+
+    # Bloat: a terse spec keeps the working set lean — the same principle behind
+    # the CLAUDE.md line caps, applied to detail files. Default budget 120 lines;
     # override per project with { "spec": { "maxLines": <n> } } in
-    # .flow-toolkit.json at the repo root. Always exits 0.
+    # .flow-toolkit.json at the repo root.
     dlines=$(wc -l < "$FILE" | tr -d '[:space:]')
     smax=120
     droot=$(find_repo_root "$(dirname "$FILE")" || true)
@@ -115,8 +138,11 @@ if [ "$kind" = "detail" ]; then
         [ -n "$cv" ] && smax=$cv
     fi
     if [ "$dlines" -gt "$smax" ]; then
-        # Quote-free so it embeds safely in the hook-note JSON string below.
-        msg="flow-toolkit spec guard: $base is $dlines lines (soft budget $smax) — tighten it: one job per section, no cross-section restatement, prose to bullets. terse != lossy. Raise spec.maxLines in .flow-toolkit.json if this spec genuinely needs the room."
+        soft="${soft}$base is $dlines lines (soft budget $smax) — tighten it: one job per section, no cross-section restatement, prose to bullets. terse != lossy. Raise spec.maxLines in .flow-toolkit.json if this spec genuinely needs the room."
+    fi
+
+    if [ -n "$soft" ]; then
+        msg="flow-toolkit spec guard: $soft"
         if [ "$INVOKED_DIRECT" -eq 1 ]; then
             echo "$msg" >&2
         else
