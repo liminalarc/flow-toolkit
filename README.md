@@ -44,7 +44,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
-Commands are copied to `~/.claude/commands/` and appear in the `/` picker in every project. The installer also registers the toolkit's [hooks](#hooks) in `~/.claude/settings.json` (an additive merge — your existing settings are preserved and backed up to `settings.json.bak` first). Restart Claude Code after installing.
+Commands are copied to `~/.claude/commands/` and appear in the `/` picker in every project. Sub-agent definitions are copied to `~/.claude/agents/` (they stay inert until a command dispatches one, so they cost nothing in projects that don't use them). The installer also registers the toolkit's [hooks](#hooks) in `~/.claude/settings.json` (an additive merge — your existing settings are preserved and backed up to `settings.json.bak` first). Restart Claude Code after installing.
 
 **Multiple Claude accounts on one machine?** The installer auto-detects every Claude profile directory and installs into each — the canonical `~/.claude`, any sibling like `~/.claude-work`, and whatever `$CLAUDE_CONFIG_DIR` points at. It prints the detected profiles as it runs. No account names are hardcoded, so adding or removing an account needs no change to the install scripts.
 

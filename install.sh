@@ -39,6 +39,7 @@ echo ""
 
 count=$(ls commands/*.md 2>/dev/null | wc -l)
 hook_count=$(ls hooks/*.sh 2>/dev/null | wc -l)
+agent_count=$(ls agents/*.md 2>/dev/null | wc -l)
 
 register_hooks() {
     # Additive merge of hooks/hooks.json into settings.json. Per-script
@@ -109,6 +110,20 @@ for profile in "${PROFILES[@]}"; do
         cp "$file" "$target/"
     done
     echo "Installed $count commands to $target"
+
+    # --- Agents ---
+    # Sub-agent definitions (implementer/verifier and later reviewers etc.).
+    # Passive until dispatched, so a global install costs nothing in projects
+    # that never invoke them. 1.10 moves this to the plugin; the installer is
+    # the distribution mechanism until then.
+    if [ "$agent_count" -gt 0 ]; then
+        agents_dir="$profile/agents"
+        mkdir -p "$agents_dir"
+        for file in agents/*.md; do
+            cp "$file" "$agents_dir/"
+        done
+        echo "Installed $agent_count agent(s) to $agents_dir"
+    fi
 
     # --- Hooks ---
     if [ "$hook_count" -gt 0 ]; then

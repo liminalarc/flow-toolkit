@@ -30,6 +30,7 @@ Write-Host ""
 
 $commands = Get-ChildItem -Path ".\commands\*.md"
 $hookScripts = Get-ChildItem -Path ".\hooks\*.sh" -ErrorAction SilentlyContinue
+$agentFiles = Get-ChildItem -Path ".\agents\*.md" -ErrorAction SilentlyContinue
 
 foreach ($profileDir in $profiles) {
     $profileName = Split-Path $profileDir -Leaf
@@ -47,6 +48,23 @@ foreach ($profileDir in $profiles) {
         Copy-Item -Path $file.FullName -Destination $target -Force
     }
     Write-Host "Installed $($commands.Count) commands to $target"
+
+    # --- Agents ---
+    # Sub-agent definitions (implementer/verifier and later reviewers etc.).
+    # Passive until dispatched, so a global install costs nothing in projects
+    # that never invoke them. 1.10 moves this to the plugin; the installer is
+    # the distribution mechanism until then. (Placed before the hooks block's
+    # early `continue` so agents install even when there are no hook scripts.)
+    if ($agentFiles) {
+        $agentsDir = Join-Path $profileDir "agents"
+        if (-not (Test-Path $agentsDir)) {
+            New-Item -ItemType Directory -Path $agentsDir -Force | Out-Null
+        }
+        foreach ($file in $agentFiles) {
+            Copy-Item -Path $file.FullName -Destination $agentsDir -Force
+        }
+        Write-Host "Installed $($agentFiles.Count) agent(s) to $agentsDir"
+    }
 
     # --- Hook scripts ---
     if (-not $hookScripts) { continue }
