@@ -33,6 +33,29 @@ cat > "$tmp/SPECIFICATIONS.md" <<'EOF'
 EOF
 bash "$GUARD" "$tmp/SPECIFICATIONS.md" 2>/dev/null; exit_is "valid index passes" 0 $?
 
+# Flat / dashed / single-char ids (projects that don't use the Phase.Spec dotted
+# scheme — e.g. "226", "21c", "T2", "BL-12", "N"). The header comment already
+# lists "BL-12" as a valid id, so these must all pass.
+cat > "$tmp/SPECIFICATIONS.md" <<'EOF'
+# Proj — Specifications
+
+## Backlog
+- **10** Board templates — `NOT STARTED` — [detail](specs/10.md)
+- **226** MCP Server — Foundation — `NOT STARTED` — [detail](specs/226.md)
+- **21c** Design-Level — Refined Specs — `NOT STARTED` — [detail](specs/21c.md)
+- **T2** API versioning — `PARTIAL` — [detail](specs/T2.md)
+- **BL-12** Backlog item — `DONE` — [detail](specs/BL-12.md)
+- **N** Template — `NOT STARTED` — [detail](specs/N.md)
+EOF
+bash "$GUARD" "$tmp/SPECIFICATIONS.md" 2>/dev/null; exit_is "flat/dashed/single-char ids pass" 0 $?
+
+# Duplicate detection still works for flat ids.
+cat > "$tmp/SPECIFICATIONS.md" <<'EOF'
+- **226** X — `DONE` — [detail](specs/226.md)
+- **226** Y — `NOT STARTED` — [detail](specs/226.md)
+EOF
+bash "$GUARD" "$tmp/SPECIFICATIONS.md" 2>/dev/null; exit_is "duplicate flat id blocks" 2 $?
+
 cat > "$tmp/bad-status.md" <<'EOF'
 - **1.1** X — `WIP` — [detail](specs/1.1.md)
 EOF
