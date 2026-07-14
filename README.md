@@ -13,6 +13,7 @@ A set of Claude Code slash commands for a conversational, spec-driven developmen
   - [CLAUDE.md — the guardrails](#claudemd--the-guardrails)
   - [.flow/config.yml — the backend](#flowconfigyml--the-backend)
 - [The Development Cycle](#the-development-cycle)
+  - [Autonomy & sub-agents](#autonomy--sub-agents)
 - [Commands](#commands)
   - [/flow-init](#flow-init)
   - [/flow](#flow)
@@ -331,11 +332,11 @@ Any time:
   /flow-review --ux              → UX critique
 ```
 
-**The checkpoint discipline:** `/flow` never writes code until you approve the plan. For every spec, the cycle is:
+**The checkpoint discipline:** by default (`checkpoint` mode) `/flow` never writes code until you approve the plan. A spec can opt into `auto-build` to skip that pause — with an independent verifier as the safety net (see [Autonomy & sub-agents](#autonomy--sub-agents)). For every spec, the cycle is:
 
 1. **Understand** — Claude reads the spec and the relevant code, asks 1-2 clarifying questions if needed
 2. **Plan** — Claude proposes thin vertical slices, the files/layers touched, the test strategy
-3. **Checkpoint** — you review and approve (or redirect) the plan
+3. **Checkpoint** — you review and approve (or redirect) the plan *(skipped under `auto-build`; the plan is still written and committed)*
 4. **Build** — test-first, small commits, surfaces decisions as they come up
 5. **Done** — before marking DONE, Claude restarts every local service the change touched and runs an automated smoke test of the changed behavior end-to-end (not just unit tests), then shows you a brief pass/fail verification checklist; then the spec is marked DONE, CLAUDE.md updated if new patterns were introduced, validation checklist handed off
 
@@ -343,7 +344,29 @@ This keeps you in control of direction without having to micromanage implementat
 
 **No silent deferrals.** Scope only ever narrows by *your* decision, never Claude's. The moment Claude is about to drop or narrow something the spec put in scope — at plan-time, mid-build, or at done-time — it stops and runs the **deferral protocol**: it states *why* it would defer (cost, a missing dependency, scope creep, risk) and asks you to decide, per item, whether to **build it here** or **re-home it** to a new or related spec (cross-linked both ways, recorded in the detail file's Decisions *and* as a structured `deferrals:` front-matter entry). Each deferred item is its own decision — nothing gets batched under a blanket "later." Because the trace is machine-readable, a spec **cannot reach `DONE` with an unreconciled deferral** — the commit guard, `/flow-lint`, and `/flow-ship` all block it — so "quietly built less than asked" stops being a failure mode the workflow allows.
 
-**Cross-cutting specs** (touching multiple independent layers like server + web): Claude locks the API contract in the plan step, then spawns one isolated agent per layer to build in parallel against that contract. Layers merge after and the seam is verified.
+**Cross-cutting specs** (touching multiple independent layers like server + web): Claude locks the API contract in the plan step, then spawns one isolated `flow-implementer` agent per layer to build in parallel against that contract. Each layer's diff is checked by an independent `flow-verifier` before it merges, then the seam is verified.
+
+### Autonomy & sub-agents
+
+`/flow` can run per-task work in **isolated-context sub-agents** and dial how much it pauses for you:
+
+- **`flow-implementer`** builds one task (or one layer of a cross-cutting spec) against that task's local acceptance criteria — worktree-isolated when layers run in parallel. It builds to the seam and never touches lifecycle state (index/status/deferrals).
+- **`flow-verifier`** independently checks the implementer's diff against the same criteria *before it integrates* and returns a `PASS`/`FAIL` verdict. It **judges, never fixes** — the "agents reviewing agents" safety net.
+
+**Autonomy modes** decide whether `/flow` pauses for *plan approval*:
+
+| Mode | Plan approval | Verifier |
+|---|---|---|
+| `checkpoint` *(default)* | pauses for your sign-off | **advisory** — informs you, you're already in the loop |
+| `auto-build` | no pause (plan still written) | **blocking** — a `FAIL` doesn't integrate: one bounded retry, then it escalates back to `checkpoint` and hands you the verdict |
+
+Autonomy controls **only** the plan-approval pause — it never bypasses Claude Code's permission system, edits config, or self-approves. Set it per spec via `autonomy: checkpoint | auto-build` front-matter, or repo-wide in `.flow-toolkit.json`:
+
+```json
+{ "autonomy": { "default": "checkpoint", "force": "auto-build" } }
+```
+
+Precedence: `autonomy.force` (hard project override) > the spec's `autonomy:` front-matter > `autonomy.default` (fallback when the spec is silent) > builtin `checkpoint`. It's resolved by the shared helper (`flow-preflight.sh autonomy specs/<id>.md`), so the rule is defined once and can't drift.
 
 ---
 
@@ -575,7 +598,7 @@ Where `/flow-lint` is the audit you run on demand, hooks are the seatbelt that's
 
 All four exit instantly when they don't apply (non-spec file, non-commit command, project without a spec file) — running them globally costs nothing in projects that don't use the toolkit.
 
-Alongside them the installer copies **`flow-preflight.sh`** — not an event hook but a shared, unit-tested helper that is the *single source of truth* for three machine-checkable rules: `git-state` (release-branch hygiene), `resolved` (the deferral `DONE`-gating rule), and `wellformed` (deferral front-matter shape). The spec/commit guards, `/flow-lint`, and `/flow-ship` all call it, so a rule is defined once and can't drift between the always-on guard and the on-demand command. A human can run it directly too (`bash ~/.claude/hooks/flow-preflight.sh git-state --repo .`).
+Alongside them the installer copies **`flow-preflight.sh`** — not an event hook but a shared, unit-tested helper that is the *single source of truth* for four machine-checkable rules: `git-state` (release-branch hygiene), `resolved` (the deferral `DONE`-gating rule), `wellformed` (deferral front-matter shape), and `autonomy` (resolves a spec's `checkpoint`/`auto-build` mode by precedence — see [Autonomy](#autonomy--sub-agents)). The spec/commit guards, `/flow`, `/flow-lint`, and `/flow-ship` all call it, so a rule is defined once and can't drift between the always-on guard and the on-demand command. A human can run it directly too (`bash ~/.claude/hooks/flow-preflight.sh git-state --repo .`).
 
 **`flow-spec-guard.sh`** validates on every edit to a spec file:
 

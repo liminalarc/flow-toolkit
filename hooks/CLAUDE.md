@@ -22,11 +22,12 @@ Authoring conventions for the bash hooks. Additive to root `CLAUDE.md` — read 
 
 ## flow-preflight.sh is the single source of truth
 
-Three rules live **only** here and are consumed everywhere else:
+Four rules live **only** here and are consumed everywhere else:
 
 - `git-state [--repo DIR] [--no-fetch]` — release-branch hygiene. Prints ✅/❌/⚠️ per check and the exact remediation command on failure, but **never runs it**. Exit 0 all-pass · 2 fail-or-unverifiable.
 - `resolved [--repo DIR] [--spec-dir specs] [--done ID,…]` — the deferral `DONE`-gate: no `DONE` spec may have an unresolved `deferrals:` entry (`to` = `built` or an id whose detail file exists). DONE set from `--done` (ado) or `SPECIFICATIONS.md` (local).
 - `wellformed <detail.md>` — one detail file's `deferrals:` shape (every entry has non-empty `what`/`why`/`to`).
+- `autonomy <spec.md> [--repo DIR]` — resolves the spec's mode (prints `checkpoint`/`auto-build`) by precedence `autonomy.force` > per-spec `autonomy:` front-matter > `autonomy.default` > builtin `checkpoint` (config in `.flow-toolkit.json`). Unknown value → advisory + safe `checkpoint`. Always exit 0. Consumed by `/flow`.
 
 Every rule reads only the repo's own files, so it behaves identically in local and ado mode. **Never re-implement any of these inline** in a guard or command — call the helper.
 

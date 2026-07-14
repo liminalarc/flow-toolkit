@@ -4,13 +4,14 @@ flow-toolkit is a set of Claude Code slash commands + hooks that implement a con
 
 ## Architecture
 
-- **The product is prompts + scripts, not an app.** Three parts: `commands/*.md` (the seven slash commands — pure markdown prompt files, no executable code), `hooks/*.sh` (always-on bash guards + a shared helper), and `install.{sh,ps1}` (distribution).
+- **The product is prompts + scripts, not an app.** Four parts: `commands/*.md` (the slash commands — pure markdown prompt files, no executable code), `agents/*.md` (sub-agent definitions — same pure-prompt form, dispatched by commands for isolated-context work), `hooks/*.sh` (always-on bash guards + a shared helper), and `install.{sh,ps1}` (distribution).
 - **Commands are markdown prompts.** Each `commands/<name>.md` is a self-contained instruction set with YAML front-matter (`description:`). They carry no logic beyond what Claude reads and executes; "testing a command" means running it, not a unit test.
 - **Hooks are the deterministic seatbelt.** `flow-spec-guard`, `flow-claude-guard`, `flow-commit-guard`, `flow-session-brief` fire on Claude Code events and enforce file-format invariants with zero tokens. Every hook exits instantly when it doesn't apply (non-spec file, non-commit, no spec model) so it costs nothing in unrelated projects.
-- **`flow-preflight.sh` is the single source of truth** for three machine-checkable rules — `git-state`, `resolved` (the deferral `DONE`-gate), `wellformed` (deferral front-matter shape). The guards, `/flow-lint`, and `/flow-ship` all call it, so a rule is defined once and can't drift.
+- **`flow-preflight.sh` is the single source of truth** for four machine-checkable rules — `git-state`, `resolved` (the deferral `DONE`-gate), `wellformed` (deferral front-matter shape), `autonomy` (resolves `checkpoint`/`auto-build` by precedence). The guards, `/flow`, `/flow-lint`, and `/flow-ship` call it, so a rule is defined once and can't drift.
+- **Sub-agents + autonomy.** `/flow` dispatches a `flow-implementer` per task and an independent `flow-verifier` on its diff before integration. A spec's `autonomy:` front-matter (or `.flow-toolkit.json` `autonomy.default`/`autonomy.force`) selects `checkpoint` (default — pause for plan sign-off, verifier advisory) or `auto-build` (no pause, verifier **blocking**: a FAIL gets one retry then escalates). Autonomy gates only the plan-approval pause — never Claude Code permissions.
 - **Bash everywhere, incl. Windows.** All hooks are POSIX bash and run through Git Bash on Windows. No Bashism that needs GNU-only tools; keep them portable across macOS/Linux/Git-Bash.
 - **Profile-agnostic install.** The installers auto-detect every Claude profile dir (`~/.claude`, `~/.claude-*`, `$CLAUDE_CONFIG_DIR`) and install into each. No account name is ever hardcoded — adding/removing a Claude account must need no installer edit.
-- **Distribution = git + copy.** Users `git clone`, run the installer (force-copies `commands/*.md` and `hooks/*.sh` into each profile, additively merges `hooks/hooks.json` into `settings.json`), and update via `git pull` + reinstall. There is no runtime, no package registry, no server.
+- **Distribution = git + copy.** Users `git clone`, run the installer (force-copies `commands/*.md`, `agents/*.md`, and `hooks/*.sh` into each profile, additively merges `hooks/hooks.json` into `settings.json`), and update via `git pull` + reinstall. There is no runtime, no package registry, no server.
 
 ## Development Rules
 
@@ -53,6 +54,9 @@ flow-toolkit/
 │   ├── flow-review.md   #   audit docs/UX/marketing/product
 │   ├── flow-pr.md       #   spec-aware PR/diff review
 │   └── flow-lint.md     #   audit CLAUDE.md hierarchy + spec integrity
+├── agents/              # Sub-agent definitions (pure-prompt md, dispatched by commands)
+│   ├── flow-implementer.md  #   builds one task to its local AC (write, worktree-isolated when parallel)
+│   └── flow-verifier.md     #   checks an implementer's diff vs the task AC (read-only, judges never fixes)
 ├── hooks/               # Always-on bash guards + shared helper (see hooks/CLAUDE.md)
 │   ├── flow-spec-guard.sh
 │   ├── flow-claude-guard.sh
