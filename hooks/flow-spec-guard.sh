@@ -28,9 +28,15 @@
 
 set -u
 
+# Direct-arg invocation (from flow-commit-guard.sh or a human) vs. PostToolUse
+# hook (stdin JSON). The soft bloat warning emits a stdout hook note ONLY in
+# hook mode; in direct mode it goes to stderr so it never corrupts a caller's
+# stdout contract.
 if [ $# -ge 1 ]; then
+    INVOKED_DIRECT=1
     FILE="$1"
 else
+    INVOKED_DIRECT=0
     INPUT=$(cat 2>/dev/null || true)
     RAW=$(printf '%s' "$INPUT" | grep -oE '"file_path"[[:space:]]*:[[:space:]]*"(\\.|[^"\\])*"' | head -n 1)
     [ -z "$RAW" ] && exit 0
@@ -41,6 +47,19 @@ fi
 FILE=$(printf '%s' "$FILE" | tr '\\' '/')
 
 base=$(basename "$FILE")
+
+# Walk up from a directory to the repo root (the dir holding `.git`). Used to
+# locate an optional .flow-toolkit.json for the soft spec-line budget. Mirrors
+# the same helper in flow-claude-guard.sh. Terminates at the filesystem root.
+find_repo_root() {
+    d=$1; prev=""
+    while [ -n "$d" ] && [ "$d" != "$prev" ]; do
+        [ -e "$d/.git" ] && { printf '%s' "$d"; return 0; }
+        prev=$d
+        d=$(dirname "$d")
+    done
+    return 1
+}
 
 # Classify the file: index, detail, or neither.
 kind=""
@@ -81,6 +100,28 @@ if [ "$kind" = "detail" ]; then
     SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
     if [ -f "$SCRIPT_DIR/flow-preflight.sh" ]; then
         bash "$SCRIPT_DIR/flow-preflight.sh" wellformed "$FILE" || exit 2
+    fi
+
+    # --- Soft bloat warning (a nudge, NEVER a block) --------------------------
+    # A terse spec keeps the working set lean — the same principle behind the
+    # CLAUDE.md line caps, applied to detail files. Default budget 120 lines;
+    # override per project with { "spec": { "maxLines": <n> } } in
+    # .flow-toolkit.json at the repo root. Always exits 0.
+    dlines=$(wc -l < "$FILE" | tr -d '[:space:]')
+    smax=120
+    droot=$(find_repo_root "$(dirname "$FILE")" || true)
+    if [ -n "$droot" ] && [ -f "$droot/.flow-toolkit.json" ]; then
+        cv=$(grep -oE '"maxLines"[[:space:]]*:[[:space:]]*[0-9]+' "$droot/.flow-toolkit.json" 2>/dev/null | head -n 1 | grep -oE '[0-9]+')
+        [ -n "$cv" ] && smax=$cv
+    fi
+    if [ "$dlines" -gt "$smax" ]; then
+        # Quote-free so it embeds safely in the hook-note JSON string below.
+        msg="flow-toolkit spec guard: $base is $dlines lines (soft budget $smax) — tighten it: one job per section, no cross-section restatement, prose to bullets. terse != lossy. Raise spec.maxLines in .flow-toolkit.json if this spec genuinely needs the room."
+        if [ "$INVOKED_DIRECT" -eq 1 ]; then
+            echo "$msg" >&2
+        else
+            printf '%s' "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"$msg\"}}"
+        fi
     fi
     exit 0
 fi
