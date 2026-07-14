@@ -166,7 +166,7 @@ As a developer I want to run [Project] locally and reach every layer end to end 
 
 **ADO mode** — no `SPECIFICATIONS.md` (the board is the index). Create `specs/` and, if adopting existing work items, offer to write a `specs/<id>.md` for each in-flight item keyed by work-item number.
 
-The detail template for every non-skeleton spec is the one in `/flow --add`.
+The detail template for every non-skeleton spec is the one in `/flow --add` — including its **"write it terse"** rules (one job per section, no cross-section restatement, append-only one-line Progress log). Every spec you seed here must already meet them; the soft `spec.maxLines` budget (default 120) warns on drift.
 
 ### 8. Generate MARKETING.md (user-facing projects only)
 

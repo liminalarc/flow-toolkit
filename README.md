@@ -169,6 +169,8 @@ As a <role> I want <capability> so that <benefit>.
 
 **Value is a user story** — `As a <role> I want <capability> so that <benefit>`. Consistent across specs on purpose, so a future analysis can group the backlog by persona and benefit.
 
+**Specs are terse by rule.** A detail file is read into context every time its spec is worked, so bloat is wasted budget on every session. `/flow --add` authors to three rules — one job per section (no cross-section restatement — Value doesn't restate Problem, Plan doesn't restate the AC), the shortest lossless form (bullets over prose; terse ≠ dropping detail), and an append-only one-line Progress log. A soft budget (default 120 lines, `spec.maxLines` in `.flow-toolkit.json`) makes drift visible — `flow-spec-guard.sh` nudges on edit, `/flow-lint --specs` reports it — always a warning, never a block. To bring an existing or pre-rule spec into line, `/flow --condense <id>` rewrites it losslessly (or `--all` to migrate a whole backlog; `--check` to audit without rewriting).
+
 **Spec archival** — when a spec is `DONE`/`SUPERSEDED`, `/flow` moves its index entry to the `## Archive` section and relocates its detail file to `specs/archive/<id>.md`. The id is never reused — commits, PRs, and notes that cite an id (e.g. "closes 2.3") stay meaningful forever.
 
 **Deferrals — the machine-checkable trace.** When work in a spec's scope gets cut, the [deferral protocol](#the-development-cycle) records it as a structured `deferrals:` front-matter entry — not just prose — so "no unreconciled deferrals" becomes a *mechanical* check instead of something a reader has to notice:
@@ -339,7 +341,7 @@ This keeps you in control of direction without having to micromanage implementat
 | Command | Description |
 |---|---|
 | `/flow-init [concept\|--adopt\|--backend ado]` | Bootstrap or adopt a project: spec index + `specs/` detail files + `CLAUDE.md` hierarchy |
-| `/flow [spec# \| --ideas \| --add \| --clean \| description]` | Implement specs, manage backlog, brainstorm |
+| `/flow [spec# \| --ideas \| --add \| --clean \| --condense \| description]` | Implement specs, manage backlog, brainstorm |
 | `/flow-hunt [--deep \| focus area]` | Hunt new feature opportunities through a domain-grounded persona panel |
 | `/flow-ship [--dry-run]` | Cut a release — reads deploy conventions from `CLAUDE.md` |
 | `/flow-review [--docs \| --ux \| --marketing \| --product]` | Audit docs, UX, marketing, or product |
@@ -403,6 +405,14 @@ Conversational spec capture. Claude asks what it is, who it's for, and what succ
 /flow --clean
 ```
 Normalizes the index: status vocabulary, entry format, and links to detail files. Shows a diff before writing.
+
+**Condense or audit existing specs:**
+```
+/flow --condense 2.3             # rewrite one spec to the terseness rules
+/flow --condense --all           # migrate a whole backlog
+/flow --condense --all --check   # audit only — report, don't rewrite
+```
+Rewrites bloated detail files to the terseness rules **losslessly** — the Progress log is copied verbatim and every acceptance criterion is preserved — with a per-spec diff you confirm before any write. `--check` reports terseness findings (including the cross-section restatement a line count can't catch) without writing. Where `/flow-lint --specs` flags the mechanical line budget, `--condense` is the judgment pass that fixes or audits it. It never changes a spec's status.
 
 ---
 
@@ -562,6 +572,8 @@ Alongside them the installer copies **`flow-preflight.sh`** — not an event hoo
 - On a **detail file** (`specs/<id>.md`): it carries **no** status field (status is single-source in the index), its front-matter `id` matches the filename, and any `deferrals:` entries are well-formed (each has `what`/`why`/`to`) — delegated to `flow-preflight.sh`
 - A legacy inline `SPECIFICATIONS.md` is detected and passed with a one-line `/flow-lint --migrate` advisory — never blocked, so a pre-migration repo stays editable
 
+It also emits a **soft bloat warning** (a nudge, never a block) when a `specs/<id>.md` grows past a line budget — default 120, overridable via `spec.maxLines` in `.flow-toolkit.json` (the same file as the CLAUDE.md caps; see [Customizing the CLAUDE.md line caps](#customizing-the-claudemd-line-caps)). The same principle as the CLAUDE.md caps, applied to spec detail files: a terse spec keeps the working set lean.
+
 On failure the guard blocks with the error list, and — this is the key difference from a git hook — **Claude reads the errors and fixes the file in the same turn**. Format drift gets corrected the moment it's introduced instead of surfacing weeks later in a lint run. The parsing is unit-tested (`hooks/hooks.test.sh`).
 
 **`flow-claude-guard.sh`** catches guardrail bloat at the moment of creation. A CLAUDE.md over its cap isn't a style problem — it's wasted context in every session, forever. When Claude pushes a file over the limit, the block message tells it to trim now: move detail to subdirectory files, delete what's derivable from code. The caps default to 300 lines (root) and 200 (subdirectory), and are [configurable per project](#customizing-the-claudemd-line-caps) when a codebase genuinely needs more room.
@@ -593,15 +605,20 @@ When a codebase genuinely needs more room, raise either cap per project with a `
   "claudeMd": {
     "rootMax": 400,
     "subdirMax": 250
+  },
+  "spec": {
+    "maxLines": 150
   }
 }
 ```
 
-- Either key may be omitted to keep its default.
+- Any key may be omitted to keep its default (`spec.maxLines` defaults to **120**).
 - The file is read fresh on every edit — no reinstall needed. Commit it so the whole team (and CI) shares the same caps.
 - Precedence is simply: the value in `.flow-toolkit.json` if present, otherwise the built-in default.
 
-Both the always-on guard hook and the on-demand `/flow-lint` audit read the same config, so they never disagree. Raising a cap is a deliberate, visible act — when the guard blocks at the default, its message points you at this knob; when it blocks against a raised cap, the message names the config file the limit came from.
+Both the always-on guard hook and the on-demand `/flow-lint` audit read the same config, so they never disagree. Raising the CLAUDE.md caps is a deliberate, visible act — when the guard blocks at the default, its message points you at this knob; when it blocks against a raised cap, the message names the config file the limit came from.
+
+`spec.maxLines` is the one knob here that only ever **warns** — a `specs/<id>.md` over the budget is a nudge to tighten it (one job per section, no cross-section restatement, append-only one-line Progress log), never a block, because specs legitimately vary in size. `flow-spec-guard.sh` surfaces it on edit and `/flow-lint --specs` reports it as `INFO`.
 
 ---
 
