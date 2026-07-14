@@ -249,5 +249,40 @@ cat > "$pf/SPECIFICATIONS.md" <<'EOF'
 EOF
 bash "$PREFLIGHT" resolved --repo "$pf" 2>/dev/null; exit_is "resolved: no DONE specs passes" 0 $?
 
+# ---- flow-commit-guard: [#id] subject-tag nudge (check 3b) ----
+CGUARD="$HERE/flow-commit-guard.sh"
+cg="$tmp/cg"; mkdir -p "$cg/specs"
+cg_json() { printf '{"cwd":"%s","tool_input":{"command":"%s"}}' "$1" "$2"; }
+
+# One spec IN PROGRESS, untagged subject → soft nudge with the exact [#id], exit 0.
+cat > "$cg/SPECIFICATIONS.md" <<'EOF'
+# Proj
+## Phase 1
+- **1.4** Auto-tag — `IN PROGRESS` — [detail](specs/1.4.md)
+EOF
+out=$(cg_json "$cg" 'git commit -m \"docs: no tag here\"' | bash "$CGUARD" 2>/dev/null); rc=$?
+exit_is "commit-guard: untagged commit is allowed (soft)" 0 "$rc"
+out_has "commit-guard: nudges the exact [#id]" "[#1.4]" "$out"
+
+# Already-tagged subject → silent (no nudge).
+out=$(cg_json "$cg" 'git commit -m \"[#1.4] docs: tagged\"' | bash "$CGUARD" 2>/dev/null); rc=$?
+exit_is "commit-guard: tagged commit passes" 0 "$rc"
+out_lacks "commit-guard: no nudge when already tagged" "no [#id] tag" "$out"
+
+# >1 spec IN PROGRESS → ambiguous, no id nudge.
+cat > "$cg/SPECIFICATIONS.md" <<'EOF'
+# Proj
+## Phase 1
+- **1.4** Auto-tag — `IN PROGRESS` — [detail](specs/1.4.md)
+- **1.5** CI — `IN PROGRESS` — [detail](specs/1.5.md)
+EOF
+out=$(cg_json "$cg" 'git commit -m \"docs: no tag here\"' | bash "$CGUARD" 2>/dev/null); rc=$?
+exit_is "commit-guard: >1 IN PROGRESS still passes" 0 "$rc"
+out_lacks "commit-guard: silent when >1 IN PROGRESS" "no [#id] tag" "$out"
+
+# Non-conventional subject still blocks (check 1 sanity).
+out=$(cg_json "$cg" 'git commit -m \"random message\"' | bash "$CGUARD" 2>&1); rc=$?
+exit_is "commit-guard: non-conventional subject blocks" 2 "$rc"
+
 echo "hooks.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

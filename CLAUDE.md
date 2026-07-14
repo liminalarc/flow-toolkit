@@ -17,7 +17,7 @@ flow-toolkit is a set of Claude Code slash commands + hooks that implement a con
 - **Keep the two installers in lockstep.** Any change to what/where files are installed, profile detection, or hook registration must land in **both** `install.sh` and `install.ps1` in the same change — they must behave identically.
 - **A rule lives in exactly one place.** Machine-checkable invariants belong in `flow-preflight.sh`, consumed by guards + commands. Never re-implement a check inline in a command or a second hook.
 - **Hooks must fail fast and cheap.** Every hook's first job is to detect "does not apply" and exit 0 immediately. Never make a hook that adds latency or noise to unrelated projects.
-- **TDD for hook logic.** Any change to hook parsing/validation gets a matching case in `hooks/hooks.test.sh`; run it before committing. Command (`.md`) changes are verified by exercising the command, not by unit test.
+- **TDD for hook logic.** Any change to hook parsing/validation gets a matching case in `hooks/hooks.test.sh`; run it before committing. CI (`.github/workflows/test.yml`) also runs it on every push/PR to `main`, so `/flow-ship`'s CI gate is real. Command (`.md`) changes are verified by exercising the command, not by unit test.
 - **Commands, hooks, and README stay in sync.** The hooks enforce the exact file formats the commands emit. Changing a spec-model format, status vocabulary, or commit convention means updating the command(s), the guard(s), `flow-preflight.sh`, AND the README's documentation of that behavior — together.
 - **Thin slices, no premature abstraction.** Ship one coherent capability per spec; don't add config knobs or generalization until a second real use exists.
 - **Conventional commits** — `feat:`/`fix:`/`chore:`/`docs:`/`refactor:`/`test:`. An optional leading `[#id]` tag is allowed. The toolkit's own commit guard enforces this here (we eat our own dog food), and `/flow-ship` derives version bumps from commit types — a malformed message silently breaks releases.
@@ -44,6 +44,7 @@ Before marking a spec `DONE`:
 
 ```
 flow-toolkit/
+├── .github/workflows/  # CI — runs hooks.test.sh on push/PR to main
 ├── commands/            # The 7 slash commands — markdown prompt files (see commands/CLAUDE.md)
 │   ├── flow.md          #   implement specs, manage backlog, brainstorm
 │   ├── flow-init.md     #   bootstrap/adopt a project

@@ -32,7 +32,7 @@ Every rule reads only the repo's own files, so it behaves identically in local a
 
 ## Testing
 
-`hooks.test.sh` is the bash test harness for hook parsing/validation. Any change to how a hook parses or validates gets a matching case here, and `bash hooks/hooks.test.sh` must be green before committing (TDD mandate from root).
+`hooks.test.sh` is the bash test harness for hook parsing/validation. Any change to how a hook parses or validates gets a matching case here, and `bash hooks/hooks.test.sh` must be green before committing (TDD mandate from root). CI (`.github/workflows/test.yml`) runs the same harness on every push/PR to `main`.
 
 ## Rules
 

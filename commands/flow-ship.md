@@ -22,7 +22,7 @@ Usage: `/flow-ship` · `/flow-ship --dry-run`
    - **Merging a feature branch is always a prompt, never automatic** — which branch, and whether it's reviewed, is a human call. Same for stashing vs committing a dirty tree.
 
    **Class 2 — gate-able (detect, then wait or report).**
-   - **Every spec in the release is DONE.** Derive the release's specs from the `[#id]` tags on commits since the last tag (`git log <lastTag>..HEAD`), then cross-check each id's status against the index (local) / board (ado). **If commits carry no `[#id]` tags** (common in local mode), say so and list the untagged commits — report ⚠️, never assume the set is empty or all-DONE.
+   - **Every spec in the release is DONE.** Derive the release's specs from the `[#id]` tags on commits since the last tag (`git log <lastTag>..HEAD`) — scan each commit's **subject first, then its body** (`git log --format=%B`), so a tag placed on either line counts. Cross-check each id's status against the index (local) / board (ado). Fall back to the index only when **no** commit carries a tag in subject *or* body; when you do, say so and list the untagged commits — report ⚠️, never assume the set is empty or all-DONE. (`/flow` tags the subject and the commit guard nudges the id, so untagged should be rare — see spec 1.4.)
    - **CI gates are green on the release commit.** Query actual status with `gh` (e.g. `gh run list`/`gh pr checks` on the release SHA). **Poll or report — never assume.** If `gh` is absent/unauthed, report ⚠️ and ask the user to confirm CI manually.
    - **Tests pass locally / build succeeds** (run the commands from CLAUDE.md) and any project-specific pre-ship steps documented there.
 
