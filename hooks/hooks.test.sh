@@ -459,5 +459,29 @@ out_lacks "commit-guard: silent when >1 IN PROGRESS" "no [#id] tag" "$out"
 out=$(cg_json "$cg" 'git commit -m \"random message\"' | bash "$CGUARD" 2>&1); rc=$?
 exit_is "commit-guard: non-conventional subject blocks" 2 "$rc"
 
+# Commit-guard inherits the dir-form DONE-gate via preflight (no inline path
+# assumption): a DONE spec whose detail is a dir-form orchestrator with a
+# dangling deferral must block the commit.
+cgd="$tmp/cgd"; mkdir -p "$cgd/specs/9.1"
+cat > "$cgd/specs/9.1/9.1.md" <<'EOF'
+---
+id: 9.1
+title: Dir spec
+deferrals:
+  - what: "dangling"
+    why: "scope"
+    to: 9.9
+---
+## Problem
+x
+EOF
+cat > "$cgd/SPECIFICATIONS.md" <<'EOF'
+# Proj
+## Archive
+- **9.1** Dir spec — `DONE` — [detail](specs/9.1/9.1.md)
+EOF
+out=$(cg_json "$cgd" 'git commit -m \"[#9.1] feat: x\"' | bash "$CGUARD" 2>&1); rc=$?
+exit_is "commit-guard: dir-form DONE spec with dangling deferral blocks" 2 "$rc"
+
 echo "hooks.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
