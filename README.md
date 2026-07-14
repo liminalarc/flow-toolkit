@@ -171,7 +171,18 @@ As a <role> I want <capability> so that <benefit>.
 
 **Specs are terse by rule.** A detail file is read into context every time its spec is worked, so bloat is wasted budget on every session. `/flow --add` authors to three rules — one job per section (no cross-section restatement — Value doesn't restate Problem, Plan doesn't restate the AC), the shortest lossless form (bullets over prose; terse ≠ dropping detail), and an append-only one-line Progress log. A soft budget (default 120 lines, `spec.maxLines` in `.flow-toolkit.json`) makes drift visible — `flow-spec-guard.sh` nudges on edit, `/flow-lint --specs` reports it — always a warning, never a block. To bring an existing or pre-rule spec into line, `/flow --condense <id>` rewrites it losslessly (or `--all` to migrate a whole backlog; `--check` to audit without rewriting).
 
-**Spec archival** — when a spec is `DONE`/`SUPERSEDED`, `/flow` moves its index entry to the `## Archive` section and relocates its detail file to `specs/archive/<id>.md`. The id is never reused — commits, PRs, and notes that cite an id (e.g. "closes 2.3") stay meaningful forever.
+**Big specs earn a directory.** Most specs are a single flat `specs/<id>.md`. A spec that grows large can break its "how" into task files by taking a **directory** instead:
+
+```
+specs/1.7/
+  1.7.md       # orchestrator — the ordinary detail file (Problem/Value/Scope/AC/Plan/…), plus a task list
+  1.7.T1.md    # task file — the "how" for one slice + a local "Done when" AC
+  1.7.T2.md
+```
+
+The **orchestrator** (`specs/<id>/<id>.md`) holds *why/what* and owns status + deferrals, exactly like a flat spec — the guards gate on it alone. Each **task file** (`specs/<id>/<id>.T<n>.md`) holds *how* plus a local acceptance criterion (a `Done when` checkbox — the seam a per-task implementer builds to and a verifier checks against); it carries **no status and no deferrals**. Break out by a manual guideline — **≥3 tasks, or a task with its own AC** — never enforced; below that, stay flat (thin slices, no premature abstraction). Both shapes work everywhere: the spec guard, the deferral `DONE`-gate, `/flow-lint`, and archival all accept flat and directory forms. To reshape an existing flat spec, run **`/flow-lint --migrate <id>`** (git-moves `specs/<id>.md` → `specs/<id>/<id>.md`, repoints the index; dry-run by default).
+
+**Spec archival** — when a spec is `DONE`/`SUPERSEDED`, `/flow` moves its index entry to the `## Archive` section and relocates its detail to `specs/archive/<id>.md` — or, for a directory spec, the whole `specs/<id>/` → `specs/archive/<id>/` (orchestrator + every task file together). The id is never reused — commits, PRs, and notes that cite an id (e.g. "closes 2.3") stay meaningful forever.
 
 **Deferrals — the machine-checkable trace.** When work in a spec's scope gets cut, the [deferral protocol](#the-development-cycle) records it as a structured `deferrals:` front-matter entry — not just prose — so "no unreconciled deferrals" becomes a *mechanical* check instead of something a reader has to notice:
 
@@ -543,9 +554,9 @@ Enforce the CLAUDE.md hierarchy rules and SPECIFICATIONS.md format. Catches prob
 
 **Severity levels:** `ERROR` (must fix — breaks `/flow` parsing or creates contradiction), `WARNING` (should fix — will cause drift over time), `INFO` (consider — best practice not met).
 
-**`--fix`** auto-corrects safe mechanical issues: index status-keyword casing, entry format, and archival (moving DONE/SUPERSEDED entries to `## Archive` + their detail files to `specs/archive/`). Never modifies CLAUDE.md content or resolves ambiguous issues.
+**`--fix`** auto-corrects safe mechanical issues: index status-keyword casing, entry format, and archival (moving DONE/SUPERSEDED entries to `## Archive` + their detail to `specs/archive/` — a flat file, or a whole `specs/<id>/` directory). Never modifies CLAUDE.md content or resolves ambiguous issues.
 
-**`--migrate`** converts a legacy inline `SPECIFICATIONS.md` (`### Spec` blocks with `**Status:**` lines) to the index + `specs/<id>.md` model — dry-run by default, non-destructive (backs up, preserves unclassified content, idempotent).
+**`--migrate`** converts a legacy inline `SPECIFICATIONS.md` (`### Spec` blocks with `**Status:**` lines) to the index + `specs/<id>.md` model — dry-run by default, non-destructive (backs up, preserves unclassified content, idempotent). **`--migrate <id>`** is the other conversion: it git-moves one flat spec `specs/<id>.md` → the directory form `specs/<id>/<id>.md` (so it can hold task files) and repoints the index — also dry-run by default, contents untouched.
 
 ---
 
@@ -569,7 +580,7 @@ Alongside them the installer copies **`flow-preflight.sh`** — not an event hoo
 **`flow-spec-guard.sh`** validates on every edit to a spec file:
 
 - On the **index** (`SPECIFICATIONS.md`): each entry matches `- **<id>** <Title> — `STATUS` — [detail](specs/<id>.md)` — alphanumeric id (e.g. `2.37a`, `P.10`, `BL-12`), em dashes, a valid status (`NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`), and no duplicate ids
-- On a **detail file** (`specs/<id>.md`): it carries **no** status field (status is single-source in the index), its front-matter `id` matches the filename, and any `deferrals:` entries are well-formed (each has `what`/`why`/`to`) — delegated to `flow-preflight.sh`
+- On a **detail file** (`specs/<id>.md`, or the directory form's orchestrator `specs/<id>/<id>.md` and task files `specs/<id>/<id>.T<n>.md`): it carries **no** status field (status is single-source in the index), its front-matter `id` matches the filename stem, and any `deferrals:` entries are well-formed (each has `what`/`why`/`to`) — delegated to `flow-preflight.sh`. A **task file** also gets a soft "no local AC" nudge (never a block) when it lacks a `Done when` checkbox
 - A legacy inline `SPECIFICATIONS.md` is detected and passed with a one-line `/flow-lint --migrate` advisory — never blocked, so a pre-migration repo stays editable
 
 It also emits a **soft bloat warning** (a nudge, never a block) when a `specs/<id>.md` grows past a line budget — default 120, overridable via `spec.maxLines` in `.flow-toolkit.json` (the same file as the CLAUDE.md caps; see [Customizing the CLAUDE.md line caps](#customizing-the-claudemd-line-caps)). The same principle as the CLAUDE.md caps, applied to spec detail files: a terse spec keeps the working set lean.
