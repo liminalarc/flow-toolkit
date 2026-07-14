@@ -6,6 +6,8 @@
 
 ## Phase 1 — Features
 - **1.2** Skills + sub-agents + spec orchestration architecture — `NOT STARTED` — [detail](specs/1.2.md)
+- **1.4** Auto-tag commits with the active spec id — `IN PROGRESS` — [detail](specs/1.4.md)
+- **1.5** CI — run hook tests on push/PR — `NOT STARTED` — [detail](specs/1.5.md)
 
 ## Archive
 - **1.1** Concise spec authoring — `DONE` — [detail](specs/archive/1.1.md)
