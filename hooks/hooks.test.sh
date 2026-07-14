@@ -249,6 +249,94 @@ cat > "$pf/SPECIFICATIONS.md" <<'EOF'
 EOF
 bash "$PREFLIGHT" resolved --repo "$pf" 2>/dev/null; exit_is "resolved: no DONE specs passes" 0 $?
 
+# ---- flow-preflight: dual-shape specs/<id>/ (1.6) ----
+# The DONE-gate + `to`-resolution must both accept the directory form
+# specs/<id>/<id>.md (orchestrator) and specs/archive/<id>/<id>.md.
+df=$(mktemp -d); mkdir -p "$df/specs/archive"
+
+# (A) to_resolves: a flat DONE spec's deferral points to a DIR-form receiving
+# spec — isolates to_resolves() (the DONE spec itself is found the old way).
+mkdir -p "$df/specs/3.2"
+cat > "$df/specs/3.2/3.2.md" <<'EOF'
+---
+id: 3.2
+title: Receiver
+---
+## Problem
+x
+EOF
+cat > "$df/specs/3.1.md" <<'EOF'
+---
+id: 3.1
+title: Deferrer
+deferrals:
+  - what: "task split"
+    why: "scope"
+    to: 3.2
+---
+## Problem
+x
+EOF
+bash "$PREFLIGHT" resolved --repo "$df" --done "3.1" 2>/dev/null; exit_is "resolved: to a dir-form spec resolves" 0 $?
+
+# (B) to_resolves: deferral points to an ARCHIVED dir-form spec.
+mkdir -p "$df/specs/archive/3.4"
+cat > "$df/specs/archive/3.4/3.4.md" <<'EOF'
+---
+id: 3.4
+title: Archived receiver
+---
+## Problem
+x
+EOF
+cat > "$df/specs/3.3.md" <<'EOF'
+---
+id: 3.3
+title: Deferrer 2
+deferrals:
+  - what: "later bit"
+    why: "scope"
+    to: 3.4
+---
+## Problem
+x
+EOF
+bash "$PREFLIGHT" resolved --repo "$df" --done "3.3" 2>/dev/null; exit_is "resolved: to an archived dir-form spec resolves" 0 $?
+
+# (C) DONE-set lookup: the DONE spec's OWN detail is a dir-form orchestrator.
+# It has an unresolved deferral, so a found file must block — if the lookup
+# missed specs/3.5/3.5.md it would silently pass (exit 0).
+mkdir -p "$df/specs/3.5"
+cat > "$df/specs/3.5/3.5.md" <<'EOF'
+---
+id: 3.5
+title: Dir orchestrator
+deferrals:
+  - what: "dangling"
+    why: "scope"
+    to: 9.9
+---
+## Problem
+x
+EOF
+bash "$PREFLIGHT" resolved --repo "$df" --done "3.5" 2>/dev/null; exit_is "resolved: dir-form orchestrator lookup gates" 2 $?
+
+# (D) DONE-set lookup: the DONE spec is an ARCHIVED dir-form orchestrator.
+mkdir -p "$df/specs/archive/3.6"
+cat > "$df/specs/archive/3.6/3.6.md" <<'EOF'
+---
+id: 3.6
+title: Archived dir orchestrator
+deferrals:
+  - what: "dangling"
+    why: "scope"
+    to: 9.9
+---
+## Problem
+x
+EOF
+bash "$PREFLIGHT" resolved --repo "$df" --done "3.6" 2>/dev/null; exit_is "resolved: archived dir-form orchestrator lookup gates" 2 $?
+
 # ---- flow-commit-guard: [#id] subject-tag nudge (check 3b) ----
 CGUARD="$HERE/flow-commit-guard.sh"
 cg="$tmp/cg"; mkdir -p "$cg/specs"

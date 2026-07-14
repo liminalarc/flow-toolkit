@@ -15,9 +15,11 @@
 #   resolved [--repo DIR] [--spec-dir specs] [--done ID,ID,...]
 #       The deferral DONE-gating rule: no spec may be DONE while any `deferrals:`
 #       front-matter entry is unresolved. An entry is resolved iff `to` is
-#       `built` or an id whose detail file exists (specs/<to>.md or
-#       specs/archive/<to>.md) — a backend-neutral proxy for "the receiving spec
-#       exists" that needs no board access. The DONE set comes from --done
+#       `built` or an id whose detail file exists — flat specs/<to>.md or
+#       archived specs/archive/<to>.md, and the directory form
+#       specs/<to>/<to>.md / specs/archive/<to>/<to>.md (a big spec's
+#       orchestrator). A backend-neutral proxy for "the receiving spec exists"
+#       that needs no board access. The DONE set comes from --done
 #       (ado / caller-supplied) or, if omitted, from SPECIFICATIONS.md (local).
 #       Exit 0 = all DONE specs clean · 2 = an unresolved deferral exists.
 #
@@ -113,8 +115,12 @@ EOF
 to_resolves() { # <to> <spec_dir_abs>
     _to="$1"; _dir="$2"
     [ "$_to" = "built" ] && return 0
+    # Flat form, then the directory form specs/<id>/<id>.md (orchestrator) — both
+    # active and archived. One place fixes both the DONE-gate and `to`-resolution.
     [ -f "$_dir/$_to.md" ] && return 0
+    [ -f "$_dir/$_to/$_to.md" ] && return 0
     [ -f "$_dir/archive/$_to.md" ] && return 0
+    [ -f "$_dir/archive/$_to/$_to.md" ] && return 0
     return 1
 }
 
@@ -151,7 +157,9 @@ cmd_resolved() {
     while IFS= read -r id; do
         [ -z "$id" ] && continue
         f="$dir/$id.md"
+        [ -f "$f" ] || f="$dir/$id/$id.md"              # dir-form orchestrator
         [ -f "$f" ] || f="$dir/archive/$id.md"
+        [ -f "$f" ] || f="$dir/archive/$id/$id.md"      # archived dir-form
         [ -f "$f" ] || continue     # missing detail file is flow-lint's job, not this rule's
         records=$(parse_deferrals "$f")
         [ -z "$records" ] && continue
