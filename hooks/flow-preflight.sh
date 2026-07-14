@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # flow-preflight.sh — shared, deterministic pre-ship / spec checks.
 #
-# This is the SOURCE OF TRUTH for three machine-checkable rules that both a
+# This is the SOURCE OF TRUTH for four machine-checkable rules that both a
 # human and the flow skills call, so a check is defined once and can never be a
 # green run that silently skipped it:
 #
@@ -27,6 +27,17 @@
 #       Validates one detail file's `deferrals:` shape: every entry has a
 #       non-empty what, why, and to. Called by flow-spec-guard.sh on each edit.
 #       Exit 0 = fine / no deferrals · 2 = a malformed entry.
+#
+#   autonomy <spec.md> [--repo DIR]
+#       Resolves a spec's autonomy mode (whether /flow pauses for plan approval)
+#       and prints `checkpoint` or `auto-build`. Precedence:
+#           autonomy.force  (.flow-toolkit.json)  — hard project override
+#         > per-spec `autonomy:` front-matter      — the spec's own choice
+#         > autonomy.default (.flow-toolkit.json)  — fallback when spec is silent
+#         > builtin `checkpoint`.
+#       An unrecognized value warns on stderr and falls back to `checkpoint`
+#       (never a silent wrong mode). Consumed by /flow's build loop. Always
+#       exit 0 — resolution never fails; the worst case is the safe default.
 #
 # Backend-neutral by construction: every rule reads only the repo's own files
 # (index + specs/<id>.md front-matter), so it behaves identically in local and
@@ -190,6 +201,77 @@ EOF
     exit 0
 }
 
+# --- subcommand: autonomy --------------------------------------------------
+# Read a scalar from the FIRST front-matter block only (between the opening ---
+# on line 1 and the next ---), stripping quotes and any inline comment.
+fm_scalar() { # <file> <key>
+    awk -v key="$2" '
+    BEGIN { fm = 0 }
+    {
+        line = $0; sub(/\r$/, "", line)
+        if (fm == 0 && NR == 1 && line ~ /^---[[:space:]]*$/) { fm = 1; next }
+        if (fm == 1 && line ~ /^---[[:space:]]*$/) { fm = 2; next }
+        if (fm != 1) next
+        if (line ~ ("^" key ":")) {
+            v = line; sub(("^" key ":[[:space:]]*"), "", v)
+            sub(/[[:space:]]*#.*$/, "", v)                 # strip inline comment
+            sub(/^"/, "", v);    sub(/"[[:space:]]*$/, "", v)
+            sub(/^\047/, "", v); sub(/\047[[:space:]]*$/, "", v)   # \047 = single quote
+            sub(/[[:space:]]+$/, "", v)
+            print v; exit
+        }
+    }' "$1"
+}
+
+# Read a string value for a key from .flow-toolkit.json. The schema only defines
+# `force`/`default` under the `autonomy` object, so a naive key match is
+# unambiguous — same pragmatic JSON handling as the spec.maxLines reader.
+json_str_val() { # <file> <key>
+    grep -oE "\"$2\"[[:space:]]*:[[:space:]]*\"[A-Za-z-]+\"" "$1" 2>/dev/null \
+        | head -n 1 | sed -E "s/.*:[[:space:]]*\"([A-Za-z-]+)\"/\1/"
+}
+
+cmd_autonomy() {
+    spec=""; repo="."
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --repo) repo="$2"; shift 2 ;;
+            --*) shift ;;
+            *) [ -z "$spec" ] && spec="$1"; shift ;;
+        esac
+    done
+    if [ -z "$spec" ]; then
+        echo "usage: flow-preflight.sh autonomy <spec-file> [--repo DIR]" >&2
+        exit 64
+    fi
+
+    force=""; default=""
+    cfg="$repo/.flow-toolkit.json"
+    if [ -f "$cfg" ]; then
+        force=$(json_str_val "$cfg" force)
+        default=$(json_str_val "$cfg" default)
+    fi
+    fm=""
+    [ -f "$spec" ] && fm=$(fm_scalar "$spec" autonomy)
+
+    # Precedence: force > per-spec > default > builtin checkpoint.
+    if [ -n "$force" ];   then mode="$force";   src="autonomy.force"
+    elif [ -n "$fm" ];    then mode="$fm";       src="per-spec front-matter"
+    elif [ -n "$default" ]; then mode="$default"; src="autonomy.default"
+    else                       mode="checkpoint"; src="builtin default"
+    fi
+
+    case "$mode" in
+        checkpoint|auto-build) ;;
+        *)
+            echo "flow-toolkit preflight: autonomy value \"$mode\" (from $src) is not one of checkpoint|auto-build — using checkpoint." >&2
+            mode="checkpoint"
+            ;;
+    esac
+    printf '%s\n' "$mode"
+    exit 0
+}
+
 # --- subcommand: git-state -------------------------------------------------
 cmd_git_state() {
     repo="."; fetch=1
@@ -276,7 +358,8 @@ case "$sub" in
     git-state)  cmd_git_state "$@" ;;
     resolved)   cmd_resolved "$@" ;;
     wellformed) cmd_wellformed "$@" ;;
+    autonomy)   cmd_autonomy "$@" ;;
     *)
-        echo "usage: flow-preflight.sh <git-state|resolved|wellformed> [args]" >&2
+        echo "usage: flow-preflight.sh <git-state|resolved|wellformed|autonomy> [args]" >&2
         exit 64 ;;
 esac

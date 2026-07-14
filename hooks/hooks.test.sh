@@ -483,5 +483,59 @@ EOF
 out=$(cg_json "$cgd" 'git commit -m \"[#9.1] feat: x\"' | bash "$CGUARD" 2>&1); rc=$?
 exit_is "commit-guard: dir-form DONE spec with dangling deferral blocks" 2 "$rc"
 
+# ---- flow-preflight: autonomy resolution (1.7) ----
+# Precedence: autonomy.force > per-spec front-matter > autonomy.default >
+# builtin checkpoint. force is a hard project override; default is only the
+# fallback when the spec is silent; a spec's own autonomy: beats the default.
+au=$(mktemp -d); mkdir -p "$au/specs"; git -C "$au" init -q
+
+spec_fm() { # <id> <autonomy-value|"">   writes specs/<id>.md, omitting the key if empty
+    if [ -n "$2" ]; then
+        printf -- '---\nid: %s\ntitle: T\nautonomy: %s\n---\n## Problem\nx\n' "$1" "$2" > "$au/specs/$1.md"
+    else
+        printf -- '---\nid: %s\ntitle: T\n---\n## Problem\nx\n' "$1" > "$au/specs/$1.md"
+    fi
+}
+cfg() { printf '%s\n' "$1" > "$au/.flow-toolkit.json"; }   # write .flow-toolkit.json
+nocfg() { rm -f "$au/.flow-toolkit.json"; }
+
+# No config, no front-matter → builtin default checkpoint.
+nocfg; spec_fm 1.1 ""
+r=$(bash "$PREFLIGHT" autonomy "$au/specs/1.1.md" --repo "$au" 2>/dev/null); exit_is "autonomy: bare spec exit 0" 0 $?
+out_has "autonomy: bare spec → checkpoint" "checkpoint" "$r"
+
+# Per-spec front-matter with no config → the spec's own value wins.
+spec_fm 1.2 "auto-build"
+r=$(bash "$PREFLIGHT" autonomy "$au/specs/1.2.md" --repo "$au" 2>/dev/null)
+out_has "autonomy: per-spec auto-build wins (no config)" "auto-build" "$r"
+
+# Repo default applies only when the spec is silent.
+cfg '{ "autonomy": { "default": "auto-build" } }'; spec_fm 1.3 ""
+r=$(bash "$PREFLIGHT" autonomy "$au/specs/1.3.md" --repo "$au" 2>/dev/null)
+out_has "autonomy: repo default fills a silent spec" "auto-build" "$r"
+
+# Per-spec BEATS repo default (spec says checkpoint, default says auto-build).
+cfg '{ "autonomy": { "default": "auto-build" } }'; spec_fm 1.4 "checkpoint"
+r=$(bash "$PREFLIGHT" autonomy "$au/specs/1.4.md" --repo "$au" 2>/dev/null)
+out_has "autonomy: per-spec beats repo default" "checkpoint" "$r"
+
+# force OVERRIDES a per-spec value (spec auto-build, force checkpoint → checkpoint).
+cfg '{ "autonomy": { "force": "checkpoint", "default": "auto-build" } }'; spec_fm 1.5 "auto-build"
+r=$(bash "$PREFLIGHT" autonomy "$au/specs/1.5.md" --repo "$au" 2>/dev/null)
+out_has "autonomy: force overrides per-spec" "checkpoint" "$r"
+
+# force wins even over a silent spec + opposite default.
+cfg '{ "autonomy": { "force": "auto-build", "default": "checkpoint" } }'; spec_fm 1.6 ""
+r=$(bash "$PREFLIGHT" autonomy "$au/specs/1.6.md" --repo "$au" 2>/dev/null)
+out_has "autonomy: force wins over silent spec" "auto-build" "$r"
+
+# Unknown per-spec value → advisory on stderr + safe default checkpoint, exit 0.
+nocfg; spec_fm 1.7 "yolo"
+r=$(bash "$PREFLIGHT" autonomy "$au/specs/1.7.md" --repo "$au" 2>/dev/null); exit_is "autonomy: unknown value exit 0" 0 $?
+out_has "autonomy: unknown value falls back to checkpoint" "checkpoint" "$r"
+adv=$(bash "$PREFLIGHT" autonomy "$au/specs/1.7.md" --repo "$au" 2>&1 >/dev/null)
+out_has "autonomy: unknown value warns on stderr" "yolo" "$adv"
+rm -rf "$au"
+
 echo "hooks.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
