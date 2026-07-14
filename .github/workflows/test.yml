@@ -1,0 +1,18 @@
+name: hook tests
+
+# Runs the bash hook test harness on every push and PR to main, so the
+# /flow-ship CI gate is real. Hooks are POSIX bash — a single ubuntu runner
+# suffices; Windows Git Bash parity is owned by the portability rule, not CI.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  hooks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run hook tests
+        run: bash hooks/hooks.test.sh
