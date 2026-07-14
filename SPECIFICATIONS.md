@@ -5,7 +5,7 @@
 > Vocabulary: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
 ## Phase 1 — Features
-- **1.6** Task-file model — dual-shape specs/<id>/ across hooks + commands — `NOT STARTED` — [detail](specs/1.6.md)
+- **1.6** Task-file model — dual-shape specs/<id>/ across hooks + commands — `IN PROGRESS` — [detail](specs/1.6.md)
 - **1.7** Sub-agent catalog + autonomy controls + verifier gating — `NOT STARTED` — [detail](specs/1.7.md)
 - **1.8** Migrate flow-review to a skill with parallel-reviewer sub-agents — `NOT STARTED` — [detail](specs/1.8.md)
 - **1.9** Migrate flow-pr to a skill with parallel-dimension sub-agents — `NOT STARTED` — [detail](specs/1.9.md)
