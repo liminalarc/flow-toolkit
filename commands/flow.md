@@ -1,5 +1,5 @@
 ---
-description: "Implement specs, manage backlog, brainstorm — /flow [spec#|--ideas|--add|--clean|description]"
+description: "Implement specs, manage backlog, brainstorm — /flow [spec#|--ideas|--add|--clean|--condense|description]"
 ---
 # Flow
 
@@ -14,6 +14,7 @@ Usage:
 - `/flow --ideas` — brainstorm new features through three lenses
 - `/flow --add` — co-author a new spec
 - `/flow --clean` — normalize the index formatting and status
+- `/flow --condense [<id>|--all] [--check]` — rewrite existing spec(s) to the terseness rules, or audit them (`--check`)
 
 ## The spec model
 
@@ -134,6 +135,22 @@ Normalize the **index** (local mode):
 - Every index entry links to an existing `specs/<id>.md`; every detail file is indexed; no duplicate ids.
 
 Show a diff before writing. (In ado mode the board owns lifecycle — there's no local index to clean; use `/flow-lint` to check index↔detail integrity of the `specs/` dir.)
+
+### `/flow --condense [<id> | --all] [--check]`
+
+Bring **existing** detail files up to the terseness rules the `--add` section states (one job per section, shortest lossless form, append-only one-line Progress log) — a **judgment** rewrite, distinct from the mechanical *index* normalization `--clean` does. Use it to migrate a backlog authored before those rules, or as an ongoing hygiene pass.
+
+**Targets:** `<id>` condenses one `specs/<id>.md`; `--all` sweeps every detail file under `spec_dir` (including `archive/`). **Amend freely** — a `DONE`/archived spec condenses like any other, and **status is never touched** (that stays single-source in the index).
+
+**Rewrite (default).** For each target, rewrite the prose sections to the terseness rules, then show a **diff and confirm per spec** before writing — never rewrite silently, even under `--all`. Two hard guarantees:
+- **Progress log copied verbatim** — never reworded, reordered, or dropped (it's append-only history).
+- **No acceptance detail lost** — every AC's concrete criterion survives; condensing changes wording, never coverage.
+
+If a spec is already under budget and non-repetitive, echo a one-line no-op and move on.
+
+**`--check` (report only).** Audit each target against the *full* terseness rules and report findings — no writes, no diff. This catches what the line budget can't: cross-section restatement (Value ≈ Problem, Scope ≈ AC, Plan ≈ AC), prose that should be bullets, a Progress log rewritten into paragraphs. Report per spec as `✅ terse` or a findings list; a clean spec reports `✅`. Complements `/flow-lint --specs` (which flags only the mechanical line budget) — use `--check` for the qualitative pass.
+
+After any write the spec guard re-validates the file and re-checks the budget on save, so a condensed spec is confirmed well-formed — and usually back under budget — in the same turn.
 
 ### `/flow <spec id>` or `/flow <description>`
 
