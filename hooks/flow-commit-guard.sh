@@ -106,6 +106,29 @@ if [ -n "$CWD" ] && [ -f "$CWD/SPECIFICATIONS.md" ]; then
         if [ -n "$staged_src" ]; then
             printf '%s' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"flow-toolkit: this commit stages source changes but no spec in SPECIFICATIONS.md is IN PROGRESS. If this implements a spec, set its status; if it is unplanned work, consider capturing it with /flow --add. Proceeding with the commit."}}'
         fi
+    else
+        # --- Check 3b (soft, never blocks): tag the subject with [#id] --------
+        # When exactly ONE spec is IN PROGRESS (local) and the subject carries no
+        # bracket tag, nudge with the exact [#<id>] so /flow-ship derives the
+        # release set from `git log`. Mutually exclusive with check 3 (that fires
+        # only when NO spec is IN PROGRESS), so at most one stdout note is emitted.
+        # Silent when the subject is already tagged, or when >1 specs are IN PROGRESS
+        # (ambiguous), or on git-generated Merge/Revert/fixup/squash subjects.
+        if [ -n "$subject" ]; then
+            case "$subject" in
+                Merge\ *|Revert\ *|fixup!*|squash!*) : ;;
+                *)
+                    if ! printf '%s' "$subject" | grep -qE '\[[^]]+\]'; then
+                        inprog_ids=$(grep -E '^- \*\*[^*]+\*\* .+ `IN PROGRESS` ' "$CWD/SPECIFICATIONS.md" | sed -nE 's/^- \*\*([^*]+)\*\*.*/\1/p')
+                        n=$(printf '%s\n' "$inprog_ids" | grep -c . || true)
+                        if [ "$n" -eq 1 ]; then
+                            id=$(printf '%s' "$inprog_ids" | tr -d '[:space:]')
+                            printf '%s' "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"flow-toolkit: spec ${id} is IN PROGRESS but this commit's subject has no [#id] tag. Prefix the subject with [#${id}] (e.g. [#${id}] feat: ...) so /flow-ship derives the release set from git log. Proceeding with the commit.\"}}"
+                        fi
+                    fi
+                    ;;
+            esac
+        fi
     fi
 fi
 
