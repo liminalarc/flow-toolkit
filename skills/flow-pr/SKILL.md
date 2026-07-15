@@ -1,6 +1,6 @@
 ---
 name: flow-pr
-description: "Spec-aware review of a PR or branch diff — /flow-pr [pr# | branch] [--spec|--quality|--tests]"
+description: Spec-aware review of a PR or branch diff — /flow-pr [pr# | branch] [--spec|--quality|--tests]
 ---
 
 # flow-pr
@@ -24,7 +24,7 @@ Usage:
 1. **Resolve the diff** — settle the exact refs/command so it can be handed to each reviewer:
    - PR number given → `gh pr view <n>` for title/body/comments, `gh pr diff <n>` for the diff.
    - Branch name given → `git diff main...<branch>`.
-   - No argument → `git diff main...HEAD`. If the current branch *is* main, review uncommitted + unpushed work instead.
+   - No argument → `git diff main...HEAD`. If the current branch *is* main, diff the unpushed + uncommitted work instead — resolve to one concrete command (`git diff @{upstream}` when an upstream exists, else `git diff HEAD`) so Phase 2 has a single runnable diff to hand each reviewer.
 2. **Identify the spec under review** — look for a spec id in the PR title/body, branch name, or commit messages (e.g. `[#1.1] feat: …`, `feat: login (Spec 1.1)`). If none is found, list IN PROGRESS specs from `SPECIFICATIONS.md` and ask which one this diff implements — or confirm it's intentionally spec-less (hotfix, chore).
 3. Note the `CLAUDE.md` files (root + any subdirectory files covering the changed paths) the reviewers must judge against.
 

@@ -14,7 +14,7 @@ Read the diff (the refs/command you were given). Read the `CLAUDE.md` (root + an
 **Clean code**
 - Naming reveals intent; functions do one thing and stay small; no duplication introduced (or near-duplication of existing code that should have been reused).
 - No dead code, commented-out blocks, debug leftovers, or magic values that deserve names.
-- Comments explain *why*, not *what*.
+- Comments explain *why*, not *what*; no redundant narration.
 - Consistency: does the new code match the named patterns in `CLAUDE.md` and the idioms of surrounding files? A locally-clean function in a foreign style is still a finding. If project rules conflict with general principles, the project's rules win — flag the conflict.
 
 ## Report
