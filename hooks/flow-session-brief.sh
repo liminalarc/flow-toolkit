@@ -54,7 +54,7 @@ END {
     if (count["NOT STARTED"] > 0) line = line " · " count["NOT STARTED"] " NOT STARTED"
     if (count["PARTIAL"] > 0)     line = line " · " count["PARTIAL"] " PARTIAL"
     if (count["DONE"] > 0)        line = line " · " count["DONE"] " DONE"
-    line = line " — run /flow for the board"
+    line = line " — run /flow:run for the board"
     print line
 }
 ' "$SPEC"

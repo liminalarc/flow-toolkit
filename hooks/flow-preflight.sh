@@ -29,14 +29,14 @@
 #       Exit 0 = fine / no deferrals · 2 = a malformed entry.
 #
 #   autonomy <spec.md> [--repo DIR]
-#       Resolves a spec's autonomy mode (whether /flow pauses for plan approval)
+#       Resolves a spec's autonomy mode (whether /flow:run pauses for plan approval)
 #       and prints `checkpoint` or `auto-build`. Precedence:
 #           autonomy.force  (.flow-toolkit.json)  — hard project override
 #         > per-spec `autonomy:` front-matter      — the spec's own choice
 #         > autonomy.default (.flow-toolkit.json)  — fallback when spec is silent
 #         > builtin `checkpoint`.
 #       An unrecognized value warns on stderr and falls back to `checkpoint`
-#       (never a silent wrong mode). Consumed by /flow's build loop. Always
+#       (never a silent wrong mode). Consumed by /flow:run's build loop. Always
 #       exit 0 — resolution never fails; the worst case is the safe default.
 #
 # Backend-neutral by construction: every rule reads only the repo's own files

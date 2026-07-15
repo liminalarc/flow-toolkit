@@ -22,7 +22,7 @@
 #     block — if it has no 'done when' checkbox.
 #
 # A legacy inline SPECIFICATIONS.md (### Spec blocks, **Status:** lines) is
-# detected and PASSED with a one-line advisory to run `/flow-lint --migrate` —
+# detected and PASSED with a one-line advisory to run `/flow:lint --migrate` —
 # it is never blocked, so a pre-migration repo stays editable.
 #
 # Exit 0 = fine / not a spec file / legacy (advisory on stderr).
@@ -157,7 +157,7 @@ fi
 # Legacy inline format: ### Spec blocks and no new-style "- **<id>**" entries.
 # Advise migration; do not block (migration is a deliberate action).
 if grep -q '^### Spec ' "$FILE" && ! grep -qE '^- \*\*[A-Za-z0-9]' "$FILE"; then
-    echo "flow-toolkit spec guard: $base looks like a legacy inline spec file (### Spec blocks). Run \`/flow-lint --migrate\` to convert it to the index + specs/<id>.md model. (Not blocking.)" >&2
+    echo "flow-toolkit spec guard: $base looks like a legacy inline spec file (### Spec blocks). Run \`/flow:lint --migrate\` to convert it to the index + specs/<id>.md model. (Not blocking.)" >&2
     exit 0
 fi
 

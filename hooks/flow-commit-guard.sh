@@ -2,7 +2,7 @@
 # flow-commit-guard.sh — Claude Code PreToolUse hook (matcher: Bash).
 #
 # Fires before every Bash command; acts only on `git commit`. Three checks:
-#   1. Commit message follows Conventional Commits — /flow-ship derives
+#   1. Commit message follows Conventional Commits — /flow:ship derives
 #      version bumps from commit types, so a malformed message silently
 #      breaks release versioning.
 #   2. SPECIFICATIONS.md (if present) passes index validation, so a broken
@@ -65,7 +65,7 @@ if [ -n "$subject" ]; then
                     echo "flow-toolkit commit guard: commit message does not follow Conventional Commits:"
                     echo "  \"$subject\""
                     echo "Use: <type>(<optional scope>): <subject> — where type is one of feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert."
-                    echo "This matters: /flow-ship derives the version bump (major/minor/patch) from commit types."
+                    echo "This matters: /flow:ship derives the version bump (major/minor/patch) from commit types."
                 } >&2
                 exit 2
             fi
@@ -88,9 +88,9 @@ if [ -n "$CWD" ] && [ -f "$CWD/SPECIFICATIONS.md" ]; then
 
     # --- Check 2b: no DONE spec may carry an unreconciled deferral ------------
     # The deferral DONE-gating rule, enforced at commit time in local mode (the
-    # index tells us which specs are DONE). Same helper /flow-lint and /flow-ship
+    # index tells us which specs are DONE). Same helper /flow:lint and /flow:ship
     # use, so the rule is defined once. (ado mode has no SPECIFICATIONS.md here,
-    # so status lives on the board — gating falls to /flow-lint and /flow-ship.)
+    # so status lives on the board — gating falls to /flow:lint and /flow:ship.)
     if [ -f "$SCRIPT_DIR/flow-preflight.sh" ]; then
         if ! bash "$SCRIPT_DIR/flow-preflight.sh" resolved --repo "$CWD"; then
             echo "flow-toolkit commit guard: reconcile the deferral(s) above (or change the spec's status) before committing." >&2
@@ -104,12 +104,12 @@ if [ -n "$CWD" ] && [ -f "$CWD/SPECIFICATIONS.md" ]; then
     if ! grep -qE '(`IN PROGRESS`|^\*\*Status:\*\* IN PROGRESS)' "$CWD/SPECIFICATIONS.md"; then
         staged_src=$(cd "$CWD" && git diff --cached --name-only 2>/dev/null | grep -vE '\.md$' | head -n 1 || true)
         if [ -n "$staged_src" ]; then
-            printf '%s' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"flow-toolkit: this commit stages source changes but no spec in SPECIFICATIONS.md is IN PROGRESS. If this implements a spec, set its status; if it is unplanned work, consider capturing it with /flow --add. Proceeding with the commit."}}'
+            printf '%s' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"flow-toolkit: this commit stages source changes but no spec in SPECIFICATIONS.md is IN PROGRESS. If this implements a spec, set its status; if it is unplanned work, consider capturing it with /flow:run --add. Proceeding with the commit."}}'
         fi
     else
         # --- Check 3b (soft, never blocks): tag the subject with [#id] --------
         # When exactly ONE spec is IN PROGRESS (local) and the subject carries no
-        # bracket tag, nudge with the exact [#<id>] so /flow-ship derives the
+        # bracket tag, nudge with the exact [#<id>] so /flow:ship derives the
         # release set from `git log`. Mutually exclusive with check 3 (that fires
         # only when NO spec is IN PROGRESS), so at most one stdout note is emitted.
         # Silent when the subject is already tagged, or when >1 specs are IN PROGRESS
@@ -123,7 +123,7 @@ if [ -n "$CWD" ] && [ -f "$CWD/SPECIFICATIONS.md" ]; then
                         n=$(printf '%s\n' "$inprog_ids" | grep -c . || true)
                         if [ "$n" -eq 1 ]; then
                             id=$(printf '%s' "$inprog_ids" | tr -d '[:space:]')
-                            printf '%s' "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"flow-toolkit: spec ${id} is IN PROGRESS but this commit's subject has no [#id] tag. Prefix the subject with [#${id}] (e.g. [#${id}] feat: ...) so /flow-ship derives the release set from git log. Proceeding with the commit.\"}}"
+                            printf '%s' "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"flow-toolkit: spec ${id} is IN PROGRESS but this commit's subject has no [#id] tag. Prefix the subject with [#${id}] (e.g. [#${id}] feat: ...) so /flow:ship derives the release set from git log. Proceeding with the commit.\"}}"
                         fi
                     fi
                     ;;
