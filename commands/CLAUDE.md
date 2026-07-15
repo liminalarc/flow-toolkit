@@ -14,7 +14,7 @@ description: "<one-line summary — usage syntax in brackets> — /<name> [args]
 ---
 ```
 
-The `description` is what shows in the `/` picker. Keep it to one line, lead with the value, and end with the invocation shape (e.g. `/flow [spec#|--ideas|--add|--clean|description]`). Match the style of the existing seven files.
+The `description` is what shows in the `/` picker. Keep it to one line, lead with the value, and end with the invocation shape (e.g. `/flow [spec#|--ideas|--add|--clean|description]`). Match the style of the existing command files.
 
 ## Structure every command follows
 

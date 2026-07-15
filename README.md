@@ -108,7 +108,7 @@ Every token in Claude's context window is either signal or noise. The toolkit is
 
 The result: a session that starts sharp and stays sharp, because the structure of the project files keeps Claude's working set lean by default.
 
-**Every command reinforces this.** Each of the six commands opens with an explicit instruction to ignore prior conversation context and read only from the project files. You can chain `/flow-init` → `/flow` → `/flow-lint` without a `/clear` in between — each one starts fresh on its own.
+**Every command reinforces this.** Each command (and the `flow-review` skill) opens with an explicit instruction to ignore prior conversation context and read only from the project files. You can chain `/flow-init` → `/flow` → `/flow-lint` without a `/clear` in between — each one starts fresh on its own.
 
 ## The Project Files
 
@@ -378,7 +378,7 @@ Precedence: `autonomy.force` (hard project override) > the spec's `autonomy:` fr
 | `/flow [spec# \| --ideas \| --add \| --clean \| --condense \| description]` | Implement specs, manage backlog, brainstorm |
 | `/flow-hunt [--deep \| focus area]` | Hunt new feature opportunities through a domain-grounded persona panel |
 | `/flow-ship [--dry-run]` | Cut a release — reads deploy conventions from `CLAUDE.md` |
-| `/flow-review [--docs \| --ux \| --marketing \| --product]` | Audit docs, UX, marketing, or product |
+| `/flow-review [--docs \| --ux \| --marketing \| --product]` _(skill)_ | Audit docs, UX, marketing, or product |
 | `/flow-pr [pr# \| branch] [--spec \| --quality \| --tests]` | Spec-aware review of a PR or branch diff, with clean-code and test-coverage checks |
 | `/flow-lint [--claude \| --specs \| --fix \| --migrate]` | Enforce CLAUDE.md hierarchy + spec index/detail integrity; migrate legacy specs |
 
