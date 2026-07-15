@@ -18,20 +18,22 @@ Usage:
 
 **Start fresh.** Read only from the project files — `CLAUDE.md`, `SPECIFICATIONS.md`, `README.md`, `MARKETING.md`. Do not reference or build on prior conversation context. Treat this as a new session regardless of what preceded it.
 
-**Progressive disclosure — load only the lens(es) you run.** Each lens's rubric lives under `reference/`. Read a rubric *only when you run that lens*, so a single-lens invocation never loads the other three:
+**Fan out to one reviewer per lens.** Each lens is audited by an independent, read-only `flow-reviewer` sub-agent that loads only its own rubric — so the main thread stays lean and lenses run in parallel. Lens → rubric:
 
-| Lens | Flag | Rubric |
+| Lens | Flag | Rubric (passed to the reviewer) |
 |---|---|---|
 | Docs | `--docs` | `reference/docs.md` |
 | UX | `--ux` | `reference/ux.md` |
 | Marketing | `--marketing` | `reference/marketing.md` |
 | Product | `--product` | `reference/product.md` |
 
-**Run a lens:** read its rubric, follow the Discover → Review → Report phases, and produce prioritized, actionable findings — each with a concrete suggested fix.
+**Dispatch.** For each requested lens, launch a `flow-reviewer` agent with: the lens name, the path to its rubric (`reference/<lens>.md` within this skill's directory), and the project root. When more than one lens runs, launch them **in parallel** — a single message with multiple agent calls. Each reviewer returns prioritized findings for its lens and never edits.
 
-**All lenses (`/flow-review`, no flag):** run docs → product → ux → marketing, then produce a cross-lens summary of the highest-priority items across all areas.
+**Synthesize (main thread).**
+- Single lens → present that lens's prioritized findings.
+- All lenses (`/flow-review`, no flag) → run all four reviewers, then produce a **cross-lens summary** of the highest-priority items across docs, UX, marketing, and product.
 
-**Applying fixes:** the review produces *findings*. When findings warrant edits (e.g. doc fixes), you — the main thread — propose them and **confirm before making significant changes**. The review itself never edits silently.
+**Applying fixes.** Reviewers only report. When a finding warrants an edit (e.g. a doc fix), you — the main thread — propose it and **confirm before making significant changes**. The review never edits silently.
 
 ## Rules
 - Read before writing — understand current state before proposing changes.
