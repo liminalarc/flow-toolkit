@@ -16,7 +16,7 @@ flow-toolkit is a set of Claude Code slash commands + hooks that implement a con
 
 ## Development Rules
 
-- **Keep the two installers in lockstep.** Any change to what/where files are installed, profile detection, or hook registration must land in **both** `install.sh` and `install.ps1` in the same change — they must behave identically.
+- **Keep the shell/PowerShell script pairs in lockstep.** Any change to what/where files are installed, profile detection, or hook registration must land in **both** `install.sh` and `install.ps1` (and likewise `uninstall.sh`/`uninstall.ps1`) in the same change — each pair must behave identically.
 - **A rule lives in exactly one place.** Machine-checkable invariants belong in `flow-preflight.sh`, consumed by guards + commands. Never re-implement a check inline in a command or a second hook.
 - **Hooks must fail fast and cheap.** Every hook's first job is to detect "does not apply" and exit 0 immediately. Never make a hook that adds latency or noise to unrelated projects.
 - **TDD for hook logic.** Any change to hook parsing/validation gets a matching case in `hooks/hooks.test.sh`; run it before committing. CI (`.github/workflows/test.yml`) also runs it on every push/PR to `main`, so `/flow:ship`'s CI gate is real. Command (`.md`) changes are verified by exercising the command, not by unit test.
@@ -74,6 +74,8 @@ flow-toolkit/
 ├── docs/                # architecture.md, authoring-commands.md — dev docs (not shipped as commands)
 ├── install.sh           # Fallback installer (Mac/Linux) — must mirror install.ps1
 ├── install.ps1          # Fallback installer (Windows) — must mirror install.sh
+├── uninstall.sh         # Purge a manual install (plugin-only migration) — mirrors uninstall.ps1
+├── uninstall.ps1        # Purge a manual install (plugin-only migration) — mirrors uninstall.sh
 ├── README.md            # The user-facing manual — the front door
 ├── SPECIFICATIONS.md    # The backlog index (status = single source of truth)
 └── specs/               # One detail file per spec (flat specs/<id>.md, or a dir specs/<id>/ = orchestrator + <id>.T<n> task files); specs/archive/ for DONE/SUPERSEDED

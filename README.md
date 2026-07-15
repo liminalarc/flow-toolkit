@@ -50,7 +50,9 @@ Earlier versions distributed the toolkit via `git clone` + an `install.{sh,ps1}`
 
 1. Install the plugin (above) and restart.
 2. Verify `/flow:run` responds.
-3. Remove the old bare files: running the fallback installer once prunes them automatically, or delete `~/.claude/commands/flow*.md` and `~/.claude/skills/{flow,flow-hunt,flow-review,flow-pr}` by hand (a leftover `~/.claude/commands/CLAUDE.md` from the old installer is safe to delete too).
+3. **Purge the old manual install** so the plugin is the sole source — from a clone of this repo, run `./uninstall.sh` (Mac/Linux) or `.\uninstall.ps1` (Windows). It removes the toolkit's copied commands/skills/agents/hook-scripts from every detected profile and deregisters its `settings.json` hooks (backing up to `settings.json.bak`), touching nothing else. Restart afterward. (A leftover `commands/CLAUDE.md` from the old installer is left in place — delete it by hand only if it was the toolkit's.)
+
+> Why purge? Leftover bare `~/.claude/agents/flow-*.md` files *shadow* the plugin's agents, and old `settings.json` hooks double-fire alongside the plugin's. Purging makes agent dispatch and the guards resolve cleanly to the plugin.
 
 | Before (bare) | Now (plugin) |
 |---|---|
