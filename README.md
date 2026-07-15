@@ -45,7 +45,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
-Commands are copied to `~/.claude/commands/` and appear in the `/` picker in every project. Sub-agent definitions are copied to `~/.claude/agents/` (they stay inert until a command dispatches one, so they cost nothing in projects that don't use them). The installer also registers the toolkit's [hooks](#hooks) in `~/.claude/settings.json` (an additive merge — your existing settings are preserved and backed up to `settings.json.bak` first). Restart Claude Code after installing.
+Commands are copied to `~/.claude/commands/` and appear in the `/` picker in every project. Skills are copied to `~/.claude/skills/<name>/` (also invoked as `/<name>`), and sub-agent definitions to `~/.claude/agents/` — both stay inert until dispatched, so they cost nothing in projects that don't use them. The installer also registers the toolkit's [hooks](#hooks) in `~/.claude/settings.json` (an additive merge — your existing settings are preserved and backed up to `settings.json.bak` first). Restart Claude Code after installing.
 
 **Multiple Claude accounts on one machine?** The installer auto-detects every Claude profile directory and installs into each — the canonical `~/.claude`, any sibling like `~/.claude-work`, and whatever `$CLAUDE_CONFIG_DIR` points at. It prints the detected profiles as it runs. No account names are hardcoded, so adding or removing an account needs no change to the install scripts.
 
@@ -500,7 +500,7 @@ The git-state and deferral checks are the same shared `flow-preflight.sh` helper
 
 ### /flow-review
 
-Structured audit from multiple perspectives.
+Structured audit from multiple perspectives. `/flow-review` is a **skill**: it loads only the lens rubric you invoke, and fans each lens out to an independent, read-only `flow-reviewer` sub-agent (running in parallel), then the main thread synthesizes. Entry point is unchanged — you still invoke `/flow-review`.
 
 ```
 /flow-review               # all lenses
@@ -510,7 +510,7 @@ Structured audit from multiple perspectives.
 /flow-review --product     # product critique
 ```
 
-**`--docs`** — Finds all docs (READMEs, CLAUDE.md hierarchy, SPECIFICATIONS.md, API docs, setup guides). Checks accuracy, freshness, and coverage for new contributors. Updates inaccuracies after confirming.
+**`--docs`** — Finds all docs (READMEs, CLAUDE.md hierarchy, SPECIFICATIONS.md, API docs, setup guides). Checks accuracy, freshness, and coverage for new contributors. Reports findings with suggested fixes; the main thread applies significant changes only after you confirm.
 
 **`--ux`** — Identifies all user-facing flows from CLAUDE.md or route files. Reviews clarity, friction, consistency, responsive behavior, error/empty/loading states. Produces a prioritized list (critical / high / low) and proposes fixes.
 
@@ -518,7 +518,7 @@ Structured audit from multiple perspectives.
 
 **`--product`** — Power-user perspective. Identifies friction, missing features, over-complexity, and likely drop-off points. Outputs 5-10 prioritized observations with concrete suggestions. Offers to draft top items as specs.
 
-When run without flags, all four lenses run in sequence (docs → product → ux → marketing) with a cross-lens summary at the end.
+When run without flags, all four lenses run **in parallel** (one reviewer each) and the main thread produces a cross-lens summary of the highest-priority items at the end.
 
 ---
 

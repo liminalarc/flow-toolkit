@@ -31,6 +31,7 @@ Write-Host ""
 $commands = Get-ChildItem -Path ".\commands\*.md"
 $hookScripts = Get-ChildItem -Path ".\hooks\*.sh" -ErrorAction SilentlyContinue
 $agentFiles = Get-ChildItem -Path ".\agents\*.md" -ErrorAction SilentlyContinue
+$skillDirs = Get-ChildItem -Path ".\skills" -Directory -ErrorAction SilentlyContinue
 
 foreach ($profileDir in $profiles) {
     $profileName = Split-Path $profileDir -Leaf
@@ -64,6 +65,23 @@ foreach ($profileDir in $profiles) {
             Copy-Item -Path $file.FullName -Destination $agentsDir -Force
         }
         Write-Host "Installed $($agentFiles.Count) agent(s) to $agentsDir"
+    }
+
+    # --- Skills ---
+    # A skill is a directory (SKILL.md + reference/*), copied whole. Force-clean
+    # the target skill dir first so a removed/renamed reference file doesn't linger.
+    # Same rationale as agents; placed before the hooks early-exit below.
+    if ($skillDirs) {
+        $skillsDir = Join-Path $profileDir "skills"
+        if (-not (Test-Path $skillsDir)) {
+            New-Item -ItemType Directory -Path $skillsDir -Force | Out-Null
+        }
+        foreach ($dir in $skillDirs) {
+            $dest = Join-Path $skillsDir $dir.Name
+            if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+            Copy-Item -Path $dir.FullName -Destination $dest -Recurse -Force
+        }
+        Write-Host "Installed $($skillDirs.Count) skill(s) to $skillsDir"
     }
 
     # --- Hook scripts ---

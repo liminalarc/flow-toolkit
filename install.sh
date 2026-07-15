@@ -40,6 +40,7 @@ echo ""
 count=$(ls commands/*.md 2>/dev/null | wc -l)
 hook_count=$(ls hooks/*.sh 2>/dev/null | wc -l)
 agent_count=$(ls agents/*.md 2>/dev/null | wc -l)
+skill_count=$(ls -d skills/*/ 2>/dev/null | wc -l)
 
 register_hooks() {
     # Additive merge of hooks/hooks.json into settings.json. Per-script
@@ -123,6 +124,21 @@ for profile in "${PROFILES[@]}"; do
             cp "$file" "$agents_dir/"
         done
         echo "Installed $agent_count agent(s) to $agents_dir"
+    fi
+
+    # --- Skills ---
+    # A skill is a directory (SKILL.md + reference/*), copied whole. Force-clean
+    # the target skill dir first so a removed/renamed reference file doesn't linger.
+    # Same rationale as agents: inert until invoked; 1.10 folds these into the plugin.
+    if [ "$skill_count" -gt 0 ]; then
+        skills_dir="$profile/skills"
+        mkdir -p "$skills_dir"
+        for dir in skills/*/; do
+            name=$(basename "$dir")
+            rm -rf "$skills_dir/$name"
+            cp -R "${dir%/}" "$skills_dir/"
+        done
+        echo "Installed $skill_count skill(s) to $skills_dir"
     fi
 
     # --- Hooks ---
