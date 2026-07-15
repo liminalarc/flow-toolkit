@@ -379,7 +379,7 @@ Precedence: `autonomy.force` (hard project override) > the spec's `autonomy:` fr
 | `/flow-hunt [--deep \| focus area]` | Hunt new feature opportunities through a domain-grounded persona panel |
 | `/flow-ship [--dry-run]` | Cut a release — reads deploy conventions from `CLAUDE.md` |
 | `/flow-review [--docs \| --ux \| --marketing \| --product]` _(skill)_ | Audit docs, UX, marketing, or product |
-| `/flow-pr [pr# \| branch] [--spec \| --quality \| --tests]` | Spec-aware review of a PR or branch diff, with clean-code and test-coverage checks |
+| `/flow-pr [pr# \| branch] [--spec \| --quality \| --tests]` _(skill)_ | Spec-aware review of a PR or branch diff, with clean-code and test-coverage checks |
 | `/flow-lint [--claude \| --specs \| --fix \| --migrate]` | Enforce CLAUDE.md hierarchy + spec index/detail integrity; migrate legacy specs |
 
 ---
@@ -524,7 +524,7 @@ When run without flags, all four lenses run **in parallel** (one reviewer each) 
 
 ### /flow-pr
 
-Spec-aware PR review. Where GitHub's generic review asks "is this good code?", `/flow-pr` asks "is this the code the spec asked for, built the way this project builds things?"
+Spec-aware PR review. Where GitHub's generic review asks "is this good code?", `/flow-pr` asks "is this the code the spec asked for, built the way this project builds things?" `/flow-pr` is a **skill**: it loads only the dimension rubric you invoke, and fans each dimension out to an independent, read-only `flow-pr-reviewer` sub-agent (running in parallel over the diff), then the main thread synthesizes the verdict. Entry point is unchanged — you still invoke `/flow-pr`.
 
 ```
 /flow-pr                  # review current branch vs main
@@ -535,12 +535,11 @@ Spec-aware PR review. Where GitHub's generic review asks "is this good code?", `
 /flow-pr --tests          # test coverage only
 ```
 
-**Four review dimensions:**
+**Three review dimensions** (one `flow-pr-reviewer` each):
 
-1. **Spec fidelity** — finds the spec the diff claims to implement (from the PR title, branch name, or commit messages), walks its acceptance criteria one by one (✅ satisfied / ⬜ not addressed / ❌ contradicted), flags scope creep, and checks the bookkeeping: status updated, CLAUDE.md updated if new patterns shipped.
-2. **Correctness** — bugs, edge cases, and a quick security pass on the changed code only.
-3. **Clean Code** — intent-revealing naming, small single-purpose functions, no duplication or dead code, comments that explain *why*. Judged against `CLAUDE.md`'s named patterns first, general principles second — a locally-clean function in a foreign style is still a finding.
-4. **Tests** — every behavior change must have a test change (the TDD check), tests assert behavior not implementation, and the suite actually runs. If coverage tooling is configured, reports coverage on the changed files only.
+1. **Spec fidelity** (`--spec`) — finds the spec the diff claims to implement (from the PR title, branch name, or commit messages), walks its acceptance criteria one by one (✅ satisfied / ⬜ not addressed / ❌ contradicted), flags scope creep, and checks the bookkeeping: status updated, CLAUDE.md updated if new patterns shipped.
+2. **Quality** (`--quality`) — correctness (bugs, edge cases, a quick security pass on the changed code only) plus clean code: intent-revealing naming, small single-purpose functions, no duplication or dead code, comments that explain *why*. Judged against `CLAUDE.md`'s named patterns first, general principles second — a locally-clean function in a foreign style is still a finding.
+3. **Tests** (`--tests`) — every behavior change must have a test change (the TDD check), tests assert behavior not implementation, and the suite actually runs (the reviewer runs it). If coverage tooling is configured, reports coverage on the changed files only.
 
 **Output:** a verdict (`READY` / `READY WITH NITS` / `NEEDS WORK`), the spec scorecard, and findings grouped `BLOCKER` / `SHOULD FIX` / `NIT` — each with a `file:line` and a concrete fix. A failing test suite is an automatic `NEEDS WORK`. It never posts to GitHub, approves, or merges unless you explicitly ask.
 

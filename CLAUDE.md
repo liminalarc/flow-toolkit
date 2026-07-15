@@ -8,7 +8,7 @@ flow-toolkit is a set of Claude Code slash commands + hooks that implement a con
 - **Commands are markdown prompts.** Each `commands/<name>.md` is a self-contained instruction set with YAML front-matter (`description:`). They carry no logic beyond what Claude reads and executes; "testing a command" means running it, not a unit test.
 - **Hooks are the deterministic seatbelt.** `flow-spec-guard`, `flow-claude-guard`, `flow-commit-guard`, `flow-session-brief` fire on Claude Code events and enforce file-format invariants with zero tokens. Every hook exits instantly when it doesn't apply (non-spec file, non-commit, no spec model) so it costs nothing in unrelated projects.
 - **`flow-preflight.sh` is the single source of truth** for four machine-checkable rules — `git-state`, `resolved` (the deferral `DONE`-gate), `wellformed` (deferral front-matter shape), `autonomy` (resolves `checkpoint`/`auto-build` by precedence). The guards, `/flow`, `/flow-lint`, and `/flow-ship` call it, so a rule is defined once and can't drift.
-- **Skills = progressive disclosure.** A heavy, path-dependent command becomes a skill when only part of its prompt is needed per run: `SKILL.md` is the always-loaded entry, `reference/*` files load only on the path that needs them. `flow-review` is the first (audits four lenses via parallel `flow-reviewer` agents); thin, deliberate-only commands (`flow-lint`, `flow-ship`) stay commands.
+- **Skills = progressive disclosure.** A heavy, path-dependent command becomes a skill when only part of its prompt is needed per run: `SKILL.md` is the always-loaded entry, `reference/*` files load only on the path that needs them. `flow-review` (audits four lenses via parallel `flow-reviewer` agents) and `flow-pr` (reviews a diff across three dimensions via parallel `flow-pr-reviewer` agents) are the two so far; thin, deliberate-only commands (`flow-lint`, `flow-ship`) stay commands.
 - **Sub-agents + autonomy.** `/flow` dispatches a `flow-implementer` per task and an independent `flow-verifier` on its diff before integration. A spec's `autonomy:` front-matter (or `.flow-toolkit.json` `autonomy.default`/`autonomy.force`) selects `checkpoint` (default — pause for plan sign-off, verifier advisory) or `auto-build` (no pause, verifier **blocking**: a FAIL gets one retry then escalates). Autonomy gates only the plan-approval pause — never Claude Code permissions.
 - **Bash everywhere, incl. Windows.** All hooks are POSIX bash and run through Git Bash on Windows. No Bashism that needs GNU-only tools; keep them portable across macOS/Linux/Git-Bash.
 - **Profile-agnostic install.** The installers auto-detect every Claude profile dir (`~/.claude`, `~/.claude-*`, `$CLAUDE_CONFIG_DIR`) and install into each. No account name is ever hardcoded — adding/removing a Claude account must need no installer edit.
@@ -52,14 +52,15 @@ flow-toolkit/
 │   ├── flow-init.md     #   bootstrap/adopt a project
 │   ├── flow-hunt.md     #   opportunity hunting via persona panel
 │   ├── flow-ship.md     #   cut a release
-│   ├── flow-pr.md       #   spec-aware PR/diff review
 │   └── flow-lint.md     #   audit CLAUDE.md hierarchy + spec integrity
 ├── skills/              # Skills — SKILL.md + on-demand reference/* (also invoked as /<name>)
-│   └── flow-review/     #   audit docs/UX/marketing/product via parallel flow-reviewer agents
+│   ├── flow-review/     #   audit docs/UX/marketing/product via parallel flow-reviewer agents
+│   └── flow-pr/         #   spec-aware PR/diff review across dimensions via parallel flow-pr-reviewer agents
 ├── agents/              # Sub-agent definitions (pure-prompt md, dispatched by commands/skills)
 │   ├── flow-implementer.md  #   builds one task to its local AC (write, worktree-isolated when parallel)
 │   ├── flow-verifier.md     #   checks an implementer's diff vs the task AC (read-only, judges never fixes)
-│   └── flow-reviewer.md     #   audits one flow-review lens vs its rubric (read-only, never edits)
+│   ├── flow-reviewer.md     #   audits one flow-review lens vs its rubric (read-only, never edits)
+│   └── flow-pr-reviewer.md  #   audits one flow-pr dimension vs its rubric on the diff (read-only, never edits)
 ├── hooks/               # Always-on bash guards + shared helper (see hooks/CLAUDE.md)
 │   ├── flow-spec-guard.sh
 │   ├── flow-claude-guard.sh
