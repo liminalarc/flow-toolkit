@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
-# install.sh — Install flow-toolkit commands and hooks into Claude Code's global config
+# install.sh — LEGACY FALLBACK installer for flow-toolkit.
+#
+# The PRIMARY distribution is now the `flow` Claude Code plugin (namespaced /flow:*):
+#   /plugin marketplace add liminalarc/flow-toolkit
+#   /plugin install flow@flow-toolkit
+#
+# Use this installer only where the plugin isn't an option. It force-copies the
+# commands/skills/agents as BARE names (e.g. /run, /hunt — not /flow:run) and
+# registers the hooks in each profile's settings.json. It also prunes pre-plugin
+# stale files so a reinstall doesn't leave old bare commands lying around.
 # Run from the repo root: ./install.sh
 
 set -e
@@ -109,6 +118,19 @@ for profile in "${PROFILES[@]}"; do
         echo "Skipping $profile_name (profile directory does not exist)"
         continue
     fi
+
+    # --- Prune stale pre-plugin artifacts ---
+    # The toolkit now ships as the `flow` plugin. Remove files it distributed under
+    # OLD names (pre-1.10 bare commands + renamed-away skills) so a fallback reinstall
+    # doesn't leave stale bare entry points beside the current set. Exact-name only —
+    # never touches non-toolkit commands/skills in the profile. (Resolves spec 1.11's
+    # deferred stale-command prune.)
+    for stale in flow.md flow-hunt.md flow-review.md flow-pr.md flow-init.md flow-lint.md flow-ship.md; do
+        rm -f "$profile/commands/$stale"
+    done
+    for stale in flow flow-hunt flow-review flow-pr; do
+        rm -rf "$profile/skills/$stale"
+    done
 
     # --- Commands ---
     target="$profile/commands"
