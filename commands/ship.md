@@ -40,7 +40,7 @@ Usage: `/flow:ship` · `/flow:ship --dry-run`
 
    **Confirm with the user before tagging.**
 
-4. **Execute.** Follow the mechanism documented in CLAUDE.md exactly — typically: create and push a git tag, which triggers CI/CD.
+4. **Execute.** Follow the mechanism documented in CLAUDE.md exactly — typically: create and push a git tag, which triggers CI/CD. **If the project ships as a Claude Code plugin** (a `.claude-plugin/plugin.json` exists), bump its `version` field to the computed release version and commit that before tagging — the plugin `version` is what drives `/plugin update`, so a tag without a matching bump ships an update no plugin user receives.
 
 5. **Report.** State the tag/version, link to CI/CD if known, note what to verify post-deploy.
 
