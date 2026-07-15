@@ -6,6 +6,7 @@
 
 ## Phase 1 — Features
 - **1.12** How-it-works diagrams + architecture doc — `NOT STARTED` — [detail](specs/1.12.md)
+- **1.13** Plugin-only — standalone fixes + purge tooling — `IN PROGRESS` — [detail](specs/1.13/1.13.md)
 
 ## Archive
 - **1.10** Plugin packaging + criterion-gated installer transition — `DONE` — [detail](specs/archive/1.10/1.10.md)
