@@ -5,7 +5,7 @@
 > Vocabulary: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
 ## Phase 1 — Features
-- **1.8** Migrate flow-review to a skill with parallel-reviewer sub-agents — `NOT STARTED` — [detail](specs/1.8.md)
+- **1.8** Migrate flow-review to a skill with parallel-reviewer sub-agents — `IN PROGRESS` — [detail](specs/1.8.md)
 - **1.9** Migrate flow-pr to a skill with parallel-dimension sub-agents — `NOT STARTED` — [detail](specs/1.9.md)
 - **1.10** Plugin packaging + criterion-gated installer transition — `NOT STARTED` — [detail](specs/1.10.md)
 - **1.11** Migrate flow + flow-hunt to skills — `NOT STARTED` — [detail](specs/1.11.md)
