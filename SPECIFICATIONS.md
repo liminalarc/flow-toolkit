@@ -6,7 +6,7 @@
 
 ## Phase 1 — Features
 - **1.10** Plugin packaging + criterion-gated installer transition — `NOT STARTED` — [detail](specs/1.10.md)
-- **1.11** Migrate flow + flow-hunt to skills — `NOT STARTED` — [detail](specs/1.11.md)
+- **1.11** Migrate flow + flow-hunt to skills — `IN PROGRESS` — [detail](specs/1.11.md)
 - **1.12** How-it-works diagrams + architecture doc — `NOT STARTED` — [detail](specs/1.12.md)
 
 ## Archive
