@@ -1,4 +1,4 @@
-# flow-pr — spec-fidelity dimension
+# flow:pr — spec-fidelity dimension
 
 Audit whether the diff is *the code the spec asked for*. **Read-only: produce findings, do not edit.**
 
@@ -7,7 +7,7 @@ Read the diff (the refs/command you were given — e.g. `git diff main...HEAD`, 
 
 ## Review
 - **AC walk** — go through the spec's acceptance criteria one by one: which does the diff satisfy, which are untouched, which are contradicted? Cite the diff hunk that proves each verdict.
-- **Scope** — does the diff contain work *beyond* the spec? Flag scope creep; note it may deserve its own spec via `/flow --add`.
+- **Scope** — does the diff contain work *beyond* the spec? Flag scope creep; note it may deserve its own spec via `/flow:run --add`.
 - **Bookkeeping** — is the spec's status updated correctly? If the diff introduces a new pattern, is `CLAUDE.md` updated per the feature-completion checklist? Are any `deferrals:` reconciled?
 
 ## Report

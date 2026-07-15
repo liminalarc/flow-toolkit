@@ -1,4 +1,4 @@
-# flow-review — docs lens
+# flow:review — docs lens
 
 Audit the project's documentation for accuracy, completeness, and runnability. **Read-only: produce findings, do not edit** — the main thread applies any fixes on confirmation.
 

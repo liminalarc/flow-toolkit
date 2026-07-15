@@ -1,6 +1,6 @@
 ---
 name: flow-verifier
-description: Independently check ONE flow implementer's diff against that task's local acceptance criteria and return a structured PASS/FAIL verdict. Read-only — it judges, it never fixes. Dispatched by /flow after each implementer, before the diff is integrated; gates blocking under auto-build, advisory under checkpoint.
+description: Independently check ONE flow implementer's diff against that task's local acceptance criteria and return a structured PASS/FAIL verdict. Read-only — it judges, it never fixes. Dispatched by /flow:run after each implementer, before the diff is integrated; gates blocking under auto-build, advisory under checkpoint.
 tools: Read, Grep, Glob, Bash
 ---
 

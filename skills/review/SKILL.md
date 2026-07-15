@@ -1,18 +1,18 @@
 ---
-name: flow-review
-description: Structured, multi-lens audit of a project — docs, UX, marketing, or product. Reads current state, finds gaps, proposes concrete fixes. Invoke as /flow-review [--docs|--ux|--marketing|--product]; runs all four lenses when none is named.
+name: review
+description: Structured, multi-lens audit of a project — docs, UX, marketing, or product. Reads current state, finds gaps, proposes concrete fixes. Invoke as /flow:review [--docs|--ux|--marketing|--product]; runs all four lenses when none is named.
 ---
 
-# flow-review
+# flow:review
 
 Structured audit from multiple lenses. Reads current state, identifies gaps, proposes concrete improvements. Run all lenses or narrow to one.
 
 Usage:
-- `/flow-review` — all lenses
-- `/flow-review --docs` — documentation only
-- `/flow-review --ux` — UX audit only
-- `/flow-review --marketing` — marketing/positioning only
-- `/flow-review --product` — product critique only
+- `/flow:review` — all lenses
+- `/flow:review --docs` — documentation only
+- `/flow:review --ux` — UX audit only
+- `/flow:review --marketing` — marketing/positioning only
+- `/flow:review --product` — product critique only
 
 ## Instructions
 
@@ -31,7 +31,7 @@ Usage:
 
 **Synthesize (main thread).**
 - Single lens → present that lens's prioritized findings.
-- All lenses (`/flow-review`, no flag) → run all four reviewers, then produce a **cross-lens summary** of the highest-priority items across docs, UX, marketing, and product.
+- All lenses (`/flow:review`, no flag) → run all four reviewers, then produce a **cross-lens summary** of the highest-priority items across docs, UX, marketing, and product.
 
 **Applying fixes.** Reviewers only report. When a finding warrants an edit (e.g. a doc fix), you — the main thread — propose it and **confirm before making significant changes**. The review never edits silently.
 

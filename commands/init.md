@@ -1,16 +1,16 @@
 ---
-description: "Bootstrap or adopt a project: index + specs/ detail files, CLAUDE.md, config — /flow-init [concept|--adopt|--greenfield|--backend ado]"
+description: "Bootstrap or adopt a project: index + specs/ detail files, CLAUDE.md, config — /flow:init [concept|--adopt|--greenfield|--backend ado]"
 ---
 # Init
 
 Bootstrap a new project or onboard an existing one into the spec-driven workflow. Creates the **spec model** (an index + one `specs/<id>.md` detail file per spec), a `CLAUDE.md` hierarchy (root + one lean file per major layer), optionally `MARKETING.md` for user-facing products, and optionally `.flow/config.yml` when the backlog is tracked outside the repo (e.g. an ADO board). Safe to re-run — reads existing files and extends rather than replaces.
 
 Usage:
-- `/flow-init` — detect the project shape and bootstrap conversationally
-- `/flow-init <concept description>` — greenfield bootstrap from a one-line concept
-- `/flow-init --greenfield` — force new-project mode (scaffold a Walking Skeleton)
-- `/flow-init --adopt` — force existing-project mode (no Walking Skeleton)
-- `/flow-init --backend ado` — configure an ADO-tracked backlog (writes `.flow/config.yml`)
+- `/flow:init` — detect the project shape and bootstrap conversationally
+- `/flow:init <concept description>` — greenfield bootstrap from a one-line concept
+- `/flow:init --greenfield` — force new-project mode (scaffold a Walking Skeleton)
+- `/flow:init --adopt` — force existing-project mode (no Walking Skeleton)
+- `/flow:init --backend ado` — configure an ADO-tracked backlog (writes `.flow/config.yml`)
 
 ## The spec model this creates
 
@@ -86,7 +86,7 @@ In `ado` mode, **do not create `SPECIFICATIONS.md`** — the board is the index.
 Keep under 300 lines (the root cap; a project may raise it via `rootMax` in `.flow-toolkit.json`). Include:
 
 - **`## Architecture`** — 4-8 bullets on key decisions and patterns.
-- **`## Development Rules`** — adapted to the stack: TDD mandate, testing stack, thin slices, no premature abstractions, conventional commits (`feat:`/`fix:`/`chore:`/`docs:`/`refactor:`/`test:`, optionally with a leading `[#id]` tag when the backlog is external), **no silent deferrals** (never narrow a spec's scope silently — surface each deferred in-scope item with its reason, get a per-item build-now-or-re-home decision, cross-link, and record it as a `deferrals:` front-matter entry; deferrals gate `DONE`, mechanically — the commit guard, `/flow-lint`, and `/flow-ship` all block a `DONE` spec with an unresolved deferral).
+- **`## Development Rules`** — adapted to the stack: TDD mandate, testing stack, thin slices, no premature abstractions, conventional commits (`feat:`/`fix:`/`chore:`/`docs:`/`refactor:`/`test:`, optionally with a leading `[#id]` tag when the backlog is external), **no silent deferrals** (never narrow a spec's scope silently — surface each deferred in-scope item with its reason, get a per-item build-now-or-re-home decision, cross-link, and record it as a `deferrals:` front-matter entry; deferrals gate `DONE`, mechanically — the commit guard, `/flow:lint`, and `/flow:ship` all block a `DONE` spec with an unresolved deferral).
 - **`## Spec Status Vocabulary`** — `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 - **`## Feature Completion Checklist`** — tailored; always include: **deferrals reconciled** (every in-scope item was built or re-homed by user decision, cross-linked, and recorded in the spec's `deferrals:` front-matter with a resolved `to` — machine-checked; no silent scope narrowing); **restart affected local services + smoke-test** (restart every service the change touched so nothing serves stale code, then drive the changed behavior end-to-end — Claude-automated wherever feasible — and show a brief pass/fail verification checklist before marking DONE); update the index status + archive the detail file; update `specs/<id>.md` Progress/Decisions; update CLAUDE.md patterns if new conventions introduced. If MARKETING.md exists, add its feature-highlights update.
 - **`## Project Structure`** — directory tree with one-line descriptions (include `specs/`).
@@ -123,7 +123,7 @@ Create the `specs/` directory. Then:
 ## Archive
 ```
 
-Seed 3-5 Phase-1 specs from the concept (high-level; the user evolves them with `/flow --add`). The Walking Skeleton's `specs/0.1.md`:
+Seed 3-5 Phase-1 specs from the concept (high-level; the user evolves them with `/flow:run --add`). The Walking Skeleton's `specs/0.1.md`:
 
 ```markdown
 ---
@@ -166,7 +166,7 @@ As a developer I want to run [Project] locally and reach every layer end to end 
 
 **ADO mode** — no `SPECIFICATIONS.md` (the board is the index). Create `specs/` and, if adopting existing work items, offer to write a `specs/<id>.md` for each in-flight item keyed by work-item number.
 
-The detail template for every non-skeleton spec is the one in `/flow --add` — including its **"write it terse"** rules (one job per section, no cross-section restatement, append-only one-line Progress log). Every spec you seed here must already meet them; the soft `spec.maxLines` budget (default 120) warns on drift.
+The detail template for every non-skeleton spec is the one in `/flow:run --add` — including its **"write it terse"** rules (one job per section, no cross-section restatement, append-only one-line Progress log). Every spec you seed here must already meet them; the soft `spec.maxLines` budget (default 120) warns on drift.
 
 ### 8. Generate MARKETING.md (user-facing projects only)
 
@@ -175,18 +175,18 @@ If user-facing, generate `MARKETING.md` (positioning, audience, key messages, fe
 ### 9. Explain the workflow
 
 Tell the user:
-- `/flow` — implement a spec, manage backlog, brainstorm
-- `/flow-ship` — cut a release
-- `/flow-review` — audit docs, UX, marketing, product
-- `/flow-lint` — check the CLAUDE.md hierarchy + index↔detail integrity; `--migrate` converts a legacy inline `SPECIFICATIONS.md` to the index + `specs/` model
-- `/flow-init` — re-run to update as the project evolves
+- `/flow:run` — implement a spec, manage backlog, brainstorm
+- `/flow:ship` — cut a release
+- `/flow:review` — audit docs, UX, marketing, product
+- `/flow:lint` — check the CLAUDE.md hierarchy + index↔detail integrity; `--migrate` converts a legacy inline `SPECIFICATIONS.md` to the index + `specs/` model
+- `/flow:init` — re-run to update as the project evolves
 - Status lives in the index (or the board); detail lives in `specs/<id>.md`; archived specs move to `specs/archive/<id>.md` — id never reused.
 
 ## Rules
 
 - Never overwrite files without reading them first and confirming intent.
 - Subdirectory CLAUDE.md files must be additive — no duplication with root.
-- The index and detail files must stay in the standard format so `/flow` and the hooks can read them.
+- The index and detail files must stay in the standard format so `/flow:run` and the hooks can read them.
 - **Walking Skeleton is greenfield-only** — never scaffold it into an existing codebase.
 - **Status is single-source** (index/board); never write status into a `specs/<id>.md`.
 - ADO config: board coordinates are explicit (not inferred from the git remote); build `state_map` from state categories; confirm before writing `.flow/config.yml`.

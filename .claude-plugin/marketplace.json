@@ -1,0 +1,14 @@
+{
+  "name": "flow-toolkit",
+  "owner": {
+    "name": "liminalarc",
+    "url": "https://github.com/liminalarc"
+  },
+  "plugins": [
+    {
+      "name": "flow",
+      "source": "./",
+      "description": "Conversational, spec-driven development workflow: /flow:run, /flow:hunt, /flow:init, /flow:lint, /flow:ship, /flow:review, /flow:pr + always-on spec/commit guard hooks."
+    }
+  ]
+}

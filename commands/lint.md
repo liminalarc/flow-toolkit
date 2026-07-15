@@ -1,17 +1,17 @@
 ---
-description: "Audit CLAUDE.md hierarchy + spec index/detail integrity; migrate legacy specs or a flat spec to dir form — /flow-lint [--claude|--specs|--fix|--migrate [id]]"
+description: "Audit CLAUDE.md hierarchy + spec index/detail integrity; migrate legacy specs or a flat spec to dir form — /flow:lint [--claude|--specs|--fix|--migrate [id]]"
 ---
 # Lint
 
 Audit a project's `CLAUDE.md` hierarchy and its **spec model** (the index + `specs/<id>.md` detail files) for structural violations. Reports findings grouped by severity and suggests or applies fixes. Also migrates a legacy inline `SPECIFICATIONS.md` to the index + detail-file model.
 
 Usage:
-- `/flow-lint` — full audit (CLAUDE.md hierarchy + spec model + README)
-- `/flow-lint --claude` — CLAUDE.md hierarchy only
-- `/flow-lint --specs` — spec model only (index + detail files)
-- `/flow-lint --fix` — full audit, then auto-fix what's safe (status keyword casing, entry/heading format, archive migration)
-- `/flow-lint --migrate` — convert a legacy inline `SPECIFICATIONS.md` to the index + `specs/<id>.md` model (dry-run by default; `--migrate --apply` writes)
-- `/flow-lint --migrate <id>` — convert one flat spec `specs/<id>.md` → the directory form `specs/<id>/<id>.md` so it can hold task files (dry-run by default; add `--apply` to write)
+- `/flow:lint` — full audit (CLAUDE.md hierarchy + spec model + README)
+- `/flow:lint --claude` — CLAUDE.md hierarchy only
+- `/flow:lint --specs` — spec model only (index + detail files)
+- `/flow:lint --fix` — full audit, then auto-fix what's safe (status keyword casing, entry/heading format, archive migration)
+- `/flow:lint --migrate` — convert a legacy inline `SPECIFICATIONS.md` to the index + `specs/<id>.md` model (dry-run by default; `--migrate --apply` writes)
+- `/flow:lint --migrate <id>` — convert one flat spec `specs/<id>.md` → the directory form `specs/<id>/<id>.md` so it can hold task files (dry-run by default; add `--apply` to write)
 
 ## Instructions
 
@@ -31,7 +31,7 @@ Record for each finding: **severity** (`ERROR`/`WARNING`/`INFO`), **location** (
 
 | Check | Severity | Condition |
 |---|---|---|
-| Root CLAUDE.md exists | ERROR | Missing — `/flow`/`/flow-init` have no anchor. |
+| Root CLAUDE.md exists | ERROR | Missing — `/flow:run`/`/flow:init` have no anchor. |
 | Root under the cap | WARNING | Exceeds the root cap (default 300; overridable via `rootMax` in `.flow-toolkit.json`). |
 | Contains `## Architecture` | WARNING | Missing. |
 | Contains `## Development Rules` | WARNING | Missing. |
@@ -57,7 +57,7 @@ Record for each finding: **severity** (`ERROR`/`WARNING`/`INFO`), **location** (
 
 | Check | Severity | Condition |
 |---|---|---|
-| Index exists | WARNING | Missing — run `/flow-init`. (If inline `### Spec` blocks are found instead of index entries, this is a **legacy inline file** — run `/flow-lint --migrate`.) |
+| Index exists | WARNING | Missing — run `/flow:init`. (If inline `### Spec` blocks are found instead of index entries, this is a **legacy inline file** — run `/flow:lint --migrate`.) |
 | Entry format | WARNING | Each backlog line matches `- **<id>** <Title> — \`STATUS\` — [detail](specs/<id>.md)`. |
 | Status keyword valid | ERROR | Exactly one of `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED` (case-sensitive). |
 | No duplicate ids | ERROR | An id appears more than once across the index + `specs/archive/`. |
@@ -79,13 +79,13 @@ Detail files come in two shapes: **flat** `specs/<id>.md`, or a **directory** `s
 | Task file has a local AC | INFO | A `specs/<id>/<id>.T<n>.md` carries no `- [ ]` "done when" checkbox — the seam an implementer builds to and a verifier checks against. Advisory only (mirrors `flow-spec-guard.sh`'s soft nudge). |
 | Required sections present | WARNING | Missing any of `## Problem`, `## Value`, `## Scope`, `## Acceptance criteria`, `## Plan`, `## Decisions`, `## Verification`, `## Progress log`. |
 | Value is a user story | INFO | `## Value` should read `As a <role> I want <capability> so that <benefit>`. |
-| Detail file under the line budget | INFO | `specs/<id>.md` exceeds the soft spec budget (default 120; overridable via `spec.maxLines` in `.flow-toolkit.json`). Same nudge `flow-spec-guard.sh` emits on edit — run `/flow --condense <id>` to rewrite it losslessly (or raise the budget). Never an ERROR; specs legitimately vary. |
+| Detail file under the line budget | INFO | `specs/<id>.md` exceeds the soft spec budget (default 120; overridable via `spec.maxLines` in `.flow-toolkit.json`). Same nudge `flow-spec-guard.sh` emits on edit — run `/flow:run --condense <id>` to rewrite it losslessly (or raise the budget). Never an ERROR; specs legitimately vary. |
 | DONE spec has no unchecked AC | WARNING | Index says DONE but `specs/<id>.md` still has `- [ ]` acceptance criteria. |
 | Non-DONE spec with all AC checked | INFO | All `- [x]` but status isn't DONE — probably needs a status update. |
 | Deferrals front-matter well-formed | ERROR | A `deferrals:` entry is missing `what`, `why`, or `to`. Run `flow-preflight.sh wellformed <file>` per detail file. |
 | DONE spec has no unreconciled deferral | ERROR | Index (local) / board (ado) says DONE but a `deferrals:` entry has an unresolved `to` (not `built`, and no spec with that id exists). Run `flow-preflight.sh resolved` — see below. |
 
-**Deferral checks use the shared helper** (`flow-preflight.sh`) so the rule is identical to the commit guard and `/flow-ship`. Locate it in your Claude profile's hooks dir — try `$CLAUDE_CONFIG_DIR/hooks/flow-preflight.sh`, then `~/.claude/hooks/flow-preflight.sh`, then `~/.claude-*/hooks/flow-preflight.sh`. If none is found, say so and fall back to reading the front-matter yourself against the rule above — never silently skip the deferral checks.
+**Deferral checks use the shared helper** (`flow-preflight.sh`) so the rule is identical to the commit guard and `/flow:ship`. Locate it in your Claude profile's hooks dir — try `$CLAUDE_CONFIG_DIR/hooks/flow-preflight.sh`, then `~/.claude/hooks/flow-preflight.sh`, then `~/.claude-*/hooks/flow-preflight.sh`. If none is found, say so and fall back to reading the front-matter yourself against the rule above — never silently skip the deferral checks.
 
 - **Well-formedness** (both backends): `flow-preflight.sh wellformed specs/<id>.md` for each detail file.
 - **DONE-gating**:
@@ -110,7 +110,7 @@ Compare Feature Highlights against DONE specs in the index/archive; flag `INFO` 
 ### Step 4: Report findings
 
 ```
-## flow-lint Report
+## flow:lint Report
 
 ### Errors (must fix)
 [file:line] MESSAGE
@@ -152,14 +152,14 @@ Convert one flat spec `specs/<id>.md` → `specs/<id>/<id>.md` so a big spec can
 1. Resolve `<id>`'s current detail. It may be active (`specs/<id>.md`) or archived (`specs/archive/<id>.md`) — migrate in place (an archived spec → `specs/archive/<id>/<id>.md`).
 2. Create the directory and **move** the file with `git mv` (preserve history): `specs/<id>.md` → `specs/<id>/<id>.md` (or the archive equivalent). Do not rewrite the file's contents — the orchestrator *is* the former flat spec.
 3. Update the index link for `<id>` to point at the new path (`[detail](specs/<id>/<id>.md)`), keeping the same id, title, status, and position.
-4. Do **not** invent task files — breakout is a manual, decision-by-decision act (`/flow` adds tasks against an approved plan). Migration only reshapes the container.
+4. Do **not** invent task files — breakout is a manual, decision-by-decision act (`/flow:run` adds tasks against an approved plan). Migration only reshapes the container.
 
 **Safety:** dry-run prints the move + index-line change before any write; **idempotent** (if `specs/<id>/<id>.md` already exists, no-op with a note); halts if both flat and dir forms exist (ambiguous — the human resolves it). The id is unchanged, so every commit/PR citing `<id>` stays valid.
 
 #### 6b — `--migrate` (no id): legacy inline → index + detail model
 
 1. Parse each `### Spec X.Y — Title` block: `**Status:**`, description paragraph, `**User story:**`, `**Acceptance criteria:**`, and any extra prose.
-2. Write `specs/<id>.md` per the detail template (see `/flow --add`): `## Problem` ← description; `## Value` ← user story (append a `so that …` **TODO** if absent); `## Acceptance criteria` ← the AC list; `## Scope / Plan / Decisions / Verification / Progress log` ← empty scaffolds with `<!-- TODO -->`; any unrecognized content → preserved verbatim under `## Migrated (unclassified)` and flagged. **No `status` field** in the detail file.
+2. Write `specs/<id>.md` per the detail template (see `/flow:run --add`): `## Problem` ← description; `## Value` ← user story (append a `so that …` **TODO** if absent); `## Acceptance criteria` ← the AC list; `## Scope / Plan / Decisions / Verification / Progress log` ← empty scaffolds with `<!-- TODO -->`; any unrecognized content → preserved verbatim under `## Migrated (unclassified)` and flagged. **No `status` field** in the detail file.
 3. Rewrite `SPECIFICATIONS.md` as the index — same phase headings and order, one line per spec, status carried over into the entry.
 4. Archived specs (an inline `## Archive` or a `SPECIFICATIONS-ARCHIVE.md` sidecar) → `specs/archive/<id>.md`, indexed under `## Archive`.
 
@@ -167,7 +167,7 @@ Convert one flat spec `specs/<id>.md` → `specs/<id>/<id>.md` so a big spec can
 
 **Report:**
 ```
-flow-lint --migrate (dry run)
+flow:lint --migrate (dry run)
   12 specs → specs/*.md   (9 clean, 3 need review: 1.4 no user story, 2.1 unclassified prose, 3.0 dup-id CONFLICT)
    4 archived → specs/archive/*.md
   SPECIFICATIONS.md → index (12 active + 4 archived)

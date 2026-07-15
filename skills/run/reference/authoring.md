@@ -20,7 +20,7 @@ specs/1.7/
   1.7.T2.md
 ```
 
-**Breakout guideline (manual, unenforced):** break a spec into a directory when it reaches **≥3 tasks, or a task carrying its own acceptance criterion**. Below that, stay flat — thin slices, no premature abstraction. The hooks accept both shapes and enforce neither; you decide per spec. To reshape an existing flat spec, run `/flow-lint --migrate <id>` (git-moves `specs/<id>.md` → `specs/<id>/<id>.md`).
+**Breakout guideline (manual, unenforced):** break a spec into a directory when it reaches **≥3 tasks, or a task carrying its own acceptance criterion**. Below that, stay flat — thin slices, no premature abstraction. The hooks accept both shapes and enforce neither; you decide per spec. To reshape an existing flat spec, run `/flow:lint --migrate <id>` (git-moves `specs/<id>.md` → `specs/<id>/<id>.md`).
 
 The **orchestrator** `<id>.md` is an ordinary detail file (Problem/Value/Scope/AC/…) — it holds *why/what* and lists its tasks. Each **task file** holds *how* plus a local AC — the seam a per-task implementer builds to and a verifier checks against. A task file carries **no status and no deferrals** (both stay single-source on the orchestrator; the guards gate on the orchestrator alone).
 
@@ -51,7 +51,7 @@ A spec is read into context every time it's worked, so bloat is wasted budget on
 - **Shortest form that keeps the detail.** Prefer a bullet to a sentence, a sentence to a paragraph; cut throat-clearing and restated context. Never drop a concrete acceptance detail to save space — terse ≠ lossy.
 - **Progress log is append-only one-liners** — one dated `` `<sha>` — <what landed> `` per entry, newest last; never rewrite it into prose.
 
-A soft budget (default 120 lines; `spec.maxLines` in `.flow-toolkit.json`) warns — never blocks — when a detail file drifts past terse; the spec guard and `/flow-lint --specs` surface it.
+A soft budget (default 120 lines; `spec.maxLines` in `.flow-toolkit.json`) warns — never blocks — when a detail file drifts past terse; the spec guard and `/flow:lint --specs` surface it.
 
 ## Detail file template (`specs/<id>.md`)
 

@@ -1,19 +1,19 @@
 ---
-name: flow-pr
-description: Spec-aware review of a PR or branch diff — /flow-pr [pr# | branch] [--spec|--quality|--tests]
+name: pr
+description: Spec-aware review of a PR or branch diff — /flow:pr [pr# | branch] [--spec|--quality|--tests]
 ---
 
-# flow-pr
+# flow:pr
 
 Review a pull request or branch diff against this project's own standards: the spec it claims to implement, the conventions in `CLAUDE.md`, clean-code quality, and test coverage. Where generic PR review asks "is this good code?", this asks "is this the code the spec asked for, built the way this project builds things?"
 
 Usage:
-- `/flow-pr` — review the current branch's diff against the main branch
-- `/flow-pr 42` — review GitHub PR #42 (uses `gh`)
-- `/flow-pr feature/auth` — review a branch by name
-- `/flow-pr --spec` — spec fidelity only
-- `/flow-pr --quality` — clean code + correctness only
-- `/flow-pr --tests` — test coverage only
+- `/flow:pr` — review the current branch's diff against the main branch
+- `/flow:pr 42` — review GitHub PR #42 (uses `gh`)
+- `/flow:pr feature/auth` — review a branch by name
+- `/flow:pr --spec` — spec fidelity only
+- `/flow:pr --quality` — clean code + correctness only
+- `/flow:pr --tests` — test coverage only
 
 ## Instructions
 

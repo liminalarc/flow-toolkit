@@ -14,11 +14,11 @@ description: "<one-line summary — usage syntax in brackets> — /<name> [args]
 ---
 ```
 
-The `description` is what shows in the `/` picker. Keep it to one line, lead with the value, and end with the invocation shape (e.g. `/flow [spec#|--ideas|--add|--clean|description]`). Match the style of the existing command files.
+The `description` is what shows in the `/` picker. Keep it to one line, lead with the value, and end with the invocation shape (e.g. `/flow:run [spec#|--ideas|--add|--clean|description]`). Match the style of the existing command files.
 
 ## Structure every command follows
 
-- **Open by starting fresh.** Every command begins with an explicit instruction to ignore prior conversation context and read only from the project files (`CLAUDE.md`, `SPECIFICATIONS.md`, `specs/`, `README.md`, …). This is what lets a user chain `/flow-init → /flow → /flow-lint` without a `/clear`. New commands must keep this.
+- **Open by starting fresh.** Every command begins with an explicit instruction to ignore prior conversation context and read only from the project files (`CLAUDE.md`, `SPECIFICATIONS.md`, `specs/`, `README.md`, …). This is what lets a user chain `/flow:init → /flow:run → /flow:lint` without a `/clear`. New commands must keep this.
 - **Usage block** — the invocation forms, one per line, mirroring the front-matter.
 - **Instructions** — numbered steps or clearly-headed sections. Be prescriptive; the file is the spec for the behavior.
 - **Rules** — a closing list of hard invariants the command must never violate.

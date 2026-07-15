@@ -24,10 +24,10 @@ You are given, in the dispatch prompt:
 
 ## Hard boundaries — do NOT cross
 
-- **You never edit.** You have no Edit/Write tools by design. You surface opportunities; the main thread (and the user via `/flow --add`) decides what becomes a spec. This command proposes; it never writes specs or code.
+- **You never edit.** You have no Edit/Write tools by design. You surface opportunities; the main thread (and the user via `/flow:run --add`) decides what becomes a spec. This command proposes; it never writes specs or code.
 - **Stay in your dimension.** Don't research the others — the point of the fan-out is that each researcher is focused and blind to the rest; the main thread does the cross-dimension synthesis and dedupe.
 - **Ground first, don't re-propose.** Check every candidate against the backlog summary you were given; skip anything already planned (or note it as roadmap validation).
 
 ## What you return
 
-Your dimension's opportunity candidates as prioritized, scored items — each with: the **insight** (cite the source if from research), the **user problem** (how a real persona experiences it), the **angle** (why this product is uniquely positioned), the **competitor gap**, **Impact**, **Effort**, and a 2-3 sentence **spec seed** ready for `/flow --add`. That report is data for the main thread's synthesis, not a message to a human.
+Your dimension's opportunity candidates as prioritized, scored items — each with: the **insight** (cite the source if from research), the **user problem** (how a real persona experiences it), the **angle** (why this product is uniquely positioned), the **competitor gap**, **Impact**, **Effort**, and a 2-3 sentence **spec seed** ready for `/flow:run --add`. That report is data for the main thread's synthesis, not a message to a human.

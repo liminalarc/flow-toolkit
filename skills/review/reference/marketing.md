@@ -1,4 +1,4 @@
-# flow-review — marketing lens
+# flow:review — marketing lens
 
 Read-only PMM audit of positioning and copy. Produce findings; do not edit.
 

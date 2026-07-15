@@ -1,4 +1,4 @@
-# flow — co-author a new spec (`/flow --add`)
+# flow — co-author a new spec (`/flow:run --add`)
 
 Read `reference/authoring.md` alongside this for the templates and terseness rules.
 

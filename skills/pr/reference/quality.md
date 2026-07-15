@@ -1,4 +1,4 @@
-# flow-pr — quality dimension (correctness + clean code)
+# flow:pr — quality dimension (correctness + clean code)
 
 Audit the changed code for correctness and clean-code quality against *this project's* standards. **Read-only: produce findings, do not edit.**
 

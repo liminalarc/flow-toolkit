@@ -47,7 +47,7 @@ Before marking a spec `DONE`:
 ```
 flow-toolkit/
 ├── .github/workflows/  # CI — runs hooks.test.sh on push/PR to main
-├── commands/            # The slash commands — markdown prompt files (see commands/CLAUDE.md)
+├── commands/            # The slash commands — markdown prompt files (see docs/authoring-commands.md)
 │   ├── flow-init.md     #   bootstrap/adopt a project
 │   ├── flow-ship.md     #   cut a release
 │   └── flow-lint.md     #   audit CLAUDE.md hierarchy + spec integrity
@@ -83,5 +83,5 @@ There is no deploy target. A release is a **git tag on GitHub**; users pick it u
 
 ## See Also
 
-- `commands/CLAUDE.md` — conventions for authoring the slash-command prompt files.
+- `docs/authoring-commands.md` — conventions for authoring the slash-command prompt files.
 - `hooks/CLAUDE.md` — conventions for the bash hooks and the shared preflight helper.

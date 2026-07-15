@@ -1,4 +1,4 @@
-# flow — condense existing specs (`/flow --condense [<id> | --all] [--check]`)
+# flow — condense existing specs (`/flow:run --condense [<id> | --all] [--check]`)
 
 Read `reference/authoring.md` alongside this for the terseness rules being applied.
 
@@ -12,6 +12,6 @@ Bring **existing** detail files up to the terseness rules (one job per section, 
 
 If a spec is already under budget and non-repetitive, echo a one-line no-op and move on.
 
-**`--check` (report only).** Audit each target against the *full* terseness rules and report findings — no writes, no diff. This catches what the line budget can't: cross-section restatement (Value ≈ Problem, Scope ≈ AC, Plan ≈ AC), prose that should be bullets, a Progress log rewritten into paragraphs. Report per spec as `✅ terse` or a findings list; a clean spec reports `✅`. Complements `/flow-lint --specs` (which flags only the mechanical line budget) — use `--check` for the qualitative pass.
+**`--check` (report only).** Audit each target against the *full* terseness rules and report findings — no writes, no diff. This catches what the line budget can't: cross-section restatement (Value ≈ Problem, Scope ≈ AC, Plan ≈ AC), prose that should be bullets, a Progress log rewritten into paragraphs. Report per spec as `✅ terse` or a findings list; a clean spec reports `✅`. Complements `/flow:lint --specs` (which flags only the mechanical line budget) — use `--check` for the qualitative pass.
 
 After any write the spec guard re-validates the file and re-checks the budget on save, so a condensed spec is confirmed well-formed — and usually back under budget — in the same turn.

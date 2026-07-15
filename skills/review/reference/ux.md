@@ -1,4 +1,4 @@
-# flow-review — UX lens
+# flow:review — UX lens
 
 Read-only audit of user-facing flows from a user's perspective. Produce findings; do not edit.
 

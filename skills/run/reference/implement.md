@@ -1,14 +1,14 @@
-# flow — implement a spec (`/flow <spec id>` or `/flow <description>`)
+# flow — implement a spec (`/flow:run <spec id>` or `/flow:run <description>`)
 
 The build path. Read `reference/authoring.md` alongside this when you write or update the detail file.
 
-**Autonomy — `checkpoint` (default) vs `auto-build`.** Before planning, resolve the spec's mode with the shared helper (locate `flow-preflight.sh` the way `/flow-ship`/`/flow-lint` do): `flow-preflight.sh autonomy specs/<id>.md --repo .` → `checkpoint | auto-build`. Precedence is defined once, in the helper: `.flow-toolkit.json` `autonomy.force` > the spec's `autonomy:` front-matter > `.flow-toolkit.json` `autonomy.default` > builtin `checkpoint`. **Autonomy controls exactly one thing — whether flow pauses for _plan approval_.** It never bypasses Claude Code's permission system, edits config, or self-approves; the `flow-verifier` (step 3) is the safety net that makes `auto-build` tolerable. `checkpoint` → pause for sign-off (step 2), verifier **advisory**. `auto-build` → skip the plan-approval pause and build, verifier **blocking** (nothing integrates unverified).
+**Autonomy — `checkpoint` (default) vs `auto-build`.** Before planning, resolve the spec's mode with the shared helper (locate `flow-preflight.sh` the way `/flow:ship`/`/flow:lint` do): `flow-preflight.sh autonomy specs/<id>.md --repo .` → `checkpoint | auto-build`. Precedence is defined once, in the helper: `.flow-toolkit.json` `autonomy.force` > the spec's `autonomy:` front-matter > `.flow-toolkit.json` `autonomy.default` > builtin `checkpoint`. **Autonomy controls exactly one thing — whether flow pauses for _plan approval_.** It never bypasses Claude Code's permission system, edits config, or self-approves; the `flow-verifier` (step 3) is the safety net that makes `auto-build` tolerable. `checkpoint` → pause for sign-off (step 2), verifier **advisory**. `auto-build` → skip the plan-approval pause and build, verifier **blocking** (nothing integrates unverified).
 
 ## 1. Understand
 
 Read the index entry for that id, and **if `specs/<id>.md` exists, read it and resume from its Plan/Progress log rather than re-deriving.** For free-form work, restate it and identify affected layers; ask 1-2 clarifying questions only when genuinely ambiguous.
 
-If a free-form description maps to an existing spec, say so and switch to it. If it's net-new and will produce commits, offer `/flow --add` first so there's an id to tag.
+If a free-form description maps to an existing spec, say so and switch to it. If it's net-new and will produce commits, offer `/flow:run --add` first so there's an id to tag.
 
 ## 2. Plan + CHECKPOINT
 
@@ -18,7 +18,7 @@ On sign-off (checkpoint) or immediately (auto-build), write/update `specs/<id>.m
 
 ## 3. Build test-first
 
-Follow the conventions in `CLAUDE.md` for this project. Keep commits small and **tag every commit's subject with the spec id as a leading bracket** — `[#<id>] type: subject` (e.g. `[#1.4] feat: …`). The id goes in the **subject line, not the body**, so `/flow-ship` derives the release's specs mechanically from `git log`; the commit guard accepts the leading tag and nudges the exact id when a spec is IN PROGRESS and it's missing. Surface decisions as you go.
+Follow the conventions in `CLAUDE.md` for this project. Keep commits small and **tag every commit's subject with the spec id as a leading bracket** — `[#<id>] type: subject` (e.g. `[#1.4] feat: …`). The id goes in the **subject line, not the body**, so `/flow:ship` derives the release's specs mechanically from `git log`; the commit guard accepts the leading tag and nudges the exact id when a spec is IN PROGRESS and it's missing. Surface decisions as you go.
 
 How you dispatch depends on mode and shape:
 - **`checkpoint`, single-layer**: build inline, test-first, commit per slice. The human is watching, so `flow-verifier` is an **advisory** check on the diff.
@@ -41,7 +41,7 @@ If at any point you're about to drop or narrow something the spec put in scope, 
 - Update `MARKETING.md` if the spec changed user-facing capabilities (if the file exists).
 - Run the project's feature completion checklist (from `CLAUDE.md`).
 - ado only: refresh the single "Spec:" pointer comment (`Spec: specs/<id>.md @ <sha>`) rather than posting a fresh comment each time.
-- Hand off with a summary; `/flow-ship` cuts the release when ready.
+- Hand off with a summary; `/flow:ship` cuts the release when ready.
 
 ## The deferral protocol
 
@@ -65,4 +65,4 @@ deferrals:
 
 The Decisions section stays the human narrative; the front-matter is the enforceable trace. Each deferral is its **own** decision — don't batch a bunch under one blanket "deferred to later."
 
-**The `DONE`-gating rule (mechanically enforced):** a spec cannot reach `DONE` while any `deferrals:` entry is unresolved — `to` must be `built` or an id whose spec exists. The `flow-preflight.sh resolved` helper enforces this at commit time (the commit guard blocks it in local mode), in `/flow-lint`, and in `/flow-ship`'s preflight. So an unreconciled deferral is a hard stop, not a reminder.
+**The `DONE`-gating rule (mechanically enforced):** a spec cannot reach `DONE` while any `deferrals:` entry is unresolved — `to` must be `built` or an id whose spec exists. The `flow-preflight.sh resolved` helper enforces this at commit time (the commit guard blocks it in local mode), in `/flow:lint`, and in `/flow:ship`'s preflight. So an unreconciled deferral is a hard stop, not a reminder.

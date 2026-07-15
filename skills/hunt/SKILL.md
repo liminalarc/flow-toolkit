@@ -1,19 +1,19 @@
 ---
-name: flow-hunt
-description: Hunt new feature opportunities through a domain-grounded persona panel, fanning research out to one flow-researcher agent per dimension. Invoke as /flow-hunt [--deep|focus area].
+name: hunt
+description: Hunt new feature opportunities through a domain-grounded persona panel, fanning research out to one flow-researcher agent per dimension. Invoke as /flow:hunt [--deep|focus area].
 ---
 
 # Hunt
 
-Scan for new feature opportunities the backlog doesn't already cover. Claude grounds itself in the project's domain — adopting the personas, competitors, and research dimensions that matter for *this* product — then fans the research out to one `flow-researcher` agent per dimension (in parallel), synthesizes their findings into concrete, prioritized opportunities, and hands the best ones to `/flow --add`.
+Scan for new feature opportunities the backlog doesn't already cover. Claude grounds itself in the project's domain — adopting the personas, competitors, and research dimensions that matter for *this* product — then fans the research out to one `flow-researcher` agent per dimension (in parallel), synthesizes their findings into concrete, prioritized opportunities, and hands the best ones to `/flow:run --add`.
 
-This is the deep, outside-the-backlog twin of `/flow --ideas`. Use `--ideas` for a fast three-lens brainstorm; use `/flow-hunt` when you want a researched, scored opportunity report.
+This is the deep, outside-the-backlog twin of `/flow:run --ideas`. Use `--ideas` for a fast three-lens brainstorm; use `/flow:hunt` when you want a researched, scored opportunity report.
 
 Usage:
-- `/flow-hunt` — full opportunity hunt, reasoning from project docs + model knowledge (offline)
-- `/flow-hunt --deep` — same, plus live fan-out web research across the project's domain dimensions
-- `/flow-hunt <focus area>` — narrow the hunt (e.g. a competitor, a user segment, a phase/track) — still grounds first to avoid duplicates
-- `/flow-hunt --deep <focus area>` — narrowed hunt with web research
+- `/flow:hunt` — full opportunity hunt, reasoning from project docs + model knowledge (offline)
+- `/flow:hunt --deep` — same, plus live fan-out web research across the project's domain dimensions
+- `/flow:hunt <focus area>` — narrow the hunt (e.g. a competitor, a user segment, a phase/track) — still grounds first to avoid duplicates
+- `/flow:hunt --deep <focus area>` — narrowed hunt with web research
 
 ## Instructions
 
@@ -76,14 +76,14 @@ Produce a prioritized list of **5-10 concrete opportunities**, ordered by Impact
 **Competitor gap**: Whether comparables have this — and how to do it better
 **Impact**: [High/Medium/Low] — retention, conversion, or growth
 **Effort**: [S/M/L/XL]
-**Spec seed**: 2-3 sentences that would become the User Story in a `/flow --add` spec
+**Spec seed**: 2-3 sentences that would become the User Story in a `/flow:run --add` spec
 ```
 
 ### Phase 5 — Offer next steps
 
 After the report, offer to:
-- Draft any opportunity as a full spec with `/flow --add`
-- Run a deeper dive on a specific competitor, persona, or research thread (`/flow-hunt --deep <focus>`)
+- Draft any opportunity as a full spec with `/flow:run --add`
+- Run a deeper dive on a specific competitor, persona, or research thread (`/flow:hunt --deep <focus>`)
 - Map the opportunities against the existing SPECIFICATIONS.md phase/track structure
 
 ## Rules
@@ -92,5 +92,5 @@ After the report, offer to:
 - Checkpoint the frame before dispatching researchers; confirm before launching `--deep` web research.
 - Fan out one `flow-researcher` per dimension, in parallel, in **both** offline and `--deep` modes — the flag only toggles whether each researcher web-searches.
 - Don't re-propose what's already in SPECIFICATIONS.md — ground first, and pass the backlog summary to every researcher.
-- Researchers only report; the main thread dedupes and synthesizes. Every opportunity ends in a `/flow --add`-ready spec seed. This command proposes; it never writes specs or code itself.
+- Researchers only report; the main thread dedupes and synthesizes. Every opportunity ends in a `/flow:run --add`-ready spec seed. This command proposes; it never writes specs or code itself.
 - With `--deep`, cite sources. Offline, be concrete anyway.

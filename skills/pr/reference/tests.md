@@ -1,4 +1,4 @@
-# flow-pr — tests dimension
+# flow:pr — tests dimension
 
 Audit test coverage and quality for the diff, and run the suite. **Read-only: produce findings, do not edit** — but you *may* run the test suite (you have Bash).
 
