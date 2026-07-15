@@ -6,10 +6,10 @@
 
 ## Phase 1 — Features
 - **1.10** Plugin packaging + criterion-gated installer transition — `NOT STARTED` — [detail](specs/1.10.md)
-- **1.11** Migrate flow + flow-hunt to skills — `IN PROGRESS` — [detail](specs/1.11.md)
 - **1.12** How-it-works diagrams + architecture doc — `NOT STARTED` — [detail](specs/1.12.md)
 
 ## Archive
+- **1.11** Migrate flow + flow-hunt to skills — `DONE` — [detail](specs/archive/1.11.md)
 - **1.9** Migrate flow-pr to a skill with parallel-dimension sub-agents — `DONE` — [detail](specs/archive/1.9.md)
 - **1.8** Migrate flow-review to a skill with parallel-reviewer sub-agents — `DONE` — [detail](specs/archive/1.8.md)
 - **1.7** Sub-agent catalog + autonomy controls + verifier gating — `DONE` — [detail](specs/archive/1.7.md)
