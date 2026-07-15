@@ -12,17 +12,23 @@ set -e
 PROFILES=()
 add_profile() {
     local d="$1"
-    [ -d "$d" ] || return
+    # Every skip path returns 0: this runs under `set -e`, and add_profile is
+    # called both bare in a loop and after `&&`. A bare `return` would propagate
+    # the last test's non-zero (e.g. an unmatched `~/.claude-*` glob, or a
+    # $CLAUDE_CONFIG_DIR that fails the checks) and abort the whole installer
+    # before it installs anything — which breaks single-profile installs.
+    [ -d "$d" ] || return 0
     # Canonicalize so the same dir reached two ways (e.g. $CLAUDE_CONFIG_DIR as a
     # Windows path vs. the glob's Unix path under Git Bash) compares and serializes
     # as one form — this also keeps backslashes out of the JSON we later emit.
-    d=$(cd "$d" 2>/dev/null && pwd) || return
+    d=$(cd "$d" 2>/dev/null && pwd) || return 0
     local p
-    for p in "${PROFILES[@]}"; do [ "$p" = "$d" ] && return; done
+    for p in "${PROFILES[@]}"; do [ "$p" = "$d" ] && return 0; done
     # keep the canonical ~/.claude, or any dir that looks like a Claude config dir
     if [ "$(basename "$d")" = ".claude" ] || [ -f "$d/settings.json" ] || [ -d "$d/commands" ] || [ -d "$d/projects" ]; then
         PROFILES+=("$d")
     fi
+    return 0
 }
 
 [ -n "$CLAUDE_CONFIG_DIR" ] && add_profile "$CLAUDE_CONFIG_DIR"
