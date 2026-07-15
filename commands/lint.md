@@ -85,7 +85,7 @@ Detail files come in two shapes: **flat** `specs/<id>.md`, or a **directory** `s
 | Deferrals front-matter well-formed | ERROR | A `deferrals:` entry is missing `what`, `why`, or `to`. Run `flow-preflight.sh wellformed <file>` per detail file. |
 | DONE spec has no unreconciled deferral | ERROR | Index (local) / board (ado) says DONE but a `deferrals:` entry has an unresolved `to` (not `built`, and no spec with that id exists). Run `flow-preflight.sh resolved` — see below. |
 
-**Deferral checks use the shared helper** (`flow-preflight.sh`) so the rule is identical to the commit guard and `/flow:ship`. Locate it in your Claude profile's hooks dir — try `$CLAUDE_CONFIG_DIR/hooks/flow-preflight.sh`, then `~/.claude/hooks/flow-preflight.sh`, then `~/.claude-*/hooks/flow-preflight.sh`. If none is found, say so and fall back to reading the front-matter yourself against the rule above — never silently skip the deferral checks.
+**Deferral checks use the shared helper** (`flow-preflight.sh`) so the rule is identical to the commit guard and `/flow:ship`. Find it: the plugin bundles it at `${CLAUDE_PLUGIN_ROOT}/hooks/flow-preflight.sh` — **try that first** — then fall back to the legacy installer locations (`$CLAUDE_CONFIG_DIR/hooks/flow-preflight.sh`, then `~/.claude/hooks/flow-preflight.sh`, then `~/.claude-*/hooks/flow-preflight.sh`). If none is found, say so and fall back to reading the front-matter yourself against the rule above — never silently skip the deferral checks.
 
 - **Well-formedness** (both backends): `flow-preflight.sh wellformed specs/<id>.md` for each detail file.
 - **DONE-gating**:
