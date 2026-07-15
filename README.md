@@ -108,7 +108,7 @@ Every token in Claude's context window is either signal or noise. The toolkit is
 
 The result: a session that starts sharp and stays sharp, because the structure of the project files keeps Claude's working set lean by default.
 
-**Every command reinforces this.** Each command (and the `flow-review` skill) opens with an explicit instruction to ignore prior conversation context and read only from the project files. You can chain `/flow-init` → `/flow` → `/flow-lint` without a `/clear` in between — each one starts fresh on its own.
+**Every command reinforces this.** Each command and skill (`flow`, `flow-hunt`, `flow-review`, `flow-pr`) opens with an explicit instruction to ignore prior conversation context and read only from the project files. You can chain `/flow-init` → `/flow` → `/flow-lint` without a `/clear` in between — each one starts fresh on its own.
 
 ## The Project Files
 
@@ -375,8 +375,8 @@ Precedence: `autonomy.force` (hard project override) > the spec's `autonomy:` fr
 | Command | Description |
 |---|---|
 | `/flow-init [concept\|--adopt\|--backend ado]` | Bootstrap or adopt a project: spec index + `specs/` detail files + `CLAUDE.md` hierarchy |
-| `/flow [spec# \| --ideas \| --add \| --clean \| --condense \| description]` | Implement specs, manage backlog, brainstorm |
-| `/flow-hunt [--deep \| focus area]` | Hunt new feature opportunities through a domain-grounded persona panel |
+| `/flow [spec# \| --ideas \| --add \| --clean \| --condense \| description]` _(skill)_ | Implement specs, manage backlog, brainstorm |
+| `/flow-hunt [--deep \| focus area]` _(skill)_ | Hunt new feature opportunities through a domain-grounded persona panel |
 | `/flow-ship [--dry-run]` | Cut a release — reads deploy conventions from `CLAUDE.md` |
 | `/flow-review [--docs \| --ux \| --marketing \| --product]` _(skill)_ | Audit docs, UX, marketing, or product |
 | `/flow-pr [pr# \| branch] [--spec \| --quality \| --tests]` _(skill)_ | Spec-aware review of a PR or branch diff, with clean-code and test-coverage checks |
@@ -407,7 +407,7 @@ Re-run it as the project evolves — it reads what's there and offers to extend,
 
 ### /flow
 
-The primary development command. All backlog management and implementation in one place.
+The primary development command. All backlog management and implementation in one place. `/flow` is a **skill**: `SKILL.md` routes by invocation and loads only the invoked path's `reference/*` (implement / `--add` / `--clean` / `--condense`; the no-arg backlog view and `--ideas` stay inline), so the two most-used paths stay lean. The build path dispatches `flow-implementer`/`flow-verifier` sub-agents. Entry point is unchanged — you still invoke `/flow`.
 
 **Show the backlog:**
 ```
@@ -452,7 +452,7 @@ Rewrites bloated detail files to the terseness rules **losslessly** — the Prog
 
 ### /flow-hunt
 
-The deep, outside-the-backlog twin of `/flow --ideas`. Where `--ideas` is a fast three-lens brainstorm, `/flow-hunt` grounds itself in *this* project's domain, then produces a researched, scored opportunity report.
+The deep, outside-the-backlog twin of `/flow --ideas`. Where `--ideas` is a fast three-lens brainstorm, `/flow-hunt` grounds itself in *this* project's domain, then produces a researched, scored opportunity report. `/flow-hunt` is a **skill**: after checkpointing the domain frame, it fans the research out to one read-only `flow-researcher` sub-agent per dimension (running in parallel), then the main thread dedupes and synthesizes. Entry point is unchanged — you still invoke `/flow-hunt`.
 
 ```
 /flow-hunt                     → opportunity report from project docs + model knowledge
@@ -468,9 +468,9 @@ The deep, outside-the-backlog twin of `/flow --ideas`. Where `--ideas` is a fast
 - **A comparable/competitor set** — pulled from your positioning docs
 - **Research dimensions** — the 4-6 angles worth investigating for your field (competitor intel, user pain points, domain frontier, adjacent signals, behavior & retention)
 
-It checkpoints that frame for your correction before going deep, grounds against `SPECIFICATIONS.md` to avoid duplicates, scores each opportunity on **Impact × Effort**, and ends every opportunity with a `/flow --add`-ready spec seed. With `--deep` it runs live web searches and cites sources; offline it reasons from the docs and model knowledge. It proposes only — never writes specs or code.
+It checkpoints that frame for your correction before dispatching researchers, grounds against `SPECIFICATIONS.md` to avoid duplicates (passing that backlog to every researcher), scores each opportunity on **Impact × Effort**, and ends every opportunity with a `/flow --add`-ready spec seed. The fan-out runs in both modes — with `--deep` each researcher runs live web searches and cites sources; offline each reasons from the docs and model knowledge. It proposes only — never writes specs or code.
 
-> This generalizes the project-specific `gs-opportunity-hunt` pattern (a Cortex Golf command) into a portable command that adapts to any domain.
+> This generalizes the project-specific `gs-opportunity-hunt` pattern (a Cortex Golf command) into a portable skill that adapts to any domain.
 
 ---
 
