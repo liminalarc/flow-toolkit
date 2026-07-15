@@ -57,7 +57,7 @@ register_hooks() {
 
     if ! command -v python3 >/dev/null 2>&1; then
         echo "python3 not found — register the hooks manually by merging hooks/hooks.json"
-        echo "into $settings, replacing __HOOKS_DIR__ with $hooks_dir"
+        echo "into $settings, replacing \${CLAUDE_PLUGIN_ROOT}/hooks with $hooks_dir"
         return
     fi
 
@@ -73,7 +73,7 @@ if os.path.exists(settings_path):
 data = json.loads(raw) if raw.strip() else {}
 
 with open(frag_path) as f:
-    frag = json.loads(f.read().replace("__HOOKS_DIR__", hooks_dir))
+    frag = json.loads(f.read().replace("${CLAUDE_PLUGIN_ROOT}/hooks", hooks_dir))
 
 added = []
 hooks = data.setdefault("hooks", {})

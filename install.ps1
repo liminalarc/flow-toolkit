@@ -100,7 +100,7 @@ foreach ($profileDir in $profiles) {
     # (any path, any registration style) is never added again.
     $settingsPath = Join-Path $profileDir "settings.json"
     $hooksDirFwd = $hooksDir -replace '\\', '/'
-    $fragRaw = (Get-Content ".\hooks\hooks.json" -Raw).Replace('__HOOKS_DIR__', $hooksDirFwd)
+    $fragRaw = (Get-Content ".\hooks\hooks.json" -Raw).Replace('${CLAUDE_PLUGIN_ROOT}/hooks', $hooksDirFwd)
     $frag = $fragRaw | ConvertFrom-Json
 
     $raw = if (Test-Path $settingsPath) { Get-Content $settingsPath -Raw } else { "{}" }

@@ -4,8 +4,8 @@
       {
         "matcher": "Edit|Write",
         "hooks": [
-          { "type": "command", "command": "bash \"__HOOKS_DIR__/flow-spec-guard.sh\"" },
-          { "type": "command", "command": "bash \"__HOOKS_DIR__/flow-claude-guard.sh\"" }
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/flow-spec-guard.sh\"" },
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/flow-claude-guard.sh\"" }
         ]
       }
     ],
@@ -13,14 +13,14 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "bash \"__HOOKS_DIR__/flow-commit-guard.sh\"" }
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/flow-commit-guard.sh\"" }
         ]
       }
     ],
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "bash \"__HOOKS_DIR__/flow-session-brief.sh\"" }
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/flow-session-brief.sh\"" }
         ]
       }
     ]

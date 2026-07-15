@@ -12,7 +12,7 @@ Authoring conventions for the bash hooks. Additive to root `CLAUDE.md` — read 
 | `flow-session-brief.sh` | SessionStart | Inject ~30 tokens of backlog orientation |
 | `flow-preflight.sh` | (not an event hook) | Shared source-of-truth checks called by the above + `/flow-lint` + `/flow-ship` |
 
-`hooks.json` maps events → scripts using a `__HOOKS_DIR__` placeholder the installer replaces with each profile's real hooks path.
+`hooks.json` maps events → scripts using the `${CLAUDE_PLUGIN_ROOT}/hooks` prefix. The plugin runtime expands `${CLAUDE_PLUGIN_ROOT}` natively; the fallback installer substitutes that same prefix with each profile's real hooks path — one file, both consumers.
 
 ## Rules for every hook
 
