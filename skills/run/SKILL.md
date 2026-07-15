@@ -82,7 +82,7 @@ Read the index first to avoid re-suggesting existing specs. Brainstorm through t
 
 - Checkpoint after the plan — in `checkpoint` mode never write code before sign-off; `auto-build` skips only the approval pause and still records the plan first. (See `reference/implement.md`.)
 - **Autonomy gates only the plan-approval pause** — resolved via `flow-preflight.sh autonomy`. `auto-build` never bypasses Claude Code permissions, edits config, or self-approves; its safety net is the verifier.
-- **Nothing integrates unverified under `auto-build`** — a `flow-verifier` FAIL blocks; one bounded retry, then escalate to `checkpoint`. Verifiers judge, never fix; implementers build only to the task-local AC and never touch status/index/`deferrals:`.
+- **Nothing integrates unverified under `auto-build`** — a `flow:flow-verifier` FAIL blocks; one bounded retry, then escalate to `checkpoint`. Verifiers judge, never fix; implementers build only to the task-local AC and never touch status/index/`deferrals:`.
 - TDD — test first, per `CLAUDE.md`.
 - **Status is single-source** — the index (local) or the board (ado). Never write a status into a `specs/<id>.md` detail file.
 - **Detail files are backend-neutral** — the same shape in every mode.

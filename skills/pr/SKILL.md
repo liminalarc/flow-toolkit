@@ -30,7 +30,7 @@ Usage:
 
 ### Phase 2 — Fan out to one reviewer per dimension
 
-Each dimension is audited by an independent, read-only `flow-pr-reviewer` sub-agent that loads only its own rubric — so the main thread stays lean and dimensions run in parallel. With a focus flag, run only that dimension; with none, run all three. Dimension → rubric:
+Each dimension is audited by an independent, read-only `flow:flow-pr-reviewer` sub-agent that loads only its own rubric — so the main thread stays lean and dimensions run in parallel. With a focus flag, run only that dimension; with none, run all three. Dimension → rubric:
 
 | Dimension | Flag | Rubric (passed to the reviewer) |
 |---|---|---|
@@ -38,7 +38,7 @@ Each dimension is audited by an independent, read-only `flow-pr-reviewer` sub-ag
 | Quality (correctness + clean code) | `--quality` | `reference/quality.md` |
 | Tests | `--tests` | `reference/tests.md` |
 
-**Dispatch.** For each requested dimension, launch a `flow-pr-reviewer` with: the dimension name, the path to its rubric (`reference/<dimension>.md` within this skill's directory), the **resolved diff refs/command** from Phase 1, the **spec under review** (`specs/<id>.md` path, or "spec-less"), and the project root. When more than one dimension runs, launch them **in parallel** — a single message with multiple agent calls. Each reviewer reads the diff itself (it has Bash), returns prioritized findings, and never edits.
+**Dispatch.** For each requested dimension, launch a `flow:flow-pr-reviewer` with: the dimension name, the path to its rubric (`reference/<dimension>.md` within this skill's directory), the **resolved diff refs/command** from Phase 1, the **spec under review** (`specs/<id>.md` path, or "spec-less"), and the project root. When more than one dimension runs, launch them **in parallel** — a single message with multiple agent calls. Each reviewer reads the diff itself (it has Bash), returns prioritized findings, and never edits.
 
 ### Phase 3 — Synthesize (main thread)
 

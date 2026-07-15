@@ -18,7 +18,7 @@ Usage:
 
 **Start fresh.** Read only from the project files — `CLAUDE.md`, `SPECIFICATIONS.md`, `README.md`, `MARKETING.md`. Do not reference or build on prior conversation context. Treat this as a new session regardless of what preceded it.
 
-**Fan out to one reviewer per lens.** Each lens is audited by an independent, read-only `flow-reviewer` sub-agent that loads only its own rubric — so the main thread stays lean and lenses run in parallel. Lens → rubric:
+**Fan out to one reviewer per lens.** Each lens is audited by an independent, read-only `flow:flow-reviewer` sub-agent that loads only its own rubric — so the main thread stays lean and lenses run in parallel. Lens → rubric:
 
 | Lens | Flag | Rubric (passed to the reviewer) |
 |---|---|---|
@@ -27,7 +27,7 @@ Usage:
 | Marketing | `--marketing` | `reference/marketing.md` |
 | Product | `--product` | `reference/product.md` |
 
-**Dispatch.** For each requested lens, launch a `flow-reviewer` agent with: the lens name, the path to its rubric (`reference/<lens>.md` within this skill's directory), and the project root. When more than one lens runs, launch them **in parallel** — a single message with multiple agent calls. Each reviewer returns prioritized findings for its lens and never edits.
+**Dispatch.** For each requested lens, launch a `flow:flow-reviewer` agent with: the lens name, the path to its rubric (`reference/<lens>.md` within this skill's directory), and the project root. When more than one lens runs, launch them **in parallel** — a single message with multiple agent calls. Each reviewer returns prioritized findings for its lens and never edits.
 
 **Synthesize (main thread).**
 - Single lens → present that lens's prioritized findings.

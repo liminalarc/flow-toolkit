@@ -2,7 +2,7 @@
 
 The build path. Read `reference/authoring.md` alongside this when you write or update the detail file.
 
-**Autonomy — `checkpoint` (default) vs `auto-build`.** Before planning, resolve the spec's mode with the shared helper (locate `flow-preflight.sh` the way `/flow:ship`/`/flow:lint` do): `flow-preflight.sh autonomy specs/<id>.md --repo .` → `checkpoint | auto-build`. Precedence is defined once, in the helper: `.flow-toolkit.json` `autonomy.force` > the spec's `autonomy:` front-matter > `.flow-toolkit.json` `autonomy.default` > builtin `checkpoint`. **Autonomy controls exactly one thing — whether flow pauses for _plan approval_.** It never bypasses Claude Code's permission system, edits config, or self-approves; the `flow-verifier` (step 3) is the safety net that makes `auto-build` tolerable. `checkpoint` → pause for sign-off (step 2), verifier **advisory**. `auto-build` → skip the plan-approval pause and build, verifier **blocking** (nothing integrates unverified).
+**Autonomy — `checkpoint` (default) vs `auto-build`.** Before planning, resolve the spec's mode with the shared helper (locate `flow-preflight.sh` the way `/flow:ship`/`/flow:lint` do): `flow-preflight.sh autonomy specs/<id>.md --repo .` → `checkpoint | auto-build`. Precedence is defined once, in the helper: `.flow-toolkit.json` `autonomy.force` > the spec's `autonomy:` front-matter > `.flow-toolkit.json` `autonomy.default` > builtin `checkpoint`. **Autonomy controls exactly one thing — whether flow pauses for _plan approval_.** It never bypasses Claude Code's permission system, edits config, or self-approves; the `flow:flow-verifier` (step 3) is the safety net that makes `auto-build` tolerable. `checkpoint` → pause for sign-off (step 2), verifier **advisory**. `auto-build` → skip the plan-approval pause and build, verifier **blocking** (nothing integrates unverified).
 
 ## 1. Understand
 
@@ -21,10 +21,10 @@ On sign-off (checkpoint) or immediately (auto-build), write/update `specs/<id>.m
 Follow the conventions in `CLAUDE.md` for this project. Keep commits small and **tag every commit's subject with the spec id as a leading bracket** — `[#<id>] type: subject` (e.g. `[#1.4] feat: …`). The id goes in the **subject line, not the body**, so `/flow:ship` derives the release's specs mechanically from `git log`; the commit guard accepts the leading tag and nudges the exact id when a spec is IN PROGRESS and it's missing. Surface decisions as you go.
 
 How you dispatch depends on mode and shape:
-- **`checkpoint`, single-layer**: build inline, test-first, commit per slice. The human is watching, so `flow-verifier` is an **advisory** check on the diff.
-- **`auto-build`, or any cross-cutting spec**: dispatch one **`flow-implementer`** agent per task/layer against its local-AC contract (worktree-isolated when layers run in parallel). It builds to the seam and reports a diff — it never merges or touches lifecycle state (index/status/`deferrals:`). Skip layers with no independent work.
+- **`checkpoint`, single-layer**: build inline, test-first, commit per slice. The human is watching, so `flow:flow-verifier` is an **advisory** check on the diff.
+- **`auto-build`, or any cross-cutting spec**: dispatch one **`flow:flow-implementer`** agent per task/layer against its local-AC contract (worktree-isolated when layers run in parallel). It builds to the seam and reports a diff — it never merges or touches lifecycle state (index/status/`deferrals:`). Skip layers with no independent work.
 
-**Verifier gating before integration (the safety net).** For each task/layer, run one **`flow-verifier`** on the implementer's diff against that task's local AC; it returns a structured `PASS`/`FAIL` and **never fixes** (judges only):
+**Verifier gating before integration (the safety net).** For each task/layer, run one **`flow:flow-verifier`** on the implementer's diff against that task's local AC; it returns a structured `PASS`/`FAIL` and **never fixes** (judges only):
 - **`auto-build` → blocking.** A `FAIL` does not integrate. Give the implementer **one** bounded retry with the verifier's findings; if it still fails, **escalate** — that task falls back to `checkpoint` and you hand the verdict to the user. Merge only `PASS` diffs, then verify the seam.
 - **`checkpoint` → advisory.** Surface the verdict + diff to the user (you're already paused for their call) rather than blocking.
 
