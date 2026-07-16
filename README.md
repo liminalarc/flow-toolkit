@@ -160,3 +160,9 @@ cd path/to/flow-toolkit && git pull && ./install.sh    # or  .\install.ps1  on W
 ```
 
 > ⚠️ **The fallback installer overwrites.** It force-copies the toolkit's commands, skills, and agents over whatever is in each detected profile, so in-place edits to installed files are replaced. Keep customizations in the toolkit source (so they survive `git pull`) or as project-prefixed commands in a project's own `.claude/commands/`. The plugin path avoids this — its files live in the versioned plugin cache.
+
+---
+
+## License
+
+[MIT](LICENSE) © 2026 LiminalArc
