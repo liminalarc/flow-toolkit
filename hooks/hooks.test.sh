@@ -424,12 +424,12 @@ x
 EOF
 bash "$PREFLIGHT" resolved --repo "$df" --done "3.6" 2>/dev/null; exit_is "resolved: archived dir-form orchestrator lookup gates" 2 $?
 
-# ---- flow-commit-guard: [#id] subject-tag nudge (check 3b) ----
+# ---- flow-commit-guard: [id] subject-tag nudge (check 3b) ----
 CGUARD="$HERE/flow-commit-guard.sh"
 cg="$tmp/cg"; mkdir -p "$cg/specs"
 cg_json() { printf '{"cwd":"%s","tool_input":{"command":"%s"}}' "$1" "$2"; }
 
-# One spec IN PROGRESS, untagged subject → soft nudge with the exact [#id], exit 0.
+# One spec IN PROGRESS, untagged subject → soft nudge with the exact [id], exit 0.
 cat > "$cg/SPECIFICATIONS.md" <<'EOF'
 # Proj
 ## Phase 1
@@ -437,12 +437,12 @@ cat > "$cg/SPECIFICATIONS.md" <<'EOF'
 EOF
 out=$(cg_json "$cg" 'git commit -m \"docs: no tag here\"' | bash "$CGUARD" 2>/dev/null); rc=$?
 exit_is "commit-guard: untagged commit is allowed (soft)" 0 "$rc"
-out_has "commit-guard: nudges the exact [#id]" "[#1.4]" "$out"
+out_has "commit-guard: nudges the exact [id]" "[1.4]" "$out"
 
 # Already-tagged subject → silent (no nudge).
-out=$(cg_json "$cg" 'git commit -m \"[#1.4] docs: tagged\"' | bash "$CGUARD" 2>/dev/null); rc=$?
+out=$(cg_json "$cg" 'git commit -m \"[1.4] docs: tagged\"' | bash "$CGUARD" 2>/dev/null); rc=$?
 exit_is "commit-guard: tagged commit passes" 0 "$rc"
-out_lacks "commit-guard: no nudge when already tagged" "no [#id] tag" "$out"
+out_lacks "commit-guard: no nudge when already tagged" "no [id] tag" "$out"
 
 # >1 spec IN PROGRESS → ambiguous, no id nudge.
 cat > "$cg/SPECIFICATIONS.md" <<'EOF'
@@ -453,7 +453,7 @@ cat > "$cg/SPECIFICATIONS.md" <<'EOF'
 EOF
 out=$(cg_json "$cg" 'git commit -m \"docs: no tag here\"' | bash "$CGUARD" 2>/dev/null); rc=$?
 exit_is "commit-guard: >1 IN PROGRESS still passes" 0 "$rc"
-out_lacks "commit-guard: silent when >1 IN PROGRESS" "no [#id] tag" "$out"
+out_lacks "commit-guard: silent when >1 IN PROGRESS" "no [id] tag" "$out"
 
 # Non-conventional subject still blocks (check 1 sanity).
 out=$(cg_json "$cg" 'git commit -m \"random message\"' | bash "$CGUARD" 2>&1); rc=$?
@@ -480,7 +480,7 @@ cat > "$cgd/SPECIFICATIONS.md" <<'EOF'
 ## Archive
 - **9.1** Dir spec — `DONE` — [detail](specs/9.1/9.1.md)
 EOF
-out=$(cg_json "$cgd" 'git commit -m \"[#9.1] feat: x\"' | bash "$CGUARD" 2>&1); rc=$?
+out=$(cg_json "$cgd" 'git commit -m \"[9.1] feat: x\"' | bash "$CGUARD" 2>&1); rc=$?
 exit_is "commit-guard: dir-form DONE spec with dangling deferral blocks" 2 "$rc"
 
 # ---- flow-preflight: autonomy resolution (1.7) ----

@@ -102,7 +102,7 @@ flowchart TD
     CP -->|redirect| P
     CP -->|approve| Write[Write + commit detail file<br/>set IN PROGRESS]
     Mode -->|auto-build| Write
-    Write --> Build[Build test-first<br/>small commits tagged '#id']
+    Write --> Build[Build test-first<br/>small commits tagged '[id]']
     Build --> Verify[flow-verifier checks diff<br/>vs task AC]
     Verify --> Gate{deferrals resolved?}
     Gate -->|open| Build

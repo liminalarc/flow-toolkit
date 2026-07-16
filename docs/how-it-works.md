@@ -35,7 +35,7 @@ flowchart TD
     CP -->|approve| Write[Write + commit detail file<br/>set IN PROGRESS in index]
     Mode -->|auto-build| Write
 
-    Write --> Build[Build test-first<br/>small commits tagged '#id']
+    Write --> Build[Build test-first<br/>small commits tagged '[id]']
     Build --> Defer{About to narrow<br/>in-scope work?}
     Defer -->|yes| DP[Deferral protocol:<br/>state why, user decides<br/>build here OR re-home]
     DP --> DEntry[Record deferrals entry<br/>cross-link both specs]

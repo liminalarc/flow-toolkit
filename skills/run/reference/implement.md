@@ -18,7 +18,7 @@ On sign-off (checkpoint) or immediately (auto-build), write/update `specs/<id>.m
 
 ## 3. Build test-first
 
-Follow the conventions in `CLAUDE.md` for this project. Keep commits small and **tag every commit's subject with the spec id as a leading bracket** — `[#<id>] type: subject` (e.g. `[#1.4] feat: …`). The id goes in the **subject line, not the body**, so `/flow:ship` derives the release's specs mechanically from `git log`; the commit guard accepts the leading tag and nudges the exact id when a spec is IN PROGRESS and it's missing. Surface decisions as you go.
+Follow the conventions in `CLAUDE.md` for this project. Keep commits small and **tag every commit's subject with the spec id as a leading bracket** — `[<id>] type: subject` (e.g. `[1.4] feat: …`). Use a bare `[<id>]` with **no `#`** — a `#` collides with GitHub's `#N` issue/PR autolink and mis-links every dotted id to issue 1. The id goes in the **subject line, not the body**, so `/flow:ship` derives the release's specs mechanically from `git log`; the commit guard accepts the leading tag and nudges the exact id when a spec is IN PROGRESS and it's missing. Surface decisions as you go.
 
 How you dispatch depends on mode and shape:
 - **`checkpoint`, single-layer**: build inline, test-first, commit per slice. The human is watching, so `flow:flow-verifier` is an **advisory** check on the diff.

@@ -197,7 +197,7 @@ The primary development command — all backlog management and implementation. A
 >
 > A single-layer spec in `checkpoint` mode may be built inline (verifier still runs, advisory). The backlog view, `--ideas`, `--add`, `--clean`, and `--condense` paths dispatch **no agents**.
 
-The build cycle is Understand → Plan → **Checkpoint** → Build (test-first, per-slice commits tagged `[#id]`) → Done (restart services, smoke-test end-to-end, verification checklist, status → DONE, archive). See the [full walkthrough](#61-a-full-spec-start-to-finish-checkpoint).
+The build cycle is Understand → Plan → **Checkpoint** → Build (test-first, per-slice commits tagged `[id]`) → Done (restart services, smoke-test end-to-end, verification checklist, status → DONE, archive). See the [full walkthrough](#61-a-full-spec-start-to-finish-checkpoint).
 
 ### /flow:hunt
 
@@ -254,7 +254,7 @@ Cut a release. Reads `CLAUDE.md` for the project's deploy mechanism. **Dispatche
 /flow:ship --dry-run       # run the full preflight, print version/changelog/tag, don't tag
 ```
 
-It runs a **programmatic preflight** (each pre-req an explicit ✅/❌/⚠️, never a silent pass): auto-remediable git state (offers the fix confirm-first), gate-able checks (every spec in the release is `DONE`, derived from `[#id]` commit tags and cross-checked against the index; CI green via `gh`), and judgment checks (no unreconciled deferrals). Then it proposes a version bump from conventional-commit history, **confirms with you**, tags, and reports what to verify. The git-state and deferral checks are the same `flow-preflight.sh` the guards use.
+It runs a **programmatic preflight** (each pre-req an explicit ✅/❌/⚠️, never a silent pass): auto-remediable git state (offers the fix confirm-first), gate-able checks (every spec in the release is `DONE`, derived from `[id]` commit tags and cross-checked against the index; CI green via `gh`), and judgment checks (no unreconciled deferrals). Then it proposes a version bump from conventional-commit history, **confirms with you**, tags, and reports what to verify. The git-state and deferral checks are the same `flow-preflight.sh` the guards use.
 
 ### /flow:lint
 
@@ -304,7 +304,7 @@ Where `/flow:lint` is the audit you run on demand, hooks are always on. Each fir
 |---|---|---|
 | `flow-spec-guard.sh` | PostToolUse (Edit\|Write) | Validates index entries + `specs/<id>.md` detail files the moment they change |
 | `flow-claude-guard.sh` | PostToolUse (Edit\|Write) | Enforces CLAUDE.md line caps (300 root / 200 subdir, or `.flow-toolkit.json`) |
-| `flow-commit-guard.sh` | PreToolUse (Bash) | Conventional-commit format + spec validity + deferral DONE-gate + soft `[#id]`/spec-less nudges |
+| `flow-commit-guard.sh` | PreToolUse (Bash) | Conventional-commit format + spec validity + deferral DONE-gate + soft `[id]`/spec-less nudges |
 | `flow-session-brief.sh` | SessionStart | Injects ~30 tokens of backlog orientation into each new session |
 
 The key difference from a git hook: when a guard blocks, **Claude reads the error and fixes the file in the same turn** — format drift is corrected the moment it's introduced.
@@ -339,7 +339,7 @@ Claude: [reads the index entry + specs/2.3.md, restates the problem]
         — CHECKPOINT — waits. No code is written yet.
 You:    "looks good, go"
 Claude: writes/commits specs/2.3.md, sets 2.3 IN PROGRESS in the index
-        builds test-first, one commit per slice, each tagged [#2.3] feat: …
+        builds test-first, one commit per slice, each tagged [2.3] feat: …
         [dispatches a flow-verifier on the diff — advisory in checkpoint — and shows you the verdict]
         restarts affected services, smoke-tests the behavior end-to-end
         shows a verification checklist (each AC ✅/⚠️ with what proved it)
@@ -385,7 +385,7 @@ The implementers never merge or touch status; the verifiers judge but never fix.
 
 ```
 /flow:pr 42
-  Phase 1: resolve the diff (gh pr diff 42), find the spec ([#id] in title/commits)
+  Phase 1: resolve the diff (gh pr diff 42), find the spec ([id] in title/commits)
   Phase 2: fan out, in parallel:
              flow-pr-reviewer(spec)     walks the AC → scorecard
              flow-pr-reviewer(quality)  correctness + clean code vs CLAUDE.md patterns

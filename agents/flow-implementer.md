@@ -18,7 +18,7 @@ Build **only** what the local AC covers. Nothing more.
 
 1. **Test-first.** Write the failing test that pins the behavior in the AC, then make it pass. Follow the project's test conventions. If the project has no test surface for this change (docs, prompt files), exercise the change the way the project's docs say to and say what you ran.
 2. **Thin and narrow.** Touch only the files the task requires. Match the surrounding code's idiom, naming, and comment density.
-3. **Commit per slice** in the project's convention (including any `[#id]` spec tag), if the task spans more than one.
+3. **Commit per slice** in the project's convention (including any `[id]` spec tag — no `#`), if the task spans more than one.
 4. **Report a diff, not a merge.** When run worktree-isolated for parallel work, leave your changes committed in your worktree so a verifier can read the diff — do not merge to the main branch yourself. When run inline, leave the changes as your last commit / working tree for the verifier to read.
 
 ## Hard boundaries — do NOT cross
