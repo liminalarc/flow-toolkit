@@ -70,7 +70,7 @@ cd flow-toolkit
 .\install.ps1         # Windows (PowerShell)
 ```
 
-It's a **criterion-gated fallback** — retired only once the plugin registers the toolkit's hooks reliably across all profiles **and** every in-use project has migrated (spec 1.2 D5), no fixed date. It overwrites on each run, so keep customizations as project-prefixed commands in a project's `.claude/commands/` (see the [guide](docs/guide.md#8-project-specific-commands)), not by editing installed files.
+It's a **criterion-gated fallback** — retired only once the plugin registers the toolkit's hooks reliably across all profiles **and** every in-use project has migrated (spec 1.2 D5), no fixed date. It overwrites on each run, so keep customizations as project-prefixed commands in a project's `.claude/commands/`, not by editing installed files.
 
 ---
 

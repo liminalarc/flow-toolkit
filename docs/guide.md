@@ -23,8 +23,7 @@ and, for each skill, **exactly when its sub-agents get dispatched**.
 - [5. The hooks (the always-on seatbelt)](#5-the-hooks-the-always-on-seatbelt)
 - [6. Worked walkthroughs](#6-worked-walkthroughs)
 - [7. Customizing — .flow-toolkit.json](#7-customizing--flow-toolkitjson)
-- [8. Project-specific commands](#8-project-specific-commands)
-- [9. Cheat sheet](#9-cheat-sheet)
+- [8. Cheat sheet](#8-cheat-sheet)
 
 ---
 
@@ -412,19 +411,7 @@ A single repo-root file (next to `.git`) tunes the toolkit per project. Any key 
 - **`spec.maxLines`** — the detail-file soft budget (default 120). This one **only ever warns** — a spec over budget is a nudge to tighten (one job per section, no cross-section restatement), never a block, because specs legitimately vary. Surfaced by `flow-spec-guard.sh` on edit and `/flow:lint --specs` as `INFO`.
 - **`autonomy.default` / `force`** — see [2.4](#24-autonomy--checkpoint-vs-auto-build). `force` is a hard project override; `default` is the fallback when a spec is silent.
 
-## 8. Project-specific commands
-
-Project-level commands live in `.claude/commands/` inside the project root and appear in the `/` picker only when Claude Code works in that project. Name them with a project prefix to keep them distinct from the toolkit's `/flow:*` set:
-
-```
-.claude/commands/
-  gs-facility-discover.md    # find golf facilities near a location
-  gs-facility-onboard.md     # drive a facility through the import pipeline
-```
-
-**When to generalize one into the toolkit:** Cortex Golf's `gs-opportunity-hunt` proved useful enough to lift into the portable `/flow:hunt` — the portable version derives its domain frame from each project's own docs instead of hardcoding the domain. Keep a project-prefixed command only when it depends on something truly project-specific; if the pattern is generic with the domain swapped out, it belongs in the toolkit.
-
-## 9. Cheat sheet
+## 8. Cheat sheet
 
 | I want to… | Run |
 |---|---|
