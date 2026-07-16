@@ -5,9 +5,10 @@
 > Vocabulary: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
 ## Phase 1 — Features
-- **1.12** How-it-works guide + diagrams + lean README — `IN PROGRESS` — [detail](specs/1.12.md)
+_(no active specs — see Archive)_
 
 ## Archive
+- **1.12** How-it-works guide + diagrams + lean README — `DONE` — [detail](specs/archive/1.12.md)
 - **1.13** Plugin-only — standalone fixes + purge tooling — `DONE` — [detail](specs/archive/1.13/1.13.md)
 - **1.10** Plugin packaging + criterion-gated installer transition — `DONE` — [detail](specs/archive/1.10/1.10.md)
 - **1.11** Migrate flow + flow-hunt to skills — `DONE` — [detail](specs/archive/1.11.md)

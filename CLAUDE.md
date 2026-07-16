@@ -71,7 +71,7 @@ flow-toolkit/
 │   ├── flow-preflight.sh    # shared single-source-of-truth checks
 │   ├── hooks.json           # event → hook registrations (${CLAUDE_PLUGIN_ROOT}; installer substitutes for fallback)
 │   └── hooks.test.sh        # bash test harness for hook parsing/validation
-├── docs/                # architecture.md, authoring-commands.md — dev docs (not shipped as commands)
+├── docs/                # how-it-works.md (diagrams), guide.md (usage manual), architecture.md (ADR), authoring-commands.md — dev docs (not shipped as commands)
 ├── install.sh           # Fallback installer (Mac/Linux) — must mirror install.ps1
 ├── install.ps1          # Fallback installer (Windows) — must mirror install.sh
 ├── uninstall.sh         # Purge a manual install (plugin-only migration) — mirrors uninstall.ps1
@@ -87,5 +87,9 @@ There is no deploy target. A release is a **git tag on GitHub**; plugin users pi
 
 ## See Also
 
+- `README.md` — the user-facing front door (install + quick start); links to the two docs below.
+- `docs/guide.md` — the full usage manual: every command/skill/agent/hook with examples + agent-dispatch walkthroughs.
+- `docs/how-it-works.md` — five Mermaid diagrams of the core systems (dev cycle, spec model, hooks, install, agent dispatch).
+- `docs/architecture.md` — the design decision record (ratified by spec 1.2).
 - `docs/authoring-commands.md` — conventions for authoring the slash-command prompt files.
 - `hooks/CLAUDE.md` — conventions for the bash hooks and the shared preflight helper.
