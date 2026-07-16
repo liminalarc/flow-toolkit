@@ -5,7 +5,7 @@
 > Vocabulary: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
 ## Phase 1 — Features
-- **1.12** How-it-works diagrams + architecture doc — `NOT STARTED` — [detail](specs/1.12.md)
+- **1.12** How-it-works guide + diagrams + lean README — `IN PROGRESS` — [detail](specs/1.12.md)
 
 ## Archive
 - **1.13** Plugin-only — standalone fixes + purge tooling — `DONE` — [detail](specs/archive/1.13/1.13.md)
