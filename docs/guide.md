@@ -17,6 +17,7 @@ and, for each skill, **exactly when its sub-agents get dispatched**.
   - [2.3 Backends — local vs ado](#23-backends--local-vs-ado)
   - [2.4 Autonomy — checkpoint vs auto-build](#24-autonomy--checkpoint-vs-auto-build)
   - [2.5 Deferrals — the no-silent-scope-narrowing rule](#25-deferrals--the-no-silent-scope-narrowing-rule)
+  - [2.6 The validation done-gate — declared per-spec](#26-the-validation-done-gate--declared-per-spec)
 - [3. Commands & skills, with examples](#3-commands--skills-with-examples)
   - [/flow:init](#flowinit) · [/flow:run](#flowrun) · [/flow:hunt](#flowhunt) · [/flow:review](#flowreview) · [/flow:pr](#flowpr) · [/flow:validate](#flowvalidate) · [/flow:ship](#flowship) · [/flow:lint](#flowlint)
 - [4. The sub-agent catalog](#4-the-sub-agent-catalog)
@@ -66,6 +67,10 @@ A spec = **one index entry** + **one detail file**. The split keeps the working 
 id: 1.1
 title: User Authentication
 links: []
+# validate:         # OPTIONAL — declare a UI/UX validation target (see §2.6)
+#   target: login
+#   intent: "a returning user signs in and lands on their dashboard"
+#   lens: [ui, ux]  # optional — default both
 # deferrals:        # OPTIONAL — only if something in scope was deferred
 #   - what: "SSO login"
 #     why: "scope; password login first"
@@ -156,6 +161,25 @@ deferrals:
 
 **The DONE-gate:** a spec **cannot reach `DONE`** while any deferral has an unresolved `to`. This is enforced identically in three places by one helper (`flow-preflight.sh resolved`): the commit guard blocks it, `/flow:lint` reports it, and `/flow:ship`'s preflight gates on it. So "quietly built less than asked" stops being a failure mode the workflow allows.
 
+### 2.6 The validation done-gate — declared per-spec
+
+A spec that touches the interface can declare a **validation target** in its front-matter. When it does, `/flow:run`'s done-step **dispatches the `flow-ux-validator` agent** (the same one `/flow:validate` drives) before flipping `DONE` — so UI/UX findings are caught under the build gate instead of only when someone remembers to run `/flow:validate`. It's **opt-in per spec**: no `validate:` block ⇒ the gate is a **pure no-op**, zero friction on specs that don't touch UI.
+
+```yaml
+validate:
+  target: checkout                                        # one screen or flow
+  intent: "a new user buys one item and reaches confirmation"  # required with target
+  lens: [ui, ux]                    # optional — default both; ui = design-system, ux = task+friction
+  design_system: design/tokens.md   # optional — else .flow/validate/* (spec 1.16) / infer from source
+```
+
+At the done-gate `/flow:run` reads the block and dispatches **one `flow-ux-validator` per lens, serially** (driving a live app is stateful — concurrent drivers would collide). The design-system pointer resolves by precedence: the block's `design_system` > the project's persisted `.flow/validate/*.md` (spec 1.16, when present) > infer from source. Then:
+
+- **Findings are triaged before `DONE`** — each open finding is either fixed here (the lens is re-run to confirm) or explicitly re-homed through the [deferral protocol](#25-deferrals--the-no-silent-scope-narrowing-rule) (which records a `deferrals:` entry and mechanically gates `DONE`). No untriaged finding survives to `DONE`.
+- **`NOT APPLICABLE` passes cleanly** — a repo with no drivable UI (backend-only, CLI, infra) gets the verdict shown and the gate proceeds. Declaring `validate:` on an undrivable repo is a mistake to surface, never a hard stop, and never an invented critique.
+
+Standalone, the same agent runs on demand via [`/flow:validate`](#flowvalidate); the done-gate is that agent wired into the lifecycle.
+
 ---
 
 ## 3. Commands & skills, with examples
@@ -198,6 +222,8 @@ The primary development command — all backlog management and implementation. A
 > A single-layer spec in `checkpoint` mode may be built inline (verifier still runs, advisory). The backlog view, `--ideas`, `--add`, `--clean`, and `--condense` paths dispatch **no agents**.
 
 The build cycle is Understand → Plan → **Checkpoint** → Build (test-first, per-slice commits tagged `[id]`) → Done (restart services, smoke-test end-to-end, verification checklist, status → DONE, archive). See the [full walkthrough](#61-a-full-spec-start-to-finish-checkpoint).
+
+**Validation done-gate.** If the spec carries a `validate:` block, the done-step dispatches the **`flow-ux-validator`** agent (one per lens, serially) and triages its findings before flipping `DONE` — the [validation done-gate](#26-the-validation-done-gate--declared-per-spec). No block ⇒ no-op.
 
 ### /flow:hunt
 

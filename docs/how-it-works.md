@@ -22,7 +22,8 @@ with examples); [**architecture.md**](architecture.md) is the *why it's shaped t
 The spine of `/flow:run <id>`: understand → plan → **checkpoint** → build → done, with
 the deferral protocol branching off anywhere scope would narrow, and the DONE-gate at
 the end. Autonomy (`checkpoint` vs `auto-build`) changes only the plan-approval pause
-and whether the verifier blocks.
+and whether the verifier blocks. A spec that declares a `validate:` block also runs the
+**validation done-gate** before `DONE` — `flow-ux-validator` per lens, findings triaged.
 
 ```mermaid
 flowchart TD
@@ -52,12 +53,18 @@ flowchart TD
     Integrate --> Gate{deferrals resolved?<br/>flow-preflight.sh resolved}
     Gate -->|open deferral| DP
     Gate -->|clear| Smoke[Restart services<br/>+ smoke-test end-to-end]
-    Smoke --> Done[Status to DONE<br/>tick AC, log SHA, archive]
+    Smoke --> VGate{spec has<br/>validate: block?}
+    VGate -->|no| Done[Status to DONE<br/>tick AC, log SHA, archive]
+    VGate -->|yes| VUX[flow-ux-validator per lens, serial<br/>N/A passes clean]
+    VUX --> Triage{findings triaged?}
+    Triage -->|open finding| DP
+    Triage -->|clear / none| Done
     Done --> End([hand off; /flow:ship cuts the release])
 ```
 
-**Sources:** `skills/run/reference/implement.md` (the numbered steps + deferral protocol),
-`skills/run/SKILL.md` (autonomy rules), `hooks/flow-preflight.sh` (`autonomy`, `resolved`).
+**Sources:** `skills/run/reference/implement.md` (the numbered steps + deferral protocol + validation
+done-gate), `skills/run/SKILL.md` (autonomy rules), `agents/flow-ux-validator.md` (the done-gate agent),
+`hooks/flow-preflight.sh` (`autonomy`, `resolved`).
 
 ---
 
@@ -202,10 +209,11 @@ flowchart TD
 ## 5. Agent dispatch — when sub-agents fire
 
 The five skills fan work out to read-only or write sub-agents. This is the "when do agents
-get fired off" picture: `run` dispatches on the **build path** (after plan sign-off);
-`hunt`/`review`/`pr` dispatch **one agent per unit** (dimension / lens / dimension) and run
-them in parallel; `validate` drives the running app **one lens at a time** (serial — driving a
-live app is stateful), then the main thread synthesizes. The thin commands (`init`, `lint`,
+get fired off" picture: `run` dispatches on the **build path** (after plan sign-off) — the
+implementer/verifier pair per task, plus **`flow-ux-validator` at the done-gate** when the spec
+declares a `validate:` block (one per lens, serial); `hunt`/`review`/`pr` dispatch **one agent per
+unit** (dimension / lens / dimension) and run them in parallel; `validate` drives the running app
+**one lens at a time** (serial — driving a live app is stateful), then the main thread synthesizes. The thin commands (`init`, `lint`,
 `ship`) dispatch **nothing** — they run inline.
 
 ```mermaid
@@ -215,6 +223,8 @@ flowchart TD
         RUN -->|one per task/layer<br/>worktree-isolated when parallel| IMP["flow-implementer<br/>WRITES to local AC, stops at seam"]
         IMP -->|diff| VER["flow-verifier<br/>READ-ONLY, PASS/FAIL, never fixes"]
         VER -->|auto-build blocking · checkpoint advisory| RUN
+        RUN -->|done-gate: spec has validate: block<br/>one per lens, serial| DVUX["flow-ux-validator<br/>READ-ONLY, DRIVES the app, N/A-aware"]
+        DVUX -->|findings triaged before DONE| RUN
     end
 
     subgraph hunt["/flow:hunt — after frame checkpoint"]
@@ -250,8 +260,8 @@ run in parallel). `flow-verifier`, `flow-researcher`, `flow-reviewer`, `flow-pr-
 `flow-ux-validator` is the one read-only agent that *drives the running app* rather than reading
 source — writing only throwaway screenshots to a scratch dir.
 
-**Sources:** `skills/run/reference/implement.md` (implementer/verifier dispatch + gating),
-`skills/hunt/SKILL.md` (Phase 2 fan-out), `skills/review/SKILL.md` (lens dispatch),
+**Sources:** `skills/run/reference/implement.md` (implementer/verifier dispatch + gating + validation
+done-gate), `skills/hunt/SKILL.md` (Phase 2 fan-out), `skills/review/SKILL.md` (lens dispatch),
 `skills/pr/SKILL.md` (Phase 2 fan-out), `skills/validate/SKILL.md` (serial lens dispatch),
 `agents/flow-implementer.md`, `agents/flow-verifier.md`, `agents/flow-researcher.md`,
 `agents/flow-reviewer.md`, `agents/flow-pr-reviewer.md`, `agents/flow-ux-validator.md`.

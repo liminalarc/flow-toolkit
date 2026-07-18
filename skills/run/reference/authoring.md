@@ -60,6 +60,11 @@ A soft budget (default 120 lines; `spec.maxLines` in `.flow-toolkit.json`) warns
 id: <id>
 title: <Title>
 links: []            # related spec ids or external URLs
+# validate:          # OPTIONAL — declare a UI/UX validation target; omit for specs that
+#   target: checkout #   don't touch the interface (then /flow:run's done-gate is a no-op).
+#   intent: "a new user buys one item and reaches confirmation"  # required with target
+#   lens: [ui, ux]   #   optional — default both; ui = design-system, ux = task+friction
+#   design_system: design/tokens.md   # optional — else .flow/validate/* (1.16) / infer
 # deferrals:         # OPTIONAL — omit entirely if nothing was deferred.
 #   - what: "<what was cut>"
 #     why: "<the reason>"
