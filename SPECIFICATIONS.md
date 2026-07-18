@@ -5,7 +5,7 @@
 > Vocabulary: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
 ## Phase 1 — Features
-_(no active specs — see Archive)_
+- **1.14** UX/UI validation agent — drive the running app, score against the design system + UX best practices — `NOT STARTED` — [detail](specs/1.14.md)
 
 ## Archive
 - **1.12** How-it-works guide + diagrams + lean README — `DONE` — [detail](specs/archive/1.12.md)
