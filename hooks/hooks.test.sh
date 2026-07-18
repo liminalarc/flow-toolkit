@@ -537,5 +537,65 @@ adv=$(bash "$PREFLIGHT" autonomy "$au/specs/1.7.md" --repo "$au" 2>&1 >/dev/null
 out_has "autonomy: unknown value warns on stderr" "yolo" "$adv"
 rm -rf "$au"
 
+# ---- flow-preflight: rubric-basis + rubric-drift (spec 1.16) ----
+rb=$(mktemp -d)
+mkdir -p "$rb/design" "$rb/.flow/validate"
+printf ':root{--c:#111}\n' > "$rb/design/tokens.css"
+printf 'module.exports={}\n' > "$rb/tailwind.config.js"
+
+# rubric-basis emits a YAML basis: block with a path + sha per file.
+r=$(cd "$rb" && bash "$PREFLIGHT" rubric-basis design/tokens.css tailwind.config.js 2>/dev/null); exit_is "rubric-basis exit 0" 0 $?
+out_has "rubric-basis: header" "basis:" "$r"
+out_has "rubric-basis: path 1" "path: design/tokens.css" "$r"
+out_has "rubric-basis: path 2" "path: tailwind.config.js" "$r"
+out_has "rubric-basis: sha key present" "sha:" "$r"
+# A missing file is a hard error (can't stamp a basis on a nonexistent file).
+bash "$PREFLIGHT" rubric-basis "$rb/nope.css" 2>/dev/null; exit_is "rubric-basis: missing file exit 2" 2 $?
+
+# Stamp a rubric using the emitted basis block, then check drift = in sync.
+sha1=$(sha256sum "$rb/design/tokens.css" | cut -c1-12)
+sha2=$(sha256sum "$rb/tailwind.config.js" | cut -c1-12)
+cat > "$rb/.flow/validate/ui.md" <<EOF
+---
+generated: 2026-07-18
+basis:
+  - path: design/tokens.css
+    sha: $sha1
+  - path: tailwind.config.js
+    sha: $sha2
+---
+
+## Project UI rubric
+- use the token scale
+EOF
+bash "$PREFLIGHT" rubric-drift "$rb/.flow/validate/ui.md" --repo "$rb" 2>/dev/null; exit_is "rubric-drift: in sync exit 0" 0 $?
+
+# Change a basis file → drift detected (exit 2) and the changed file is named.
+printf ':root{--c:#222}\n' > "$rb/design/tokens.css"
+bash "$PREFLIGHT" rubric-drift "$rb/.flow/validate/ui.md" --repo "$rb" 2>/dev/null; exit_is "rubric-drift: changed file exit 2" 2 $?
+d=$(bash "$PREFLIGHT" rubric-drift "$rb/.flow/validate/ui.md" --repo "$rb" 2>&1)
+out_has "rubric-drift: names the changed file" "design/tokens.css" "$d"
+out_has "rubric-drift: reports CHANGED" "CHANGED" "$d"
+
+# A recorded basis file that no longer exists → drift (exit 2), reported MISSING.
+rm -f "$rb/tailwind.config.js"
+bash "$PREFLIGHT" rubric-drift "$rb/.flow/validate/ui.md" --repo "$rb" 2>/dev/null; exit_is "rubric-drift: missing basis file exit 2" 2 $?
+m=$(bash "$PREFLIGHT" rubric-drift "$rb/.flow/validate/ui.md" --repo "$rb" 2>&1)
+out_has "rubric-drift: reports MISSING" "MISSING" "$m"
+
+# A rubric with no basis: block → clean no-op (exit 0), nothing to check.
+cat > "$rb/.flow/validate/ux.md" <<'EOF'
+---
+generated: 2026-07-18
+---
+
+## Project UX rubric
+EOF
+bash "$PREFLIGHT" rubric-drift "$rb/.flow/validate/ux.md" --repo "$rb" 2>/dev/null; exit_is "rubric-drift: no basis exit 0" 0 $?
+
+# A nonexistent rubric file → clean no-op (exit 0); the gate is opt-in.
+bash "$PREFLIGHT" rubric-drift "$rb/.flow/validate/none.md" --repo "$rb" 2>/dev/null; exit_is "rubric-drift: absent rubric exit 0" 0 $?
+rm -rf "$rb"
+
 echo "hooks.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

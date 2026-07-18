@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # flow-preflight.sh — shared, deterministic pre-ship / spec checks.
 #
-# This is the SOURCE OF TRUTH for four machine-checkable rules that both a
+# This is the SOURCE OF TRUTH for the machine-checkable rules that both a
 # human and the flow skills call, so a check is defined once and can never be a
 # green run that silently skipped it:
 #
@@ -38,6 +38,18 @@
 #       An unrecognized value warns on stderr and falls back to `checkpoint`
 #       (never a silent wrong mode). Consumed by /flow:run's build loop. Always
 #       exit 0 — resolution never fails; the worst case is the safe default.
+#
+#   rubric-basis <file>...
+#       Emit a YAML `basis:` block (path + 12-char sha256 each) for the given
+#       source files. Used when saving/refreshing a persisted project rubric
+#       (.flow/validate/{ui,ux}.md) so stamping and drift-checking share one
+#       fingerprint definition. A missing file is a hard error. Exit 0 / 2.
+#
+#   rubric-drift <rubric.md> [--repo DIR]
+#       Re-hash each source file recorded in a rubric's `basis:` block and
+#       compare to the stored sha. Prints ✅/❌/⚠️ per basis entry. Exit 0 = all
+#       in sync (also when the rubric or its basis is absent — a clean opt-in
+#       no-op) · 2 = a basis file CHANGED or went MISSING (design system drifted).
 #
 # Backend-neutral by construction: every rule reads only the repo's own files
 # (index + specs/<id>.md front-matter), so it behaves identically in local and
@@ -272,6 +284,118 @@ cmd_autonomy() {
     exit 0
 }
 
+# --- subcommand: rubric-basis / rubric-drift (spec 1.16) -------------------
+# The persisted project rubric (.flow/validate/{ui,ux}.md) records the source
+# files it was derived from ("basis") + a cheap fingerprint each, so a later run
+# can detect the design system drifted without re-inferring it. Defined once
+# here; consumed by flow-ux-validator, /flow:validate, and /flow:run's done-gate.
+
+# 12-char sha256 fingerprint of a file (portable across Git Bash / macOS / Linux).
+rubric_fingerprint() { # <file>
+    sha256sum "$1" 2>/dev/null | cut -c1-12
+}
+
+# Parse a rubric's front-matter `basis:` list → one <path><US><sha> per entry.
+# Same front-matter/list handling as parse_deferrals (keeps empty fields).
+parse_basis() {
+    awk '
+    function unq(v) {
+        sub(/\r$/, "", v)
+        if (v ~ /^"/)    { sub(/^"/, "", v);     sub(/".*$/, "", v);     return v }
+        if (v ~ /^\047/) { sub(/^\047/, "", v);  sub(/\047.*$/, "", v);  return v }
+        sub(/[[:space:]]*#.*$/, "", v)
+        sub(/[[:space:]]+$/, "", v)
+        return v
+    }
+    function assign(s, idx) {
+        if (s ~ /^path:/)     { v = s; sub(/^path:[[:space:]]*/, "", v); path[idx] = unq(v) }
+        else if (s ~ /^sha:/) { v = s; sub(/^sha:[[:space:]]*/,  "", v); sha[idx]  = unq(v) }
+    }
+    BEGIN { fm = 0; inb = 0; n = 0 }
+    {
+        line = $0; sub(/\r$/, "", line)
+        if (fm == 0 && NR == 1 && line ~ /^---[[:space:]]*$/) { fm = 1; next }
+        if (fm == 1 && line ~ /^---[[:space:]]*$/) { fm = 2; next }
+        if (fm != 1) next
+        if (line ~ /^basis:[[:space:]]*$/) { inb = 1; next }
+        if (inb == 1 && line ~ /^[^[:space:]-]/) inb = 0
+        if (inb != 1) next
+        if (line ~ /^[[:space:]]*-[[:space:]]/) {
+            n++; path[n] = ""; sha[n] = ""
+            rest = line; sub(/^[[:space:]]*-[[:space:]]*/, "", rest)
+            if (rest != "") assign(rest, n)
+        } else if (n > 0) {
+            s = line; sub(/^[[:space:]]+/, "", s)
+            assign(s, n)
+        }
+    }
+    END { for (i = 1; i <= n; i++) printf "%s%s%s\n", path[i], US, sha[i] }
+    ' US="$US" "$1"
+}
+
+# rubric-basis <file>... — emit a YAML `basis:` block (path + fresh sha) for the
+# given source files. Used by the caller at save/refresh time so stamping and
+# checking share one fingerprint definition. A missing file is a hard error.
+cmd_rubric_basis() {
+    [ $# -ge 1 ] || { echo "usage: flow-preflight.sh rubric-basis <file>..." >&2; exit 64; }
+    missing=""
+    for f in "$@"; do [ -f "$f" ] || missing="${missing} $f"; done
+    if [ -n "$missing" ]; then
+        echo "flow-toolkit preflight: rubric-basis — file(s) not found:$missing" >&2
+        exit 2
+    fi
+    echo "basis:"
+    for f in "$@"; do
+        printf '  - path: %s\n    sha: %s\n' "$f" "$(rubric_fingerprint "$f")"
+    done
+    exit 0
+}
+
+# rubric-drift <rubric.md> [--repo DIR] — re-hash each recorded basis file and
+# compare to the stored sha. Prints one line per basis entry; exit 0 = all in
+# sync (or no basis / no rubric — a clean opt-in no-op), 2 = any CHANGED/MISSING.
+cmd_rubric_drift() {
+    rubric=""; repo="."
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --repo) repo="$2"; shift 2 ;;
+            --*) shift ;;
+            *) [ -z "$rubric" ] && rubric="$1"; shift ;;
+        esac
+    done
+    [ -n "$rubric" ] || { echo "usage: flow-preflight.sh rubric-drift <rubric.md> [--repo DIR]" >&2; exit 64; }
+    [ -f "$rubric" ] || exit 0     # absent rubric ⇒ opt-in no-op
+
+    records=$(parse_basis "$rubric")
+    if [ -z "$records" ]; then
+        echo "no basis recorded in $(basename "$rubric") — nothing to drift-check"
+        exit 0
+    fi
+
+    drift=0
+    while IFS="$US" read -r path sha; do
+        [ -z "$path" ] && continue
+        f="$repo/$path"
+        if [ ! -f "$f" ]; then
+            echo "⚠️  $path MISSING (recorded in basis, not found)"
+            drift=1
+        else
+            now=$(rubric_fingerprint "$f")
+            if [ "$now" = "$sha" ]; then
+                echo "✅ $path unchanged"
+            else
+                echo "❌ $path CHANGED (was ${sha:-?}, now $now)"
+                drift=1
+            fi
+        fi
+    done <<EOF
+$records
+EOF
+
+    [ "$drift" -eq 0 ] || exit 2
+    exit 0
+}
+
 # --- subcommand: git-state -------------------------------------------------
 cmd_git_state() {
     repo="."; fetch=1
@@ -355,11 +479,13 @@ cmd_git_state() {
 sub="${1:-}"
 [ $# -gt 0 ] && shift
 case "$sub" in
-    git-state)  cmd_git_state "$@" ;;
-    resolved)   cmd_resolved "$@" ;;
-    wellformed) cmd_wellformed "$@" ;;
-    autonomy)   cmd_autonomy "$@" ;;
+    git-state)     cmd_git_state "$@" ;;
+    resolved)      cmd_resolved "$@" ;;
+    wellformed)    cmd_wellformed "$@" ;;
+    autonomy)      cmd_autonomy "$@" ;;
+    rubric-basis)  cmd_rubric_basis "$@" ;;
+    rubric-drift)  cmd_rubric_drift "$@" ;;
     *)
-        echo "usage: flow-preflight.sh <git-state|resolved|wellformed|autonomy> [args]" >&2
+        echo "usage: flow-preflight.sh <git-state|resolved|wellformed|autonomy|rubric-basis|rubric-drift> [args]" >&2
         exit 64 ;;
 esac
