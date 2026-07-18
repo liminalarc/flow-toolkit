@@ -5,7 +5,7 @@
 > Vocabulary: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
 ## Phase 1 — Features
-- **1.15** Validation done-gate — `/flow:run` exercises `flow-ux-validator`, gates `DONE` on findings — `NOT STARTED` — [detail](specs/1.15.md)
+- **1.15** Validation done-gate — `/flow:run` exercises `flow-ux-validator`, gates `DONE` on findings — `IN PROGRESS` — [detail](specs/1.15.md)
 - **1.16** Persisted, self-maintaining project validation rubric — `.flow/validate/*.md` (bootstrap + drift-refresh) — `NOT STARTED` — [detail](specs/1.16.md)
 
 ## Archive
