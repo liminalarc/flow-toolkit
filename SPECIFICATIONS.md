@@ -7,6 +7,7 @@
 ## Phase 1 — Features
 - **1.14** UX/UI validation agent — `flow-ux-validator` drives the running app, scores UI/UX vs rubric — `IN PROGRESS` — [detail](specs/1.14.md)
 - **1.15** Validation done-gate — `/flow:run` exercises `flow-ux-validator`, gates `DONE` on findings — `NOT STARTED` — [detail](specs/1.15.md)
+- **1.16** Persisted, self-maintaining project validation rubric — `.flow/validate/*.md` (bootstrap + drift-refresh) — `NOT STARTED` — [detail](specs/1.16.md)
 
 ## Archive
 - **1.12** How-it-works guide + diagrams + lean README — `DONE` — [detail](specs/archive/1.12.md)
