@@ -5,7 +5,8 @@
 > Vocabulary: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
 ## Phase 1 — Features
-- **1.14** UX/UI validation agent — drive the running app, score against the design system + UX best practices — `NOT STARTED` — [detail](specs/1.14.md)
+- **1.14** UX/UI validation agent — `flow-ux-validator` drives the running app, scores UI/UX vs rubric — `IN PROGRESS` — [detail](specs/1.14.md)
+- **1.15** Validation done-gate — `/flow:run` exercises `flow-ux-validator`, gates `DONE` on findings — `NOT STARTED` — [detail](specs/1.15.md)
 
 ## Archive
 - **1.12** How-it-works guide + diagrams + lean README — `DONE` — [detail](specs/archive/1.12.md)
