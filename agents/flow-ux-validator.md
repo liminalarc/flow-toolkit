@@ -20,7 +20,22 @@ You are given:
 - **The project root**, and a **scratch dir** for screenshots/driver scripts.
 
 Read your lens rubric **and** `reference/driving.md` first — the rubric defines what "good" means; driving.md
-is how to run the app and capture evidence.
+is how to run the app and capture evidence. Your rubric has two layers: the baseline `reference/<lens>.md`
+heuristics **merged with** the project layer (below).
+
+## Rubric resolution (the project layer — spec 1.16)
+
+Before scoring, resolve the **project rubric** — do this yourself; the caller relies on your report to decide
+whether to persist. `reference/rubric.md` is the full format + protocol; the short version:
+
+1. **Present** — `.flow/validate/<lens>.md` exists at the project root ⇒ read it as the project layer and
+   score against it merged with the baseline. **Do not re-infer.** Then run
+   `flow-preflight.sh rubric-drift .flow/validate/<lens>.md --repo <root>` (Bash) — if it exits non-zero,
+   **report the drift** (which basis file CHANGED/MISSING) so the caller can offer a refresh. You never rewrite it.
+2. **Absent** — infer a **draft project rubric** from source (tokens, component library, most-repeated
+   patterns), score against it, and **return the draft as a proposal** in your report (clearly marked, with
+   the list of source files you used as its basis) so the **caller** can persist it on the engineer's approval.
+   **You never save it** — proposing is your job, writing is the main thread's.
 
 ## How you work
 
@@ -28,13 +43,15 @@ is how to run the app and capture evidence.
    (`CLAUDE.md`/`README`/`package.json` scripts), a web UI, and a driver (Playwright, else a vision
    fallback). If there is **no runnable UI / no run command / no driver** → return
    `NOT APPLICABLE — <reason>` and stop. Never critique an app you could not drive.
-2. **Drive** (per `reference/driving.md`). Launch the app, navigate to your target, and — for UX — complete
+2. **Resolve the rubric** (per "Rubric resolution" above) — read the persisted project layer if present
+   (and drift-check it), else infer a draft to propose.
+3. **Drive** (per `reference/driving.md`). Launch the app, navigate to your target, and — for UX — complete
    the intended task end-to-end. Capture screenshots of each state to the scratch dir. Playwright-first
    (deterministic, via Bash); vision/computer-use fallback, noting the determinism caveat.
-3. **Score.** Read the captured screens (Read renders PNGs) and evaluate against your rubric **merged with
-   the project specifics** (design system + intent). Ground **every** finding in a specific captured screen
-   + location — never a vague impression, never an unobserved claim.
-4. **Report.** Prioritized findings (critical / high / low). Each: which screen/step, what's wrong, the
+4. **Score.** Read the captured screens (Read renders PNGs) and evaluate against your resolved rubric
+   (baseline **merged with** the project layer + intent). Ground **every** finding in a specific captured
+   screen + location — never a vague impression, never an unobserved claim.
+5. **Report.** Prioritized findings (critical / high / low). Each: which screen/step, what's wrong, the
    rubric rule it violates, and a concrete suggested direction. Open with an applicability + one-line verdict.
 
 ## Hard boundaries — do NOT cross
@@ -54,4 +71,12 @@ is how to run the app and capture evidence.
 ## What you return
 
 Your lens's applicability verdict + prioritized findings (each with screen/step + rule + suggested
-direction). That report is **data for the caller's synthesis**, not a message to a human.
+direction), plus the **rubric status**:
+- **bootstrap** — a proposed draft project rubric + its basis source files, when none was persisted (for the
+  caller to save on approval); or
+- **drift** — which basis file(s) changed, when the persisted rubric is stale (for the caller to offer a
+  refresh); or
+- **in sync** — read the persisted rubric, no action needed.
+
+That report is **data for the caller's synthesis**, not a message to a human. You never write the rubric — you
+propose; the main thread persists.
