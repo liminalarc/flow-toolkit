@@ -28,6 +28,7 @@ This is the *design*; each piece below is built by its own implementation spec (
 | Implementer | Build one task against the approved contract | Read, Edit, Write, Bash, Grep, Glob | write (worktree-isolated when parallel) | one per task file, post-sign-off |
 | Verifier | Check an implementer's diff vs the task's local AC | Read, Grep, Glob, Bash | read-only (judges, never fixes) | after each implementer, pre-integration; gates per D3 |
 | Spec-writer | Draft specs, enforce 1.1 terseness | Read, Write, Edit, Grep, Glob | write (specs only) | `/flow --add`, spec spawning |
+| UX-validator | Drive a **running app**, score one UI/UX lens vs a rubric | Read, Grep, Glob, Bash | read-only (drives + judges, never fixes) | `/flow:validate` (one per lens, serial) + `/flow:run` done-gate _(added 1.14; the only agent that runs the app)_ |
 
 ## Concrete edits the task model (a) forces
 

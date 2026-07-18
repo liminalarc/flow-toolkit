@@ -201,10 +201,11 @@ flowchart TD
 
 ## 5. Agent dispatch — when sub-agents fire
 
-The four skills fan work out to read-only or write sub-agents. This is the "when do agents
+The five skills fan work out to read-only or write sub-agents. This is the "when do agents
 get fired off" picture: `run` dispatches on the **build path** (after plan sign-off);
 `hunt`/`review`/`pr` dispatch **one agent per unit** (dimension / lens / dimension) and run
-them in parallel, then the main thread synthesizes. The thin commands (`init`, `lint`,
+them in parallel; `validate` drives the running app **one lens at a time** (serial — driving a
+live app is stateful), then the main thread synthesizes. The thin commands (`init`, `lint`,
 `ship`) dispatch **nothing** — they run inline.
 
 ```mermaid
@@ -231,6 +232,11 @@ flowchart TD
         PRR -->|findings| PSYN[verdict + scorecard]
     end
 
+    subgraph validate["/flow:validate — drives the running app"]
+        VAL[main thread] -->|one per lens ui/ux, serial| VUX["flow-ux-validator xN<br/>READ-ONLY, DRIVES the app, N/A-aware"]
+        VUX -->|findings| VSYN[UI/UX assessment]
+    end
+
     subgraph inline["Dispatch nothing — run inline"]
         INIT["/flow:init"]
         LINT["/flow:lint"]
@@ -239,10 +245,13 @@ flowchart TD
 ```
 
 **Who writes vs reads:** only `flow-implementer` writes code (worktree-isolated when layers
-run in parallel). `flow-verifier`, `flow-researcher`, `flow-reviewer`, `flow-pr-reviewer` are
-all **read-only** — they report; the main thread decides and applies.
+run in parallel). `flow-verifier`, `flow-researcher`, `flow-reviewer`, `flow-pr-reviewer`,
+`flow-ux-validator` are all **read-only** — they report; the main thread decides and applies.
+`flow-ux-validator` is the one read-only agent that *drives the running app* rather than reading
+source — writing only throwaway screenshots to a scratch dir.
 
 **Sources:** `skills/run/reference/implement.md` (implementer/verifier dispatch + gating),
 `skills/hunt/SKILL.md` (Phase 2 fan-out), `skills/review/SKILL.md` (lens dispatch),
-`skills/pr/SKILL.md` (Phase 2 fan-out), `agents/flow-implementer.md`, `agents/flow-verifier.md`,
-`agents/flow-researcher.md`, `agents/flow-reviewer.md`, `agents/flow-pr-reviewer.md`.
+`skills/pr/SKILL.md` (Phase 2 fan-out), `skills/validate/SKILL.md` (serial lens dispatch),
+`agents/flow-implementer.md`, `agents/flow-verifier.md`, `agents/flow-researcher.md`,
+`agents/flow-reviewer.md`, `agents/flow-pr-reviewer.md`, `agents/flow-ux-validator.md`.

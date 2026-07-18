@@ -18,7 +18,7 @@ and, for each skill, **exactly when its sub-agents get dispatched**.
   - [2.4 Autonomy — checkpoint vs auto-build](#24-autonomy--checkpoint-vs-auto-build)
   - [2.5 Deferrals — the no-silent-scope-narrowing rule](#25-deferrals--the-no-silent-scope-narrowing-rule)
 - [3. Commands & skills, with examples](#3-commands--skills-with-examples)
-  - [/flow:init](#flowinit) · [/flow:run](#flowrun) · [/flow:hunt](#flowhunt) · [/flow:review](#flowreview) · [/flow:pr](#flowpr) · [/flow:ship](#flowship) · [/flow:lint](#flowlint)
+  - [/flow:init](#flowinit) · [/flow:run](#flowrun) · [/flow:hunt](#flowhunt) · [/flow:review](#flowreview) · [/flow:pr](#flowpr) · [/flow:validate](#flowvalidate) · [/flow:ship](#flowship) · [/flow:lint](#flowlint)
 - [4. The sub-agent catalog](#4-the-sub-agent-catalog)
 - [5. The hooks (the always-on seatbelt)](#5-the-hooks-the-always-on-seatbelt)
 - [6. Worked walkthroughs](#6-worked-walkthroughs)
@@ -245,6 +245,21 @@ Spec-aware PR/branch review — "is this the code the spec asked for, built the 
 
 **> When agents fire:** in **Phase 2**, after the diff is resolved — one **`flow-pr-reviewer`** per dimension (spec / quality / tests; up to 3), launched **in parallel**. Each reads the diff itself (it has Bash), audits against its rubric, and returns findings; the `tests` reviewer runs the suite and the `spec` reviewer returns the per-criterion scorecard. A failing suite is an automatic `NEEDS WORK`. It never posts, approves, or merges unless you explicitly ask.
 
+### /flow:validate
+
+Drive the **running app** and validate its interface against a rubric — the live-driving complement to `/flow:review`'s static UX lens. **Dispatches the `flow-ux-validator` sub-agent** (the only agent that runs the app).
+
+```
+/flow:validate checkout --intent "a new user buys one item and reaches confirmation"   # both lenses
+/flow:validate login --intent "…" --ui       # UI lens only — design-system conformance
+/flow:validate login --intent "…" --ux       # UX lens only — task completion + friction
+/flow:validate login --intent "…" --design-system design/tokens.md   # point at the design system
+```
+
+Two lenses: **UI** (does the screen conform to the design system) and **UX** (can a user complete the intended flow, at what friction, vs Nielsen heuristics + WCAG). Scoped to one screen/flow per run; the rubric = the toolkit's baseline (`reference/{ui,ux}.md`) merged with your project specifics (`--intent` + design system, or infer from source).
+
+**> When agents fire:** immediately — one **`flow-ux-validator`** per requested lens, dispatched **serially** (unlike `/flow:review`'s parallel fan-out: driving one live app concurrently would collide). Each agent runs its applicability check first — a repo with no drivable UI gets a clean `NOT APPLICABLE` verdict, never an invented critique — then drives (Playwright-first, vision fallback), captures screenshots, scores its lens, and returns prioritized findings. Read-only: it drives and judges, never edits or auto-fixes. The main thread synthesizes and proposes fixes only on your confirm. The **same agent** is reused by `/flow:run`'s done-gate (spec 1.15).
+
 ### /flow:ship
 
 Cut a release. Reads `CLAUDE.md` for the project's deploy mechanism. **Dispatches no sub-agents.**
@@ -275,7 +290,7 @@ Checks (with severity `ERROR` / `WARNING` / `INFO`): CLAUDE.md caps + required s
 
 ## 4. The sub-agent catalog
 
-Five isolated-context sub-agents. Only the **implementer** writes; the other four are **read-only** (they report; the main thread decides and applies). Each runs in its own context, so the main thread stays lean and parallel units don't collide.
+Six isolated-context sub-agents. Only the **implementer** writes; the other five are **read-only** (they report; the main thread decides and applies). Each runs in its own context, so the main thread stays lean and parallel units don't collide.
 
 | Agent | Dispatched by | When | R/W | Returns |
 |---|---|---|---|---|
@@ -284,12 +299,14 @@ Five isolated-context sub-agents. Only the **implementer** writes; the other fou
 | **flow-researcher** | `/flow:hunt` | Phase 2, one per research dimension, parallel | read-only | Scored opportunity candidates (insight, user problem, angle, gap, Impact×Effort, spec seed) |
 | **flow-reviewer** | `/flow:review` | One per lens, parallel | read-only | Prioritized findings (location + problem + suggested fix) for its lens |
 | **flow-pr-reviewer** | `/flow:pr` | Phase 2, one per dimension, parallel | read-only | Findings (`BLOCKER/SHOULD FIX/NIT` + `file:line` + fix); scorecard (spec) or test result (tests) |
+| **flow-ux-validator** | `/flow:validate` (+ `/flow:run` done-gate) | One per lens, **serial** (drives a live app) | read-only (drives + judges, never fixes) | Applicability verdict + prioritized UI/UX findings (screen/step + rule + suggested direction) |
 
 **Shared boundaries** (why the safety net holds):
 
 - **The implementer never touches lifecycle state** (index, status, `deferrals:`) and never widens scope silently — if it hits out-of-scope work it stops and reports; the main thread runs the deferral protocol.
 - **The verifier never fixes** — it has no Edit/Write tools by design; a verifier that patches its own findings is no longer independent. It defaults to `FAIL` when it can't confirm a criterion.
 - **The three auditors (researcher/reviewer/pr-reviewer) never edit** and **stay in their one unit** — the fan-out's value is that each is focused and blind to the others; the main thread does cross-unit synthesis.
+- **The validator drives but never fixes** — the only read-only agent that *runs* the app. It writes throwaway screenshots to a scratch dir (never under the project tree) and **abstains** (`NOT APPLICABLE`) rather than critique an app it couldn't drive.
 - **None self-approve or bypass permissions** — every agent runs under the same Claude Code permission system; a denied action is a signal to report, not route around.
 
 **Freshly installed?** New agents/skills dispatch by name only after a Claude Code **restart** (or `/reload-plugins`).
@@ -424,6 +441,7 @@ A single repo-root file (next to `.git`) tunes the toolkit per project. Any key 
 | Normalize the index | `/flow:run --clean` |
 | Audit docs/UX/marketing/product | `/flow:review [--docs\|--ux\|--marketing\|--product]` |
 | Review a PR/branch vs its spec | `/flow:pr [pr#\|branch]` |
+| Validate live UI/UX (drive the app) | `/flow:validate <screen\|flow> --intent "…"` |
 | Audit CLAUDE.md + specs | `/flow:lint` (`--fix` to auto-correct) |
 | Reshape a flat spec → directory | `/flow:lint --migrate <id>` |
 | Bootstrap / adopt a project | `/flow:init` |
@@ -435,4 +453,5 @@ A single repo-root file (next to `.git`) tunes the toolkit per project. Any key 
 | Hunting opportunities (Phase 2) | `/flow:hunt` | `flow-researcher` × dimensions |
 | Auditing a project | `/flow:review` | `flow-reviewer` × lenses |
 | Reviewing a diff (Phase 2) | `/flow:pr` | `flow-pr-reviewer` × dimensions |
+| Validating UI/UX (drives the app) | `/flow:validate` | `flow-ux-validator` × lenses (serial) |
 | — never (run inline) | `/flow:init` · `/flow:lint` · `/flow:ship` | none |

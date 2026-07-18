@@ -30,7 +30,7 @@ flow-toolkit installs as a Claude Code **plugin** named `flow`, from its GitHub 
 
 Restart Claude Code (or run `/reload-plugins`). Every entry point lives under the `flow:` namespace:
 
-`/flow:run` · `/flow:hunt` · `/flow:init` · `/flow:lint` · `/flow:ship` · `/flow:review` · `/flow:pr`
+`/flow:run` · `/flow:hunt` · `/flow:init` · `/flow:lint` · `/flow:ship` · `/flow:review` · `/flow:pr` · `/flow:validate`
 
 The plugin bundles everything — skills, sub-agents, and the always-on [hooks](docs/guide.md#5-the-hooks-the-always-on-seatbelt) — and updates are versioned (`/plugin update`). It installs **per Claude profile** (each `~/.claude`, `~/.claude-*`, or `$CLAUDE_CONFIG_DIR`), and its hooks are scoped to the profile that enabled it — enable it in each profile you use.
 
@@ -126,10 +126,11 @@ flowchart TD
 | `/flow:hunt` _(skill)_ | Researched opportunity hunt through a domain persona panel |
 | `/flow:review` _(skill)_ | Multi-lens audit — docs / UX / marketing / product |
 | `/flow:pr` _(skill)_ | Spec-aware PR / branch review |
+| `/flow:validate` _(skill)_ | Live UI/UX validation — drive the running app, score vs a rubric |
 | `/flow:lint` | Audit the CLAUDE.md hierarchy + spec integrity |
 | `/flow:ship` | Cut a release (conventional-commit version bump) |
 
-**Sub-agents** — skills fan work out to these ([when + why](docs/guide.md#4-the-sub-agent-catalog)): `flow-implementer` (the only one that writes), `flow-verifier`, `flow-researcher`, `flow-reviewer`, `flow-pr-reviewer`.
+**Sub-agents** — skills fan work out to these ([when + why](docs/guide.md#4-the-sub-agent-catalog)): `flow-implementer` (the only one that writes), `flow-verifier`, `flow-researcher`, `flow-reviewer`, `flow-pr-reviewer`, `flow-ux-validator` (the only one that drives a running app).
 
 **Hooks** — an always-on, zero-token seatbelt: `flow-spec-guard`, `flow-claude-guard`, `flow-commit-guard`, `flow-session-brief`, all funnelling machine-checkable rules through the single-source `flow-preflight.sh`.
 
