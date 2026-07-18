@@ -18,6 +18,7 @@ and, for each skill, **exactly when its sub-agents get dispatched**.
   - [2.4 Autonomy — checkpoint vs auto-build](#24-autonomy--checkpoint-vs-auto-build)
   - [2.5 Deferrals — the no-silent-scope-narrowing rule](#25-deferrals--the-no-silent-scope-narrowing-rule)
   - [2.6 The validation done-gate — declared per-spec](#26-the-validation-done-gate--declared-per-spec)
+  - [2.7 The persisted project rubric — .flow/validate/*.md](#27-the-persisted-project-rubric--flowvalidatemd)
 - [3. Commands & skills, with examples](#3-commands--skills-with-examples)
   - [/flow:init](#flowinit) · [/flow:run](#flowrun) · [/flow:hunt](#flowhunt) · [/flow:review](#flowreview) · [/flow:pr](#flowpr) · [/flow:validate](#flowvalidate) · [/flow:ship](#flowship) · [/flow:lint](#flowlint)
 - [4. The sub-agent catalog](#4-the-sub-agent-catalog)
@@ -180,6 +181,31 @@ At the done-gate `/flow:run` reads the block and dispatches **one `flow-ux-valid
 
 Standalone, the same agent runs on demand via [`/flow:validate`](#flowvalidate); the done-gate is that agent wired into the lifecycle.
 
+### 2.7 The persisted project rubric — `.flow/validate/*.md`
+
+The validation rubric has **two layers**. The **baseline** heuristics (Nielsen, WCAG, design-system conformance rules) ship in the toolkit (`skills/validate/reference/{ui,ux}.md`). The **project layer** — *this* project's design system, tokens, component library, named patterns — is persisted in the target repo at `.flow/validate/ui.md` + `.flow/validate/ux.md`, **committed** and engineer-owned (like `.flow/config.yml`). `flow-ux-validator` scores against the two merged, so it stops re-inferring the design system on every run.
+
+It's **self-maintaining but never silent** (the agent proposes, you approve):
+
+- **Bootstrap** — first run with no rubric: the agent infers a draft from source (tokens, components, repeated patterns) and returns it as a *proposal*; `/flow:validate` shows it, you edit, and it's saved **only on your approval**. The agent never writes it (it's read-only re the project tree — the main thread persists).
+- **Drift-refresh** — each rubric records its **basis**: the source files it was derived from + a `sha256` fingerprint each. A later run re-hashes them (`flow-preflight.sh rubric-drift`); if a basis file changed, `/flow:validate` surfaces exactly what moved and **offers** a refresh — never overwriting your curated rubric silently.
+
+```markdown
+---
+generated: 2026-07-18
+basis:                          # drift-checked source files
+  - path: design/tokens.css
+    sha: f2ca1bb6c7e9
+---
+
+## Design system
+Tokens in `design/tokens.css`; components from `@acme/ui`.
+## Conformance rules (project layer)
+- spacing from the 4px scale only; destructive actions use the Danger variant
+```
+
+The interactive bootstrap/refresh lives in [`/flow:validate`](#flowvalidate); [`/flow:run`'s done-gate](#26-the-validation-done-gate--declared-per-spec) only *reads* the rubric and *nudges* you to `/flow:validate` when it's absent or drifted — it never authors it.
+
 ---
 
 ## 3. Commands & skills, with examples
@@ -282,9 +308,11 @@ Drive the **running app** and validate its interface against a rubric — the li
 /flow:validate login --intent "…" --design-system design/tokens.md   # point at the design system
 ```
 
-Two lenses: **UI** (does the screen conform to the design system) and **UX** (can a user complete the intended flow, at what friction, vs Nielsen heuristics + WCAG). Scoped to one screen/flow per run; the rubric = the toolkit's baseline (`reference/{ui,ux}.md`) merged with your project specifics (`--intent` + design system, or infer from source).
+Two lenses: **UI** (does the screen conform to the design system) and **UX** (can a user complete the intended flow, at what friction, vs Nielsen heuristics + WCAG). Scoped to one screen/flow per run; the rubric = the toolkit's baseline (`reference/{ui,ux}.md`) merged with your [**persisted project layer**](#27-the-persisted-project-rubric--flowvalidatemd) (`.flow/validate/{ui,ux}.md`, or bootstrapped from source on first run).
 
 **> When agents fire:** immediately — one **`flow-ux-validator`** per requested lens, dispatched **serially** (unlike `/flow:review`'s parallel fan-out: driving one live app concurrently would collide). Each agent runs its applicability check first — a repo with no drivable UI gets a clean `NOT APPLICABLE` verdict, never an invented critique — then drives (Playwright-first, vision fallback), captures screenshots, scores its lens, and returns prioritized findings. Read-only: it drives and judges, never edits or auto-fixes. The main thread synthesizes and proposes fixes only on your confirm. The **same agent** is reused by `/flow:run`'s done-gate (spec 1.15).
+
+**Self-maintaining rubric (spec 1.16).** On first run the agent proposes a project rubric inferred from source; `/flow:validate` saves it to `.flow/validate/<lens>.md` **on your approval**. Later runs drift-check it (fingerprinted `basis:` files) and **offer** a refresh when the design system moves — never overwriting your edits silently. Details in [§2.7](#27-the-persisted-project-rubric--flowvalidatemd).
 
 ### /flow:ship
 

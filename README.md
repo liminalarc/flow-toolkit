@@ -129,7 +129,7 @@ flowchart TD
 | `/flow:hunt` _(skill)_ | Researched opportunity hunt through a domain persona panel |
 | `/flow:review` _(skill)_ | Multi-lens audit — docs / UX / marketing / product |
 | `/flow:pr` _(skill)_ | Spec-aware PR / branch review |
-| `/flow:validate` _(skill)_ | Live UI/UX validation — drive the running app, score vs a rubric (also wired into `/flow:run`'s done-gate via a spec's `validate:` block) |
+| `/flow:validate` _(skill)_ | Live UI/UX validation — drive the running app, score vs a self-maintaining project rubric (`.flow/validate/*.md`); also wired into `/flow:run`'s done-gate via a spec's `validate:` block |
 | `/flow:lint` | Audit the CLAUDE.md hierarchy + spec integrity |
 | `/flow:ship` | Cut a release (conventional-commit version bump) |
 

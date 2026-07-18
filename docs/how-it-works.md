@@ -135,6 +135,7 @@ flowchart LR
         R2[resolved<br/>deferral DONE-gate]
         R3[wellformed<br/>deferral shape]
         R4[autonomy<br/>checkpoint / auto-build]
+        R5[rubric-basis / rubric-drift<br/>validation-rubric fingerprint]
     end
 
     SG --> R3
@@ -145,12 +146,15 @@ flowchart LR
         C1["/flow:lint"]
         C2["/flow:ship"]
         C3["/flow:run"]
+        C4["/flow:validate"]
     end
 
     C1 --> R2
     C2 --> R1
     C2 --> R2
     C3 --> R4
+    C3 --> R5
+    C4 --> R5
 ```
 
 Every guard's first act is "does this apply?" — a non-spec file, a non-commit Bash
@@ -158,7 +162,7 @@ command, or a repo with no spec model exits 0 immediately, so unrelated projects
 
 **Sources:** `hooks/hooks.json` (event → script matchers), `hooks/flow-spec-guard.sh`,
 `hooks/flow-claude-guard.sh`, `hooks/flow-commit-guard.sh`, `hooks/flow-session-brief.sh`,
-`hooks/flow-preflight.sh` (the four shared rules). See also `hooks/CLAUDE.md`.
+`hooks/flow-preflight.sh` (the shared rules). See also `hooks/CLAUDE.md`.
 
 ---
 
@@ -244,7 +248,8 @@ flowchart TD
 
     subgraph validate["/flow:validate — drives the running app"]
         VAL[main thread] -->|one per lens ui/ux, serial| VUX["flow-ux-validator xN<br/>READ-ONLY, DRIVES the app, N/A-aware"]
-        VUX -->|findings| VSYN[UI/UX assessment]
+        VUX -->|findings + rubric status<br/>bootstrap draft / drift / in sync| VSYN[UI/UX assessment]
+        VSYN -->|persist confirm-first| RUB[".flow/validate/*.md<br/>project rubric (committed)"]
     end
 
     subgraph inline["Dispatch nothing — run inline"]
@@ -258,10 +263,14 @@ flowchart TD
 run in parallel). `flow-verifier`, `flow-researcher`, `flow-reviewer`, `flow-pr-reviewer`,
 `flow-ux-validator` are all **read-only** — they report; the main thread decides and applies.
 `flow-ux-validator` is the one read-only agent that *drives the running app* rather than reading
-source — writing only throwaway screenshots to a scratch dir.
+source — writing only throwaway screenshots to a scratch dir. The persisted project rubric
+(`.flow/validate/*.md`) is likewise agent-proposed but **main-thread-written**, confirm-first —
+the agent never touches the project tree (spec 1.16).
 
 **Sources:** `skills/run/reference/implement.md` (implementer/verifier dispatch + gating + validation
 done-gate), `skills/hunt/SKILL.md` (Phase 2 fan-out), `skills/review/SKILL.md` (lens dispatch),
-`skills/pr/SKILL.md` (Phase 2 fan-out), `skills/validate/SKILL.md` (serial lens dispatch),
-`agents/flow-implementer.md`, `agents/flow-verifier.md`, `agents/flow-researcher.md`,
-`agents/flow-reviewer.md`, `agents/flow-pr-reviewer.md`, `agents/flow-ux-validator.md`.
+`skills/pr/SKILL.md` (Phase 2 fan-out), `skills/validate/SKILL.md` (serial lens dispatch + rubric persist),
+`skills/validate/reference/rubric.md` (rubric format + bootstrap/refresh protocol),
+`hooks/flow-preflight.sh` (`rubric-basis`/`rubric-drift`), `agents/flow-implementer.md`,
+`agents/flow-verifier.md`, `agents/flow-researcher.md`, `agents/flow-reviewer.md`,
+`agents/flow-pr-reviewer.md`, `agents/flow-ux-validator.md`.
