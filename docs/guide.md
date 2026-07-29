@@ -54,14 +54,14 @@ A spec = **one index entry** + **one detail file**. The split keeps the working 
 
 ```markdown
 ## Phase 1 — Core Features
-- **1.1** User Authentication — `IN PROGRESS` — [detail](specs/1.1.md)
-- **1.2** Password Reset — `NOT STARTED` — [detail](specs/1.2.md)
+- **1.1** User Authentication — `IN PROGRESS` — [detail](specs/1.1-user-authentication.md)
+- **1.2** Password Reset — `NOT STARTED` — [detail](specs/1.2-password-reset.md)
 
 ## Archive
-- **0.0** Spike: auth options — `SUPERSEDED` — [detail](specs/archive/0.0.md)
+- **0.0** Spike: auth options — `SUPERSEDED` — [detail](specs/archive/0.0-spike-auth-options.md)
 ```
 
-**A detail file** (`specs/<id>.md`) holds everything else and carries **no status field** (status is owned by the index):
+**A detail file** (`specs/<id>-<slug>.md`) holds everything else and carries **no status field** (status is owned by the index):
 
 ```markdown
 ---
@@ -89,20 +89,24 @@ links: []
 ## Progress log
 ```
 
-**Two shapes.** Most specs are a **flat** `specs/<id>.md`. A spec that grows large earns a **directory** — an orchestrator plus task files:
+**Descriptive filenames.** A detail file's name carries its id **and a slug of its title**, so the backlog is readable in a file tree, an editor tab, a `git log --stat`, and a PR's changed-files list without opening anything. The `id:` front-matter is always the identity — the slug is decoration and is never parsed back out of the name, so an id containing `-` (`BL-12`) stays unambiguous. The slug is inferred from the index Title (local) or the work item's `System.Title` (ado); lowercased, non-alphanumerics collapsed to `-`, truncated at a word boundary to 40 chars.
+
+The bare `specs/<id>.md` form stays **permanently valid** — the hooks accept both unconditionally, so nothing in an existing repo breaks. Set `flow.spec_filename: id` in `.flow/config.yml` to author bare names; retrofit an existing repo with `/flow:lint --rename --all` (opt-in, `git mv`, dry-run first). Anything that needs to turn an id into a path calls **`flow-preflight.sh spec-path <id>`** — the one helper that knows every form.
+
+**Two shapes.** Most specs are a **flat** `specs/<id>-<slug>.md`. A spec that grows large earns a **directory** — an orchestrator plus task files, with the slug on each stem (the directory is named for its orchestrator):
 
 ```
-specs/1.7/
-  1.7.md       # orchestrator — Problem/Value/Scope/AC/Plan/…, owns status + deferrals
-  1.7.T1.md    # task file — the "how" for one slice + a local "Done when" AC
-  1.7.T2.md
+specs/1.7-sub-agent-catalog/
+  1.7-sub-agent-catalog.md                # orchestrator — Problem/Value/Scope/AC/Plan/…, owns status + deferrals
+  1.7-sub-agent-catalog.T1-agent-defs.md  # task file — the "how" for one slice + a local "Done when" AC
+  1.7-sub-agent-catalog.T2-autonomy.md    #   its suffix is slugged from the task's own title
 ```
 
-Break out by a manual guideline — **≥3 tasks, or a task with its own AC** — never enforced. The orchestrator owns status and deferrals (the guards gate on it alone); task files carry a **local AC** (the "Done when" seam an implementer builds to and a verifier checks against) and **no status**. Reshape a flat spec to a directory with `/flow:lint --migrate <id>`.
+Break out by a manual guideline — **≥3 tasks, or a task with its own AC** — never enforced. The orchestrator owns status and deferrals (the guards gate on it alone); task files carry a **local AC** (the "Done when" seam an implementer builds to and a verifier checks against) and **no status**. Reshape a flat spec to a directory with `/flow:lint --migrate <id>` (shape); rename it with `/flow:lint --rename <id>` (name).
 
 **Status vocabulary** — exactly one per index entry: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
-**Archival** — when a spec is DONE/SUPERSEDED, `/flow:run` moves its index entry to `## Archive` and its detail to `specs/archive/<id>.md` (or the whole `specs/<id>/` dir). **Ids are never reused** — "closes 2.3" stays meaningful forever.
+**Archival** — when a spec is DONE/SUPERSEDED, `/flow:run` moves its index entry to `## Archive` and its detail file into `specs/archive/`, **name unchanged** (a flat file, or the whole directory). **Ids are never reused** — "closes 2.3" stays meaningful forever.
 
 **Terseness by rule** — a detail file is read every time its spec is worked, so bloat is wasted budget. `/flow:run --add` authors to three rules (one job per section, shortest lossless form, append-only one-line Progress log); a soft line budget (default 120, `spec.maxLines`) *warns* on drift but never blocks. `/flow:run --condense` is the judgment pass that tightens an existing spec losslessly.
 
@@ -123,9 +127,9 @@ Engineering principles Claude reads every session — a set of rules that keep s
 The backend is set by an optional `.flow/config.yml`. **Absent ⇒ local mode** (the default; nothing to configure).
 
 - **`local`** — the index is `SPECIFICATIONS.md`; `/flow:run` owns the full lifecycle; ids are `Phase.Spec` (`1.2`, `2.37a`); the status vocabulary is used directly (no translation).
-- **`ado`** — the **board is the index** (no `SPECIFICATIONS.md`); ids are work-item numbers (`specs/642103.md`); the board owns the state machine, so a `state_map` translates each board state → a canonical token. The board may live in a **different ADO project/org than the repo** — only the `specs/<id>.md` detail files live in the repo. Flow's card writes are **propose-only**: it transitions state on your sign-off and refreshes one "Spec:" pointer comment — never reprioritizing, reassigning, or closing a card unprompted.
+- **`ado`** — the **board is the index** (no `SPECIFICATIONS.md`); ids are work-item numbers, so a detail file is named from the story title (`specs/642103-add-user-login.md`); the board owns the state machine, so a `state_map` translates each board state → a canonical token. The board may live in a **different ADO project/org than the repo** — only the detail files live in the repo. Flow's card writes are **propose-only**: it transitions state on your sign-off and refreshes one "Spec:" pointer comment — never reprioritizing, reassigning, or closing a card unprompted.
 
-The `specs/<id>.md` detail files are **byte-for-byte the same shape** in both modes; only *where lifecycle is owned* changes. Set up ado with `/flow:init --backend ado` (it auto-builds the `state_map` from ADO state categories).
+Detail files are **byte-for-byte the same shape** in both modes; only *where lifecycle is owned* changes, and where the filename's slug comes from (the index Title vs `System.Title`). Set up ado with `/flow:init --backend ado` (it auto-builds the `state_map` from ADO state categories).
 
 ### 2.4 Autonomy — checkpoint vs auto-build
 
@@ -335,10 +339,14 @@ Audit the CLAUDE.md hierarchy + spec integrity. **Dispatches no sub-agents.**
 /flow:lint --specs         # spec index/detail only
 /flow:lint --fix           # auto-fix safe mechanical issues (casing, format, archival)
 /flow:lint --migrate       # convert a legacy inline SPECIFICATIONS.md → index + specs/ model
-/flow:lint --migrate 1.7   # git-move a flat spec → the directory form
+/flow:lint --migrate 1.7   # git-move a flat spec → the directory form (shape)
+/flow:lint --rename 1.7    # git-move a bare 1.7.md → 1.7-<slug>.md (name)
+/flow:lint --rename --all  # retrofit a whole repo to descriptive filenames
 ```
 
-Checks (with severity `ERROR` / `WARNING` / `INFO`): CLAUDE.md caps + required sections + no root-duplication; index entry format + valid/unique statuses; every entry has a detail file and vice-versa; detail-file `id` matches filename and carries no status; `## Value` reads as a user story; deferral well-formedness + the DONE-gate; DONE specs have no unchecked AC; archive holds only DONE/SUPERSEDED. `--fix` never touches CLAUDE.md *content* or resolves ambiguous issues.
+Checks (with severity `ERROR` / `WARNING` / `INFO`): CLAUDE.md caps + required sections + no root-duplication; index entry format + valid/unique statuses; every entry has a detail file and vice-versa; no two files claiming one id; the filename stem matches the file's `id:` and carries no status; index links point at the real file; `## Value` reads as a user story; deferral well-formedness + the DONE-gate; DONE specs have no unchecked AC; archive holds only DONE/SUPERSEDED. `--fix` never touches CLAUDE.md *content* or resolves ambiguous issues.
+
+`--rename` is the **opt-in retrofit** to descriptive `<id>-<slug>` filenames: dry-run by default, `git mv` only (history preserved), file contents never rewritten, index links updated in the same change, collisions skipped rather than forced, and idempotent — so `--rename --all` is safe to re-run. Never part of an audit or `--fix`.
 
 ---
 
@@ -373,19 +381,21 @@ Where `/flow:lint` is the audit you run on demand, hooks are always on. Each fir
 
 | Hook | Event | What it does |
 |---|---|---|
-| `flow-spec-guard.sh` | PostToolUse (Edit\|Write) | Validates index entries + `specs/<id>.md` detail files the moment they change |
+| `flow-spec-guard.sh` | PostToolUse (Edit\|Write) | Validates index entries + detail files the moment they change (either filename form) |
 | `flow-claude-guard.sh` | PostToolUse (Edit\|Write) | Enforces CLAUDE.md line caps (300 root / 200 subdir, or `.flow-toolkit.json`) |
 | `flow-commit-guard.sh` | PreToolUse (Bash) | Conventional-commit format + spec validity + deferral DONE-gate + soft `[id]`/spec-less nudges |
 | `flow-session-brief.sh` | SessionStart | Injects ~30 tokens of backlog orientation into each new session |
 
 The key difference from a git hook: when a guard blocks, **Claude reads the error and fixes the file in the same turn** — format drift is corrected the moment it's introduced.
 
-**`flow-preflight.sh` is the single source of truth** — not an event hook but a shared, unit-tested helper the guards *and* the commands all call, so a rule is defined once. Four rules live only here:
+**`flow-preflight.sh` is the single source of truth** — not an event hook but a shared, unit-tested helper the guards *and* the commands all call, so a rule is defined once. These rules live only here:
 
 - `git-state` — release-branch hygiene (prints ✅/❌/⚠️ + the exact remediation command; never runs it).
 - `resolved` — the deferral DONE-gate (no `DONE` spec with an unresolved `to`).
 - `wellformed` — one detail file's `deferrals:` shape (each entry has `what`/`why`/`to`).
+- `spec-path` — turns an id into its detail file's path, across every shape (flat/directory), name form (`<id>` / `<id>-<slug>`) and location (active/archive). Exit 1 = no such spec, 2 = two files claim the id.
 - `autonomy` — resolves a spec's `checkpoint`/`auto-build` mode by precedence.
+- `rubric-basis` / `rubric-drift` — fingerprint the persisted validation rubric's source files and detect when the design system has drifted.
 
 You can run it directly: `bash ~/.claude/hooks/flow-preflight.sh git-state --repo .`
 
@@ -405,11 +415,11 @@ The parsing is unit-tested (`hooks/hooks.test.sh`) and CI runs that harness on e
 
 ```
 You:    /flow:run 2.3
-Claude: [reads the index entry + specs/2.3.md, restates the problem]
+Claude: [reads the index entry + specs/2.3-csv-export.md, restates the problem]
         [presents a plan: thin slices, files touched, test strategy, Value story]
         — CHECKPOINT — waits. No code is written yet.
 You:    "looks good, go"
-Claude: writes/commits specs/2.3.md, sets 2.3 IN PROGRESS in the index
+Claude: writes/commits specs/2.3-csv-export.md, sets 2.3 IN PROGRESS in the index
         builds test-first, one commit per slice, each tagged [2.3] feat: …
         [dispatches a flow-verifier on the diff — advisory in checkpoint — and shows you the verdict]
         restarts affected services, smoke-tests the behavior end-to-end

@@ -80,13 +80,14 @@ flowchart TD
         I["SPECIFICATIONS.md local<br/>or the board in ado mode<br/>id · title · STATUS · link"]
     end
 
-    subgraph Detail["Detail file — no status field"]
-        Flat["specs/&lt;id&gt;.md<br/>Problem/Value/Scope/AC/Plan/Decisions<br/>+ optional deferrals front-matter"]
-        Dir["specs/&lt;id&gt;/ grew large<br/>orchestrator owns status+deferrals<br/>task files carry local AC only"]
+    subgraph Detail["Detail file — no status field · id: is the identity"]
+        Flat["specs/&lt;id&gt;-&lt;slug&gt;.md<br/>Problem/Value/Scope/AC/Plan/Decisions<br/>+ optional deferrals front-matter"]
+        Dir["specs/&lt;id&gt;-&lt;slug&gt;/ grew large<br/>orchestrator owns status+deferrals<br/>&lt;id&gt;-&lt;slug&gt;.T&lt;n&gt;-&lt;ctx&gt;.md carry local AC only"]
     end
 
-    I -->|one entry to one detail| Flat
-    Flat -.->|"3+ tasks, or a task with its own AC<br/>/flow:lint --migrate"| Dir
+    I -->|"one entry to one detail<br/>resolved by spec-path"| Flat
+    Flat -.->|"3+ tasks, or a task with its own AC<br/>/flow:lint --migrate = shape"| Dir
+    Flat -.->|"bare &lt;id&gt;.md also always valid<br/>/flow:lint --rename = name"| Flat
 
     Flat --> Life
     Dir --> Life
@@ -100,7 +101,7 @@ flowchart TD
         IP -.-> SU
     end
 
-    DN --> Arch["Archive: index entry to ## Archive<br/>detail to specs/archive/<br/>id never reused"]
+    DN --> Arch["Archive: index entry to ## Archive<br/>detail to specs/archive/, name unchanged<br/>id never reused"]
     SU --> Arch
 ```
 

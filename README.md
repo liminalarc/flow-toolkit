@@ -114,7 +114,11 @@ flowchart TD
     Done --> End([hand off; /flow:ship cuts the release])
 ```
 
-**No silent deferrals:** scope only narrows by *your* decision — the moment Claude would drop something in scope, it stops, explains why, and asks you to build it now or re-home it (recorded as a machine-checked `deferrals:` entry that gates `DONE`). Full detail — plus autonomy modes, the spec model, and agent dispatch — in the [guide](docs/guide.md) and [diagrams](docs/how-it-works.md).
+**No silent deferrals:** scope only narrows by *your* decision — the moment Claude would drop something in scope, it stops, explains why, and asks you to build it now or re-home it (recorded as a machine-checked `deferrals:` entry that gates `DONE`).
+
+**Specs are named, not numbered:** a detail file is `specs/1.2-password-reset.md` — the id plus a slug of its title (the story title on an ADO board) — so the backlog reads clearly in a file tree, an editor tab, or a PR's changed-files list. The bare `specs/1.2.md` form stays valid forever; set `flow.spec_filename: id` in `.flow/config.yml` to keep it, or run `/flow:lint --rename --all` once to retrofit an existing repo.
+
+Full detail — plus autonomy modes, the spec model, and agent dispatch — in the [guide](docs/guide.md) and [diagrams](docs/how-it-works.md).
 
 ---
 
@@ -130,7 +134,7 @@ flowchart TD
 | `/flow:review` _(skill)_ | Multi-lens audit — docs / UX / marketing / product |
 | `/flow:pr` _(skill)_ | Spec-aware PR / branch review |
 | `/flow:validate` _(skill)_ | Live UI/UX validation — drive the running app, score vs a self-maintaining project rubric (`.flow/validate/*.md`); also wired into `/flow:run`'s done-gate via a spec's `validate:` block |
-| `/flow:lint` | Audit the CLAUDE.md hierarchy + spec integrity |
+| `/flow:lint` | Audit the CLAUDE.md hierarchy + spec integrity; `--rename` retrofits descriptive spec filenames |
 | `/flow:ship` | Cut a release (conventional-commit version bump) |
 
 **Sub-agents** — skills fan work out to these ([when + why](docs/guide.md#4-the-sub-agent-catalog)): `flow-implementer` (the only one that writes), `flow-verifier`, `flow-researcher`, `flow-reviewer`, `flow-pr-reviewer`, `flow-ux-validator` (the only one that drives a running app).

@@ -6,7 +6,7 @@ Authoring conventions for the bash hooks. Additive to root `CLAUDE.md` — read 
 
 | Script | Event | Job |
 |---|---|---|
-| `flow-spec-guard.sh` | PostToolUse (Edit\|Write) | Validate index entries + `specs/<id>.md` on every edit |
+| `flow-spec-guard.sh` | PostToolUse (Edit\|Write) | Validate index entries + detail files on every edit (either filename form) |
 | `flow-claude-guard.sh` | PostToolUse (Edit\|Write) | Enforce CLAUDE.md line caps (300 root / 200 subdir, or `.flow-toolkit.json`) |
 | `flow-commit-guard.sh` | PreToolUse (Bash) | Conventional-commit format + spec validity + deferral `DONE`-gate + spec-less nudge |
 | `flow-session-brief.sh` | SessionStart | Inject ~30 tokens of backlog orientation |
@@ -27,6 +27,7 @@ These rules live **only** here and are consumed everywhere else:
 - `git-state [--repo DIR] [--no-fetch]` — release-branch hygiene. Prints ✅/❌/⚠️ per check and the exact remediation command on failure, but **never runs it**. Exit 0 all-pass · 2 fail-or-unverifiable.
 - `resolved [--repo DIR] [--spec-dir specs] [--done ID,…]` — the deferral `DONE`-gate: no `DONE` spec may have an unresolved `deferrals:` entry (`to` = `built` or an id whose detail file exists). DONE set from `--done` (ado) or `SPECIFICATIONS.md` (local).
 - `wellformed <detail.md>` — one detail file's `deferrals:` shape (every entry has non-empty `what`/`why`/`to`).
+- `spec-path <id> [--repo DIR] [--spec-dir specs]` — id → detail-file path, covering every combination of shape (flat `<id>.md` / directory `<id>/<id>.md`), name (plain / slugged `<id>-<slug>`, 1.17) and location (active / archive); exact names beat slugged ones. Exit 0 = resolved (path on stdout) · 1 = no such spec (silent — the caller decides if that's an error) · 2 = ambiguous, two files claim one id. Consumed by `resolved` itself, `/flow:run`, and `/flow:lint`. **The guards read no filename knob** — both forms are always accepted, so `flow.spec_filename` stays prompt-side and hooks gain no parsing.
 - `autonomy <spec.md> [--repo DIR]` — resolves the spec's mode (prints `checkpoint`/`auto-build`) by precedence `autonomy.force` > per-spec `autonomy:` front-matter > `autonomy.default` > builtin `checkpoint` (config in `.flow-toolkit.json`). Unknown value → advisory + safe `checkpoint`. Always exit 0. Consumed by `/flow:run`.
 - `rubric-basis <file>…` — emit a YAML `basis:` block (path + 12-char `sha256` each) for the source files a persisted validation rubric was inferred from. Missing file → hard error. Used at rubric save/refresh time so stamping and drift-checking share one fingerprint.
 - `rubric-drift <rubric.md> [--repo DIR]` — re-hash each `basis:` file and compare to the stored sha; prints ✅/❌/⚠️ per entry. Exit 0 = in sync (also when rubric/basis absent — a clean opt-in no-op) · 2 = a basis file CHANGED/MISSING. Consumed by `flow-ux-validator`, `/flow:validate`, and `/flow:run`'s done-gate.
