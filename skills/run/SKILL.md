@@ -44,6 +44,8 @@ flow:
   lifecycle_authority: local    # DEFAULT — SPECIFICATIONS.md index owns status/priority/close
                                 # or: ado  — the ADO board owns lifecycle
   spec_dir: specs               # where detail files live
+  spec_filename: id-slug        # DEFAULT — name new detail files <id>-<slug>.md, slug from the
+                                # title; or: id — bare <id>.md. Both forms are always readable.
   ado:                          # only when lifecycle_authority: ado
     org: https://dev.azure.com/<org>/   # the BOARD's org — may differ from the repo's remote
     project: "<Project>"                # the BOARD's project — often NOT the repo's project
@@ -59,7 +61,7 @@ flow:
 
 ### The spec model (concept)
 
-Every flow project stores specs as **an index + one detail file per spec**. **Status lives only in the index** (single source of truth) — never in a `specs/<id>.md`. A detail file has two shapes: **flat** (`specs/<id>.md`) or, once it grows big (≥3 tasks, or a task with its own AC), a **directory** (`specs/<id>/<id>.md` orchestrator + `specs/<id>/<id>.T<n>.md` task files). The hooks accept both and enforce neither. Full templates + the breakout guideline live in `reference/authoring.md`.
+Every flow project stores specs as **an index + one detail file per spec**. **Status lives only in the index** (single source of truth) — never in a detail file. A detail file is named `<id>-<slug>.md` (the slug from its title; bare `<id>.md` also always valid) and has two shapes: **flat** or, once it grows big (≥3 tasks, or a task with its own AC), a **directory** (`<id>-<slug>/<id>-<slug>.md` orchestrator + `<id>-<slug>.T<n>-<context>.md` task files). The hooks accept every combination and enforce none. **Resolve an id to its path with `flow-preflight.sh spec-path <id>`** — never guess or glob. Full templates, the slugify rule, and the breakout guideline live in `reference/authoring.md`.
 
 ### `/flow:run` (no args)
 

@@ -44,7 +44,14 @@ Use args as the starting concept if provided. Otherwise ask up to 3 questions:
 
 ### 3. Choose the backend + scaffold `.flow/config.yml`
 
-Default is **`local`** — no config file needed; `SPECIFICATIONS.md` is the index and flow owns the lifecycle. Skip to step 4 unless the backlog is tracked outside the repo.
+Default is **`local`** — no config file needed; `SPECIFICATIONS.md` is the index and flow owns the lifecycle. Skip to step 4 unless the backlog is tracked outside the repo **or** the project wants bare spec filenames (below).
+
+**Filenames (optional, both backends).** New detail files are named `<id>-<slug>.md`, the slug inferred from the spec's title (`System.Title` in ado) — so the backlog reads clearly in a file tree or a PR's changed-files list. A project that prefers bare `<id>.md` sets one key; both forms are always readable, so this only affects what gets *authored*:
+
+```yaml
+flow:
+  spec_filename: id     # default: id-slug
+```
 
 If the backlog lives in an external tracker (`--backend ado`, or the user says so), write `.flow/config.yml`:
 
@@ -52,6 +59,7 @@ If the backlog lives in an external tracker (`--backend ado`, or the user says s
 flow:
   lifecycle_authority: ado
   spec_dir: specs
+  spec_filename: id-slug   # optional — `id` for bare <id>.md filenames
   ado:
     org: https://dev.azure.com/<org>/
     project: "<Project>"

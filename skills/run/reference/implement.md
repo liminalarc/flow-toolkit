@@ -6,7 +6,7 @@ The build path. Read `reference/authoring.md` alongside this when you write or u
 
 ## 1. Understand
 
-Read the index entry for that id, and **if `specs/<id>.md` exists, read it and resume from its Plan/Progress log rather than re-deriving.** For free-form work, restate it and identify affected layers; ask 1-2 clarifying questions only when genuinely ambiguous.
+Read the index entry for that id, and **if a detail file exists for it, read it and resume from its Plan/Progress log rather than re-deriving.** Resolve the path with `flow-preflight.sh spec-path <id> --repo .` — one helper covers both filename forms (`<id>.md`, `<id>-<slug>.md`) and both shapes, so never guess the path or glob for it yourself. For free-form work, restate it and identify affected layers; ask 1-2 clarifying questions only when genuinely ambiguous.
 
 If a free-form description maps to an existing spec, say so and switch to it. If it's net-new and will produce commits, offer `/flow:run --add` first so there's an id to tag.
 
@@ -14,7 +14,7 @@ If a free-form description maps to an existing spec, say so and switch to it. If
 
 Concise plan: thin vertical slices, files/layers touched, test strategy, risks, open questions. **The plan you present IS the draft detail file** — include the **Value** user story so it can be weighed against other specs. **In `checkpoint` mode, stop for sign-off before writing any code.** In `auto-build`, do not pause for approval — but still write and commit the detail file first (auto-build skips the human gate, never the record).
 
-On sign-off (checkpoint) or immediately (auto-build), write/update `specs/<id>.md` (Problem, Value, Scope, AC, Plan, Decisions — see `reference/authoring.md` for the template) and commit it. Then set the item IN PROGRESS in the index (local) or, if `Backlog`/`Ready`, offer to transition the card (ado, with a comment noting work started) — checkpoint only after sign-off. For cross-cutting work, this is where the API contract / seam is locked so parallel layers build to the same interface.
+On sign-off (checkpoint) or immediately (auto-build), write/update the detail file (Problem, Value, Scope, AC, Plan, Decisions — see `reference/authoring.md` for the template, including how the filename's `<id>-<slug>` is derived) and commit it. Then set the item IN PROGRESS in the index (local) or, if `Backlog`/`Ready`, offer to transition the card (ado, with a comment noting work started) — checkpoint only after sign-off. For cross-cutting work, this is where the API contract / seam is locked so parallel layers build to the same interface.
 
 ## 3. Build test-first
 
@@ -49,7 +49,7 @@ If at any point you're about to drop or narrow something the spec put in scope, 
   - **Triage before `DONE`.** Surface the prioritized findings. Each open finding must be **resolved** — either fixed here (re-run the affected lens to confirm), or explicitly re-homed through the **deferral protocol** (below), which records a `deferrals:` entry and mechanically gates `DONE`. Do not flip `DONE` with an untriaged finding standing.
 - **Status** → `DONE` in the index (local), or transition the card's `System.State` (ado, propose-only) after the user confirms.
 - Update `specs/<id>.md`: tick the AC checkboxes, append Decisions/Verification, add a Progress-log entry with the commit SHA(s); commit it. The detail file — not a tracker comment thread — is the canonical working record.
-- **Archive** (local): move the index entry to the `## Archive` section and relocate its detail — a flat `specs/<id>.md` → `<spec_dir>/archive/<id>.md`, or a whole directory `specs/<id>/` → `<spec_dir>/archive/<id>/` (orchestrator + every task file, moved together). The id is never reused — reference integrity for commits/PRs is preserved.
+- **Archive** (local): move the index entry to the `## Archive` section and relocate its detail, **keeping its filename unchanged** — a flat detail file → `<spec_dir>/archive/<same-name>.md`, or a whole directory → `<spec_dir>/archive/<same-dir>/` (orchestrator + every task file, moved together). The id is never reused — reference integrity for commits/PRs is preserved.
 - Update `CLAUDE.md` if new conventions were introduced.
 - Update `MARKETING.md` if the spec changed user-facing capabilities (if the file exists).
 - Run the project's feature completion checklist (from `CLAUDE.md`).
