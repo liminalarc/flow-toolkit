@@ -5,7 +5,7 @@
 > Vocabulary: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
 ## Phase 1 — Features
-_(all shipped — see Archive)_
+- **1.17** Descriptive spec filenames — `<id>-<slug>` files, config knob, opt-in rename migration — `IN PROGRESS` — [detail](specs/1.17/1.17.md)
 
 ## Archive
 - **1.16** Persisted, self-maintaining project validation rubric — `.flow/validate/*.md` (bootstrap + drift-refresh) — `DONE` — [detail](specs/archive/1.16.md)
