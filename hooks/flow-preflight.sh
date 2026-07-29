@@ -15,18 +15,26 @@
 #   resolved [--repo DIR] [--spec-dir specs] [--done ID,ID,...]
 #       The deferral DONE-gating rule: no spec may be DONE while any `deferrals:`
 #       front-matter entry is unresolved. An entry is resolved iff `to` is
-#       `built` or an id whose detail file exists — flat specs/<to>.md or
-#       archived specs/archive/<to>.md, and the directory form
-#       specs/<to>/<to>.md / specs/archive/<to>/<to>.md (a big spec's
-#       orchestrator). A backend-neutral proxy for "the receiving spec exists"
-#       that needs no board access. The DONE set comes from --done
-#       (ado / caller-supplied) or, if omitted, from SPECIFICATIONS.md (local).
+#       `built` or an id whose detail file exists — resolved via spec-path, so
+#       every shape and name form is covered without a second lookup here. A
+#       backend-neutral proxy for "the receiving spec exists" that needs no board
+#       access. The DONE set comes from --done (ado / caller-supplied) or, if
+#       omitted, from SPECIFICATIONS.md (local; dotted and flat ids alike).
 #       Exit 0 = all DONE specs clean · 2 = an unresolved deferral exists.
 #
 #   wellformed <detail.md>
 #       Validates one detail file's `deferrals:` shape: every entry has a
 #       non-empty what, why, and to. Called by flow-spec-guard.sh on each edit.
 #       Exit 0 = fine / no deferrals · 2 = a malformed entry.
+#
+#   spec-path <id> [--repo DIR] [--spec-dir specs]
+#       Resolve a spec id to its detail file and print the path. THE one place
+#       that knows id -> path, across all eight combinations of shape
+#       (flat <id>.md | directory <id>/<id>.md), name (plain | slugged
+#       <id>-<slug>, 1.17) and location (active | archive). Exact names are
+#       preferred over slugged ones. Exit 0 = resolved (path on stdout) · 1 = no
+#       such spec (silent — the caller decides whether that is an error) ·
+#       2 = ambiguous, i.e. two files claim one id (both named on stderr).
 #
 #   autonomy <spec.md> [--repo DIR]
 #       Resolves a spec's autonomy mode (whether /flow:run pauses for plan approval)
@@ -133,18 +141,80 @@ EOF
     exit 0
 }
 
+# --- shared: resolve a spec id to its detail file ---------------------------
+# ONE place owns id -> path, for every combination of shape (flat | directory),
+# name (plain <id> | slugged <id>-<slug>, 1.17) and location (active | archive).
+# Prints each candidate on its own line, exact names first — an exact <id>.md is
+# returned alone and is never ambiguous, while slugged matches are ALL returned
+# so a caller can report ambiguity instead of silently picking one.
+# The "-" after the id is required, so id 5.9 never matches 5.95-other.md.
+spec_path_candidates() { # <id> <spec_dir>
+    _id="$1"; _d="$2"
+    for _p in "$_d/$_id.md" "$_d/$_id/$_id.md" "$_d/archive/$_id.md" "$_d/archive/$_id/$_id.md"; do
+        if [ -f "$_p" ]; then printf '%s\n' "$_p"; return 0; fi
+    done
+    # Slugged forms. Globbed rather than pattern-matched, and each hit is tested
+    # with -f/-d so an unmatched glob (which POSIX leaves literal) is skipped.
+    _found=""
+    for _base in "$_d" "$_d/archive"; do
+        [ -d "$_base" ] || continue
+        for _p in "$_base/$_id"-*.md; do
+            [ -f "$_p" ] && _found="$_found$_p
+"
+        done
+        for _sd in "$_base/$_id"-*/; do
+            [ -d "$_sd" ] || continue
+            _stem=$(basename "$_sd")                 # the dir is named for its orchestrator
+            [ -f "$_sd$_stem.md" ] && _found="$_found$_sd$_stem.md
+"
+        done
+    done
+    printf '%s' "$_found"
+}
+
+# Single-answer form for internal callers: first candidate wins. Exit 1 = no such
+# spec (callers decide whether absence is an error). Ambiguity is not fatal here —
+# `spec-path` is the subcommand that surfaces it.
+resolve_spec_path() { # <id> <spec_dir>
+    _c=$(spec_path_candidates "$1" "$2")
+    [ -n "$_c" ] || return 1
+    printf '%s\n' "$_c" | head -n 1
+}
+
+# --- subcommand: spec-path -------------------------------------------------
+cmd_spec_path() {
+    id=""; repo="."; spec_dir="specs"
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --repo) repo="$2"; shift 2 ;;
+            --spec-dir) spec_dir="$2"; shift 2 ;;
+            *) [ -z "$id" ] && id="$1"; shift ;;
+        esac
+    done
+    if [ -z "$id" ]; then
+        echo "usage: flow-preflight.sh spec-path <id> [--repo DIR] [--spec-dir specs]" >&2
+        exit 64
+    fi
+    cands=$(spec_path_candidates "$id" "$repo/$spec_dir")
+    [ -z "$cands" ] && exit 1        # silent: not-found is the caller's call
+    n=$(printf '%s\n' "$cands" | grep -c . || true)
+    if [ "$n" -gt 1 ]; then
+        {
+            echo "flow-toolkit preflight: spec id $id is ambiguous — $n detail files match:"
+            printf '%s\n' "$cands" | grep . | sed 's/^/  /'
+            echo "Exactly one file may own an id — rename or remove the duplicates."
+        } >&2
+        exit 2
+    fi
+    printf '%s\n' "$cands" | grep .
+    exit 0
+}
+
 # --- subcommand: resolved --------------------------------------------------
 # Does a `to` value resolve? built, or a detail file exists for that id.
 to_resolves() { # <to> <spec_dir_abs>
-    _to="$1"; _dir="$2"
-    [ "$_to" = "built" ] && return 0
-    # Flat form, then the directory form specs/<id>/<id>.md (orchestrator) — both
-    # active and archived. One place fixes both the DONE-gate and `to`-resolution.
-    [ -f "$_dir/$_to.md" ] && return 0
-    [ -f "$_dir/$_to/$_to.md" ] && return 0
-    [ -f "$_dir/archive/$_to.md" ] && return 0
-    [ -f "$_dir/archive/$_to/$_to.md" ] && return 0
-    return 1
+    [ "$1" = "built" ] && return 0
+    resolve_spec_path "$1" "$2" >/dev/null
 }
 
 cmd_resolved() {
@@ -168,7 +238,10 @@ cmd_resolved() {
             echo "flow-toolkit preflight: no --done set given and no SPECIFICATIONS.md at $repo — cannot determine which specs are DONE. Pass --done <ids> (e.g. from the board)." >&2
             exit 2
         fi
-        done_ids=$(grep -oE '^- \*\*[A-Za-z0-9][A-Za-z0-9]*[.][A-Za-z0-9-]+\*\* .+ — `DONE` —' "$idx" \
+        # Id pattern matches the spec guard's: the leading dotted segment is
+        # OPTIONAL, so ado's flat work-item ids (642103) are in the DONE set too.
+        # Requiring a dot here left the gate silently inert for every flat id.
+        done_ids=$(grep -oE '^- \*\*[A-Za-z0-9][A-Za-z0-9.-]*\*\* .+ — `DONE` —' "$idx" \
                    | sed -E 's/^- \*\*([^*]+)\*\*.*/\1/' | paste -sd, - 2>/dev/null || true)
     fi
 
@@ -179,11 +252,8 @@ cmd_resolved() {
     unresolved=""
     while IFS= read -r id; do
         [ -z "$id" ] && continue
-        f="$dir/$id.md"
-        [ -f "$f" ] || f="$dir/$id/$id.md"              # dir-form orchestrator
-        [ -f "$f" ] || f="$dir/archive/$id.md"
-        [ -f "$f" ] || f="$dir/archive/$id/$id.md"      # archived dir-form
-        [ -f "$f" ] || continue     # missing detail file is flow-lint's job, not this rule's
+        # Missing detail file is flow-lint's job, not this rule's.
+        f=$(resolve_spec_path "$id" "$dir") || continue
         records=$(parse_deferrals "$f")
         [ -z "$records" ] && continue
         idx=0
@@ -482,10 +552,11 @@ case "$sub" in
     git-state)     cmd_git_state "$@" ;;
     resolved)      cmd_resolved "$@" ;;
     wellformed)    cmd_wellformed "$@" ;;
+    spec-path)     cmd_spec_path "$@" ;;
     autonomy)      cmd_autonomy "$@" ;;
     rubric-basis)  cmd_rubric_basis "$@" ;;
     rubric-drift)  cmd_rubric_drift "$@" ;;
     *)
-        echo "usage: flow-preflight.sh <git-state|resolved|wellformed|autonomy|rubric-basis|rubric-drift> [args]" >&2
+        echo "usage: flow-preflight.sh <git-state|resolved|wellformed|spec-path|autonomy|rubric-basis|rubric-drift> [args]" >&2
         exit 64 ;;
 esac

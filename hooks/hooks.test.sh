@@ -544,6 +544,126 @@ x
 EOF
 bash "$PREFLIGHT" resolved --repo "$df" --done "3.6" 2>/dev/null; exit_is "resolved: archived dir-form orchestrator lookup gates" 2 $?
 
+# ---- flow-preflight: spec-path resolver (1.17) ----
+# One subcommand owns id -> path for every combination of shape (flat|dir),
+# name (plain|slugged) and location (active|archive). to_resolves and
+# cmd_resolved both delegate to it, so the rule exists in exactly one place.
+sp=$(mktemp -d); mkdir -p "$sp/specs/archive"
+
+path_is() { # desc id expected-relative-path
+    _got=$(bash "$PREFLIGHT" spec-path "$2" --repo "$sp" 2>/dev/null)
+    _rc=$?
+    if [ "$_rc" -ne 0 ]; then
+        fail=$((fail+1)); echo "FAIL: $1 — exit $_rc, expected to resolve to $3"
+    else
+        out_has "$1" "$3" "$_got"
+    fi
+}
+mkspec() { mkdir -p "$(dirname "$sp/$1")"; printf -- '---\nid: %s\ntitle: T\n---\n## Problem\nx\n' "$2" > "$sp/$1"; }
+
+mkspec specs/5.1.md 5.1                                  # flat plain active
+mkspec specs/5.2-flat-slug.md 5.2                        # flat slugged active
+mkspec specs/5.3/5.3.md 5.3                              # dir plain active
+mkspec specs/5.4-dir-slug/5.4-dir-slug.md 5.4            # dir slugged active
+mkspec specs/archive/5.5.md 5.5                          # flat plain archive
+mkspec specs/archive/5.6-arch-slug.md 5.6                # flat slugged archive
+mkspec specs/archive/5.7/5.7.md 5.7                      # dir plain archive
+mkspec specs/archive/5.8-arch-dir/5.8-arch-dir.md 5.8    # dir slugged archive
+
+path_is "spec-path: flat plain active"    5.1 "specs/5.1.md"
+path_is "spec-path: flat slugged active"  5.2 "specs/5.2-flat-slug.md"
+path_is "spec-path: dir plain active"     5.3 "specs/5.3/5.3.md"
+path_is "spec-path: dir slugged active"   5.4 "specs/5.4-dir-slug/5.4-dir-slug.md"
+path_is "spec-path: flat plain archive"   5.5 "specs/archive/5.5.md"
+path_is "spec-path: flat slugged archive" 5.6 "specs/archive/5.6-arch-slug.md"
+path_is "spec-path: dir plain archive"    5.7 "specs/archive/5.7/5.7.md"
+path_is "spec-path: dir slugged archive"  5.8 "specs/archive/5.8-arch-dir/5.8-arch-dir.md"
+
+# An id containing a dash resolves through the slug form.
+mkspec specs/BL-13-dashed-id.md BL-13
+path_is "spec-path: dashed id with slug" BL-13 "specs/BL-13-dashed-id.md"
+
+# Not found: exit 1, and NOTHING on stdout (callers decide if absence is an error).
+nf=$(bash "$PREFLIGHT" spec-path 9.9 --repo "$sp" 2>/dev/null); exit_is "spec-path: not found exits 1" 1 $?
+out_lacks "spec-path: not found prints nothing" "specs/" "$nf"
+
+# The slug glob must not become a loose prefix match: id 5.9 does not resolve to
+# specs/5.95-other.md (the "-" after the id is required).
+mkspec specs/5.95-other.md 5.95
+bash "$PREFLIGHT" spec-path 5.9 --repo "$sp" >/dev/null 2>&1; exit_is "spec-path: id is not a loose prefix" 1 $?
+path_is "spec-path: the longer id still resolves" 5.95 "specs/5.95-other.md"
+
+# Ambiguity is a real authoring bug (two slugged files for one id) — exit 2, and
+# the message must name both candidates rather than silently picking one.
+mkspec specs/6.1-first-name.md 6.1
+mkspec specs/6.1-second-name.md 6.1
+amb=$(bash "$PREFLIGHT" spec-path 6.1 --repo "$sp" 2>&1); exit_is "spec-path: ambiguous resolution exits 2" 2 $?
+out_has "spec-path: ambiguity names first candidate"  "6.1-first-name.md"  "$amb"
+out_has "spec-path: ambiguity names second candidate" "6.1-second-name.md" "$amb"
+
+# A plain <id>.md wins over a slugged sibling — an exact name is never ambiguous.
+mkspec specs/6.2.md 6.2
+mkspec specs/6.2-also-here.md 6.2
+path_is "spec-path: exact name beats slugged sibling" 6.2 "specs/6.2.md"
+
+# --spec-dir is honoured.
+mkdir -p "$sp/plans"; mkspec plans/7.1-elsewhere.md 7.1
+sd=$(bash "$PREFLIGHT" spec-path 7.1 --repo "$sp" --spec-dir plans 2>/dev/null); exit_is "spec-path: --spec-dir honoured" 0 $?
+out_has "spec-path: --spec-dir resolves" "plans/7.1-elsewhere.md" "$sd"
+
+# The DONE-gate now reaches slugged specs — both the DONE spec's own lookup and
+# `to`-resolution. A dangling deferral on a slugged DONE spec must block.
+mkspec specs/8.2-receiver.md 8.2
+cat > "$sp/specs/8.1-deferrer.md" <<'EOF'
+---
+id: 8.1
+title: Slugged deferrer
+deferrals:
+  - what: "dangling"
+    why: "scope"
+    to: 9.9
+---
+## Problem
+x
+EOF
+bash "$PREFLIGHT" resolved --repo "$sp" --done "8.1" 2>/dev/null; exit_is "resolved: slugged DONE spec is found and gates" 2 $?
+cat > "$sp/specs/8.3-resolved.md" <<'EOF'
+---
+id: 8.3
+title: Points at a slugged receiver
+deferrals:
+  - what: "split out"
+    why: "scope"
+    to: 8.2
+---
+## Problem
+x
+EOF
+bash "$PREFLIGHT" resolved --repo "$sp" --done "8.3" 2>/dev/null; exit_is "resolved: to a slugged spec resolves" 0 $?
+
+# Regression (pre-existing bug found while refactoring): the DONE-set grep read
+# from SPECIFICATIONS.md required a DOTTED id, so ado's flat work-item ids
+# (642103) never matched and the deferral DONE-gate was silently inert for them.
+mkspec specs/642103-add-user-login.md 642103
+cat > "$sp/specs/642103-add-user-login.md" <<'EOF'
+---
+id: 642103
+title: Add user login
+deferrals:
+  - what: "sso"
+    why: "scope"
+    to: 9.9
+---
+## Problem
+x
+EOF
+cat > "$sp/SPECIFICATIONS.md" <<'EOF'
+# Proj
+## Backlog
+- **642103** Add user login — `DONE` — [detail](specs/642103-add-user-login.md)
+EOF
+bash "$PREFLIGHT" resolved --repo "$sp" 2>/dev/null; exit_is "resolved: flat (ado) id in the DONE set gates" 2 $?
+
 # ---- flow-commit-guard: [id] subject-tag nudge (check 3b) ----
 CGUARD="$HERE/flow-commit-guard.sh"
 cg="$tmp/cg"; mkdir -p "$cg/specs"
