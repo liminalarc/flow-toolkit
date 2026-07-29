@@ -232,6 +232,126 @@ EOF
 flat=$(bash "$GUARD" "$tmp/specs/2.T3.md" 2>&1)
 out_lacks "flat task-looking name gets no AC nudge" "local AC" "$flat"
 
+# ---- flow-spec-guard: slugged filenames (1.17) ----
+# A descriptive slug may follow the id in any detail-file stem: <id>-<slug>.md,
+# <id>-<slug>/<id>-<slug>.md, and <id>-<slug>.T<n>-<ctx>.md. Identity stays the
+# front-matter `id:` — never parsed out of the name — so the guard validates the
+# stem AGAINST the id, and a genuine mismatch must still block.
+
+# Flat slugged spec.
+cat > "$tmp/specs/4.1-user-facing-slugs.md" <<'EOF'
+---
+id: 4.1
+title: User facing slugs
+---
+## Problem
+x
+EOF
+bash "$GUARD" "$tmp/specs/4.1-user-facing-slugs.md" 2>/dev/null; exit_is "flat slugged stem passes" 0 $?
+
+# Slugged dir form: dir, orchestrator, and task files all carry the slug.
+mkdir -p "$tmp/specs/4.2-slug-everywhere"
+cat > "$tmp/specs/4.2-slug-everywhere/4.2-slug-everywhere.md" <<'EOF'
+---
+id: 4.2
+title: Slug everywhere
+---
+## Problem
+x
+EOF
+bash "$GUARD" "$tmp/specs/4.2-slug-everywhere/4.2-slug-everywhere.md" 2>/dev/null; exit_is "slugged orchestrator passes" 0 $?
+so=$(bash "$GUARD" "$tmp/specs/4.2-slug-everywhere/4.2-slug-everywhere.md" 2>&1)
+out_lacks "slugged orchestrator gets no task nudge" "local AC" "$so"
+
+# Slugged task file with its own context suffix + a local AC → clean, silent.
+cat > "$tmp/specs/4.2-slug-everywhere/4.2-slug-everywhere.T1-guard-relax.md" <<'EOF'
+---
+id: 4.2.T1
+title: Guard relax
+---
+## Goal
+how
+## Done when
+- [ ] the seam works
+EOF
+bash "$GUARD" "$tmp/specs/4.2-slug-everywhere/4.2-slug-everywhere.T1-guard-relax.md" 2>/dev/null; exit_is "slugged task file passes" 0 $?
+st=$(bash "$GUARD" "$tmp/specs/4.2-slug-everywhere/4.2-slug-everywhere.T1-guard-relax.md" 2>&1)
+out_lacks "slugged task file with AC is silent" "local AC" "$st"
+
+# Slugged task file with NO local AC → the soft nudge still fires (exit 0).
+cat > "$tmp/specs/4.2-slug-everywhere/4.2-slug-everywhere.T2-no-ac.md" <<'EOF'
+---
+id: 4.2.T2
+title: No AC
+---
+## Goal
+no done-when checkbox
+EOF
+bash "$GUARD" "$tmp/specs/4.2-slug-everywhere/4.2-slug-everywhere.T2-no-ac.md" 2>/dev/null; exit_is "slugged task without AC still passes" 0 $?
+sn=$(bash "$GUARD" "$tmp/specs/4.2-slug-everywhere/4.2-slug-everywhere.T2-no-ac.md" 2>&1)
+out_has "slugged task without AC nudges" "local AC" "$sn"
+
+# A slug on the dir but a bare task stem (or vice versa) is still a mismatch of
+# neither kind — the task id/stem rule allows the slug to be present or absent
+# on each segment independently.
+cat > "$tmp/specs/4.2-slug-everywhere/4.2-slug-everywhere.T3.md" <<'EOF'
+---
+id: 4.2.T3
+title: No context suffix
+---
+## Done when
+- [ ] x
+EOF
+bash "$GUARD" "$tmp/specs/4.2-slug-everywhere/4.2-slug-everywhere.T3.md" 2>/dev/null; exit_is "slugged spec with bare task stem passes" 0 $?
+
+# An id that itself contains a dash (BL-12) stays unambiguous — the slug is the
+# remainder after "<id>-", so identity never has to be parsed out of the name.
+cat > "$tmp/specs/BL-12-backlog-item.md" <<'EOF'
+---
+id: BL-12
+title: Backlog item
+---
+## Problem
+x
+EOF
+bash "$GUARD" "$tmp/specs/BL-12-backlog-item.md" 2>/dev/null; exit_is "dashed id with slug passes" 0 $?
+
+# A GENUINE mismatch must still block, and the message must name both legal forms.
+cat > "$tmp/specs/4.3-wrong-id.md" <<'EOF'
+---
+id: 9.9
+title: Wrong id
+---
+## Problem
+x
+EOF
+bash "$GUARD" "$tmp/specs/4.3-wrong-id.md" 2>/dev/null; exit_is "slugged stem with wrong id blocks" 2 $?
+me=$(bash "$GUARD" "$tmp/specs/4.3-wrong-id.md" 2>&1)
+out_has "mismatch message names the slugged form" "<id>-<slug>" "$me"
+
+# The relaxation must not become a loose prefix match: id 4.1 in file 4.15.md is
+# a mismatch (4.15 does not start with "4.1-"), not a slug.
+cat > "$tmp/specs/4.15.md" <<'EOF'
+---
+id: 4.1
+title: Prefix collision
+---
+## Problem
+x
+EOF
+bash "$GUARD" "$tmp/specs/4.15.md" 2>/dev/null; exit_is "id that is a bare prefix of the stem blocks" 2 $?
+
+# Likewise for the task form: id 4.2.T1 must not accept a different task number.
+cat > "$tmp/specs/4.2-slug-everywhere/4.2-slug-everywhere.T9-mismatch.md" <<'EOF'
+---
+id: 4.2.T1
+title: Wrong task number
+---
+## Done when
+- [ ] x
+EOF
+bash "$GUARD" "$tmp/specs/4.2-slug-everywhere/4.2-slug-everywhere.T9-mismatch.md" 2>/dev/null; exit_is "slugged task with wrong task number blocks" 2 $?
+
 # ---- flow-session-brief: index + legacy ----
 cat > "$tmp/SPECIFICATIONS.md" <<'EOF'
 # Proj — Specifications

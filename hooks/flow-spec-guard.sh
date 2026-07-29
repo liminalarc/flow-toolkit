@@ -14,12 +14,15 @@
 #
 #   * <spec_dir>/<id>.md (a DETAIL file, default dir "specs"): carries NO status
 #     field (status is single-source in the index — a status here would drift),
-#     and its front-matter `id:` matches the filename stem. A big spec may use
-#     the directory form <spec_dir>/<id>/ = orchestrator <id>.md + task files
-#     <id>.T<n>.md; both the orchestrator and each task file are detail files
-#     (same no-status + id==stem rules). A task file (stem .T<n> whose parent
-#     dir is named for the spec id) also gets a SOFT local-AC nudge — never a
-#     block — if it has no 'done when' checkbox.
+#     and its front-matter `id:` matches the filename stem. A descriptive slug
+#     may follow the id in the stem — <id>-<slug>.md — and the `id:` is always
+#     the identity, never parsed back out of the name. A big spec may use the
+#     directory form <spec_dir>/<id>[-<slug>]/ = orchestrator <id>[-<slug>].md +
+#     task files <id>[-<slug>].T<n>[-<context>].md; both the orchestrator and
+#     each task file are detail files (same no-status + stem/id rules — see
+#     stem_matches_id). A task file (stem .T<n> whose parent dir is named for the
+#     spec stem) also gets a SOFT local-AC nudge — never a block — if it has no
+#     'done when' checkbox.
 #
 # A legacy inline SPECIFICATIONS.md (### Spec blocks, **Status:** lines) is
 # detected and PASSED with a one-line advisory to run `/flow:lint --migrate` —
@@ -66,6 +69,31 @@ find_repo_root() {
     return 1
 }
 
+# Does a detail file's stem match its front-matter `id:`? A descriptive slug may
+# follow the id in any stem (1.17) — identity is always the `id:`, never parsed
+# out of the filename, so an id containing "-" (BL-12) stays unambiguous. Legal:
+#   <id>                       1.7          | BL-12
+#   <id>-<slug>                1.7-user-auth
+#   <base>[-<slug>].T<n>[-<ctx>]   for a task id <base>.T<n>
+# The trailing "-" in the slug form is required, so id 4.1 does NOT match stem
+# 4.15 — the relaxation is a slug rule, not a loose prefix match.
+stem_matches_id() { # <stem> <id>
+    _stem=$1; _id=$2
+    [ "$_stem" = "$_id" ] && return 0
+    case "$_stem" in "$_id"-?*) return 0 ;; esac
+    # Task form: the slug may appear on the spec segment, the task segment, both,
+    # or neither, but the base id and task number must match exactly.
+    _tbase=$(printf '%s' "$_id" | sed -nE 's/^(.+)\.T([0-9][0-9]*)$/\1/p')
+    _tnum=$(printf '%s' "$_id" | sed -nE 's/^(.+)\.T([0-9][0-9]*)$/\2/p')
+    if [ -n "$_tbase" ]; then
+        # Escape "." so it is literal in the ERE below (ids are [A-Za-z0-9.-], so
+        # "." is the only regex metacharacter that can occur).
+        _esc=$(printf '%s' "$_tbase" | sed 's/\./\\./g')
+        printf '%s' "$_stem" | grep -qE "^${_esc}(-.+)?\.T${_tnum}(-.+)?$" && return 0
+    fi
+    return 1
+}
+
 # Classify the file: index, detail, or neither.
 kind=""
 case "$base" in
@@ -88,8 +116,8 @@ if [ "$kind" = "detail" ]; then
     fi
     stem=${base%.md}
     idval=$(sed -nE 's/^id:[[:space:]]*"?([^"[:space:]]+)"?[[:space:]]*$/\1/p' "$FILE" | head -n 1)
-    if [ -n "$idval" ] && [ "$idval" != "$stem" ]; then
-        derr="${derr}  front-matter id \"$idval\" does not match filename \"$stem\" (specs/<id>.md)\n"
+    if [ -n "$idval" ] && ! stem_matches_id "$stem" "$idval"; then
+        derr="${derr}  front-matter id \"$idval\" does not match filename \"$stem\" — expected <id>.md or <id>-<slug>.md (a task file: <id>[-<slug>].T<n>[-<context>].md)\n"
     fi
     if [ -n "$derr" ]; then
         {
@@ -116,9 +144,10 @@ if [ "$kind" = "detail" ]; then
     # <id>.md + task files <id>.T<n>.md; a task file carries the "how" plus a
     # local 'done when' contract (a checkbox) — the seam a per-task implementer
     # builds to and a verifier checks against (D2). Nudge if it has none.
-    # Detection: stem ends .T<n> AND the parent dir is named for the spec id, so
-    # a flat specs/2.T3.md and the orchestrator specs/<id>/<id>.md never trip it.
-    stem_prefix=$(printf '%s' "$stem" | sed -nE 's/^(.+)\.T[0-9][0-9]*$/\1/p')
+    # Detection: stem ends .T<n> (optionally + a -<context> slug, 1.17) AND the
+    # parent dir is named for the spec stem, so a flat specs/2.T3.md and the
+    # orchestrator specs/<id>/<id>.md never trip it.
+    stem_prefix=$(printf '%s' "$stem" | sed -nE 's/^(.+)\.T[0-9][0-9]*(-.+)?$/\1/p')
     parent=$(basename "$(dirname "$FILE")")
     if [ -n "$stem_prefix" ] && [ "$stem_prefix" = "$parent" ]; then
         if ! grep -qE '^[[:space:]]*-[[:space:]]\[[ xX]\]' "$FILE"; then
