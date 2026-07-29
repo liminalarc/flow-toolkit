@@ -1,17 +1,18 @@
 ---
-description: "Audit CLAUDE.md hierarchy + spec index/detail integrity; migrate legacy specs or a flat spec to dir form — /flow:lint [--claude|--specs|--fix|--migrate [id]]"
+description: "Audit CLAUDE.md hierarchy + spec index/detail integrity; migrate legacy specs, reshape a flat spec, or rename specs to <id>-<slug> — /flow:lint [--claude|--specs|--fix|--migrate [id]|--rename [id|--all]]"
 ---
 # Lint
 
-Audit a project's `CLAUDE.md` hierarchy and its **spec model** (the index + `specs/<id>.md` detail files) for structural violations. Reports findings grouped by severity and suggests or applies fixes. Also migrates a legacy inline `SPECIFICATIONS.md` to the index + detail-file model.
+Audit a project's `CLAUDE.md` hierarchy and its **spec model** (the index + detail files) for structural violations. Reports findings grouped by severity and suggests or applies fixes. Also migrates a legacy inline `SPECIFICATIONS.md` to the index + detail-file model.
 
 Usage:
 - `/flow:lint` — full audit (CLAUDE.md hierarchy + spec model + README)
 - `/flow:lint --claude` — CLAUDE.md hierarchy only
 - `/flow:lint --specs` — spec model only (index + detail files)
 - `/flow:lint --fix` — full audit, then auto-fix what's safe (status keyword casing, entry/heading format, archive migration)
-- `/flow:lint --migrate` — convert a legacy inline `SPECIFICATIONS.md` to the index + `specs/<id>.md` model (dry-run by default; `--migrate --apply` writes)
-- `/flow:lint --migrate <id>` — convert one flat spec `specs/<id>.md` → the directory form `specs/<id>/<id>.md` so it can hold task files (dry-run by default; add `--apply` to write)
+- `/flow:lint --migrate` — convert a legacy inline `SPECIFICATIONS.md` to the index + detail-file model (dry-run by default; `--migrate --apply` writes)
+- `/flow:lint --migrate <id>` — reshape one flat spec into the directory form so it can hold task files (dry-run by default; add `--apply` to write)
+- `/flow:lint --rename [<id>|--all]` — rename bare `<id>.md` specs to the descriptive `<id>-<slug>.md` form and fix their index links (dry-run by default; add `--apply` to write)
 
 ## Instructions
 
@@ -68,13 +69,16 @@ Record for each finding: **severity** (`ERROR`/`WARNING`/`INFO`), **location** (
 
 **Detail files (`<spec_dir>/*.md` + `<spec_dir>/archive/*.md`) — both modes:**
 
-Detail files come in two shapes: **flat** `specs/<id>.md`, or a **directory** `specs/<id>/` holding an orchestrator `<id>.md` plus task files `<id>.T<n>.md` (a big spec's per-task "how"). Resolve an id's detail to whichever exists — flat `specs/<id>.md` first, then `specs/<id>/<id>.md`. Task files are **not** separate index entries: they belong to their orchestrator's id, so they are never orphans.
+Detail files come in two shapes — **flat** or a **directory** holding an orchestrator plus task files (a big spec's per-task "how") — and two name forms: descriptive `<id>-<slug>` or bare `<id>`. **Resolve an id to its detail file with `flow-preflight.sh spec-path <id> --repo .`** (located as described below): it covers every shape/name/location combination, so never guess a path or glob for one here. Exit 1 = no detail file; exit 2 = **two files claim one id** (report as the ERROR below). Task files are **not** separate index entries: they belong to their orchestrator's id, so they are never orphans.
 
 | Check | Severity | Condition |
 |---|---|---|
-| Every index entry has a detail file | ERROR | Index (or board) references `<id>` but neither `specs/<id>.md` nor `specs/<id>/<id>.md` exists. |
-| Every detail file is indexed | WARNING | A flat `specs/<id>.md` or an orchestrator `specs/<id>/<id>.md` exists with no index entry / board item (orphan). Task files `<id>.T<n>.md` are never orphans. |
-| Front-matter `id` matches filename | ERROR | `id:` in the file differs from `<id>` in the filename (for the orchestrator, `<id>`; for a task file, `<id>.T<n>`). |
+| Every index entry has a detail file | ERROR | Index (or board) references `<id>` but `spec-path <id>` finds nothing. |
+| Every detail file is indexed | WARNING | A flat detail file or an orchestrator exists with no index entry / board item (orphan). Task files are never orphans. |
+| One file per id | ERROR | `spec-path <id>` exits 2 — two detail files claim the same id (e.g. a leftover `1.4.md` beside a renamed `1.4-auto-tag-commits.md`). Report both paths; the human picks which to delete. |
+| Front-matter `id` matches filename | ERROR | The filename stem doesn't match the file's `id:`. Legal stems: `<id>`, `<id>-<slug>`, and for a task file `<id>[-<slug>].T<n>[-<context>]`. Same rule as `flow-spec-guard.sh`'s `stem_matches_id`. |
+| Index link points at the real file | WARNING | The entry's `[detail](…)` path isn't the path `spec-path` resolves — usually a rename that didn't update the index. `--rename` fixes it. |
+| Descriptive filename | INFO | A bare `<id>.md` while `.flow/config.yml` has `flow.spec_filename: id-slug` (the default) — suggest `/flow:lint --rename <id>`. Advisory only; the bare form is permanently valid. |
 | No `status` in the detail file | ERROR | Status is single-source (index/board) — a `status:`/`**Status:**` in any detail file (orchestrator or task) will drift. |
 | Task file has a local AC | INFO | A `specs/<id>/<id>.T<n>.md` carries no `- [ ]` "done when" checkbox — the seam an implementer builds to and a verifier checks against. Advisory only (mirrors `flow-spec-guard.sh`'s soft nudge). |
 | Required sections present | WARNING | Missing any of `## Problem`, `## Value`, `## Scope`, `## Acceptance criteria`, `## Plan`, `## Decisions`, `## Verification`, `## Progress log`. |
@@ -174,10 +178,47 @@ flow:lint --migrate (dry run)
   Run with --apply to write. 3 items flagged for manual review.
 ```
 
+### Step 7: Rename to descriptive filenames (only if `--rename`)
+
+Rename bare `<id>.md` detail files to the descriptive `<id>-<slug>.md` form so the backlog reads clearly in a file tree, an editor tab, a `git log --stat`, and a PR's changed-files list. This is the **one-time, opt-in retrofit** for a repo that predates the descriptive form — it never runs as part of an audit or `--fix`. **Dry-run by default;** add `--apply` to write.
+
+`--rename <id>` does one spec; `--rename --all` does every spec, active and archived. Note the difference from `--migrate <id>`: that changes a spec's **shape** (flat → directory), this changes its **name**.
+
+1. **Resolve** each target with `flow-preflight.sh spec-path <id> --repo .`. Exit 2 (two files claim the id) → skip that spec and report it; the human resolves it first.
+2. **Get the text**: the index entry's Title (local) or the work item's `System.Title` (ado). Slugify it per the rule in the `/flow:run` skill's `reference/authoring.md` — lowercase, non-`[a-z0-9]` → `-`, collapse, trim, truncate at a word boundary to 40 chars (a task's context suffix: 20, from that task file's own `title:`).
+3. **Compute the moves.** Flat: `specs/<id>.md` → `specs/<id>-<slug>.md`. Directory: the dir, its orchestrator, **and every task file** move together, since the dir is named for its orchestrator's stem:
+   ```
+   specs/1.4/            → specs/1.4-auto-tag-commits/
+     1.4.md              →   1.4-auto-tag-commits.md
+     1.4.T1.md           →   1.4-auto-tag-commits.T1-commit-guard.md
+   ```
+   An archived spec renames in place, under `specs/archive/`.
+4. **Show the complete plan and confirm** — every `git mv` plus every index-link rewrite — before touching anything.
+5. **Apply**: `git mv` each path (never delete + recreate — history must survive), then rewrite each `[detail](…)` link in the index to the new path, keeping the id, title, status, and position unchanged. File **contents** are never rewritten: the `id:` front-matter is the identity and does not change.
+
+**Safety:**
+- **Nothing moves before confirmation**, and nothing at all without `--apply`.
+- **Idempotent** — an already-slugged spec reports "already descriptive" and moves nothing, so `--rename --all` is safe to re-run.
+- **Refuses rather than forces**: a target path that already exists is reported as a collision and skipped; a title that slugifies to empty stays bare.
+- **The id never changes**, so every commit subject, PR, and cross-spec `to:`/`links:` reference citing `<id>` stays valid — the guards and `spec-path` resolve the new name automatically.
+- `flow.spec_filename: id` in `.flow/config.yml` means the project wants bare names: say so and do nothing.
+
+**Report:**
+```
+flow:lint --rename --all (dry run)
+  1.4  specs/1.4/ → specs/1.4-auto-tag-commits/   (+ 2 task files)
+  1.5  specs/archive/1.5.md → specs/archive/1.5-ci-hook-tests.md
+  1.6  already descriptive — skipped
+  1.9  COLLISION: specs/1.9-migrate-pr-skill.md exists — skipped
+  3 index links to rewrite. Run with --apply to write.
+```
+
 ## Rules
 
-- Read-only by default — never modify files without `--fix` or `--migrate --apply`.
+- Read-only by default — never modify files without `--fix`, `--migrate --apply`, or `--rename --apply`.
 - Always diff before writing; confirm if any change is ambiguous.
 - Report the line number for every finding when possible.
 - Five precise findings beat a wall of nitpicks. Over 20 findings → group and summarize.
 - `--migrate` (either mode) never runs destructively — dry-run first; the legacy conversion backs up and preserves every byte of unclassified content, and the flat→dir conversion uses `git mv` and never rewrites file contents.
+- `--rename` is opt-in and never part of an audit or `--fix`: dry-run first, `git mv` only, contents untouched, collisions skipped rather than overwritten.
+- **Never resolve an id to a path by hand** — call `flow-preflight.sh spec-path`, so the audit and the guards agree on every filename form.
