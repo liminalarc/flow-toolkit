@@ -9,7 +9,7 @@ Usage:
 - `/flow:lint` — full audit (CLAUDE.md hierarchy + spec model + README)
 - `/flow:lint --claude` — CLAUDE.md hierarchy only
 - `/flow:lint --specs` — spec model only (index + detail files)
-- `/flow:lint --fix` — full audit, then auto-fix what's safe (status keyword casing, entry/heading format, archive migration)
+- `/flow:lint --fix` — full audit, then auto-fix what's safe (status keyword casing, entry/heading format, archival — incl. reconciling ado cards closed outside flow)
 - `/flow:lint --migrate` — convert a legacy inline `SPECIFICATIONS.md` to the index + detail-file model (dry-run by default; `--migrate --apply` writes)
 - `/flow:lint --migrate <id>` — reshape one flat spec into the directory form so it can hold task files (dry-run by default; add `--apply` to write)
 - `/flow:lint --rename [<id>|--all]` — rename bare `<id>.md` specs to the descriptive `<id>-<slug>.md` form and fix their index links (dry-run by default; add `--apply` to write)
@@ -96,6 +96,23 @@ Detail files come in two shapes — **flat** or a **directory** holding an orche
   - **local**: `flow-preflight.sh resolved --repo .` reads `SPECIFICATIONS.md` for the DONE set itself.
   - **ado**: the board owns status, so query the DONE work items first, then pass them: `flow-preflight.sh resolved --repo . --done <id,id,...>`.
 
+### Step 3a: Archival reconciliation (ado only — skip entirely in local mode)
+
+In local mode the index and the detail file move together in one commit, so they can't drift. In **ado** the board owns lifecycle and cards close **outside flow** — a teammate closing one in the ADO UI leaves its detail file sitting in the active folder with nothing watching. This step catches that.
+
+1. Query the configured area path for work items in a **Closed-category** state (per `.flow/config.yml`'s `state_map` — the *category*, never a hardcoded state name, since a team may rename its board states).
+2. For each, resolve its detail with `flow-preflight.sh spec-path <id> --repo .`. If the resolved path is **not** under `<spec_dir>/archive/`, record a `WARNING`.
+3. Report them together, then **offer the `git mv` set confirm-first**. Move nothing unprompted and nothing without `--fix`; a flat file moves to `<spec_dir>/archive/<same-name>.md` and a directory moves whole (orchestrator + every task file), filenames unchanged.
+
+| Check | Severity | Condition |
+|---|---|---|
+| Closed card's detail is archived | WARNING | A Closed-category card's detail file is still in the active folder — it should be under `<spec_dir>/archive/`. Offer the move. |
+| Board query succeeded | ⚠️ blocks the check | The query could not run (see below) — report it; never conclude "nothing to reconcile" from a failed query. |
+
+**MCP-first, `az boards` fallback, never a silent no-op.** Prefer the tracking MCP tools (`wit_*`); on an unavailable call or a 401/403, **announce the fallback** and use the `az boards` CLI. If both fail, say the reconciliation could not be evaluated and why — an unreachable board is an unknown, not a clean bill of health.
+
+**No new noise:** this step is skipped wholesale in local mode, and a spec already under `archive/` produces nothing. A card in a non-terminal state is never flagged — the board owns lifecycle, and an open card's file belongs in the active folder.
+
 ### Step 3b: README.md (skip if `--claude` or `--specs`)
 
 | Check | Severity | Condition |
@@ -140,7 +157,8 @@ Safe, mechanical corrections only. **Always show a diff and confirm before writi
 Safe to auto-fix:
 - Status keyword normalization in the index (`done` → `DONE`, etc.).
 - Index entry format (spacing, backticks around status, link form).
-- Archive: move DONE/SUPERSEDED entries to `## Archive` and relocate their detail — a flat `specs/<id>.md` → `specs/archive/<id>.md`, or a whole directory `specs/<id>/` → `specs/archive/<id>/` (orchestrator + every task file moved together).
+- Archive (local): move DONE/SUPERSEDED entries to `## Archive` and relocate their detail — a flat detail file → `specs/archive/<same-name>.md`, or a whole directory → `specs/archive/<same-dir>/` (orchestrator + every task file moved together), filenames unchanged.
+- Archive (ado): apply the Step 3a reconciliation moves — a Closed-category card whose detail is still in the active folder. Confirm-first, same `git mv` rules.
 - Trailing whitespace / double blank lines in the index.
 
 Do **NOT** auto-fix: CLAUDE.md content, duplicate ids, missing sections/detail files (requires authoring), line-count issues, or moving a `status` out of a detail file (surface it; the human decides the true status).

@@ -96,7 +96,7 @@ Keep under 300 lines (the root cap; a project may raise it via `rootMax` in `.fl
 - **`## Architecture`** — 4-8 bullets on key decisions and patterns.
 - **`## Development Rules`** — adapted to the stack: TDD mandate, testing stack, thin slices, no premature abstractions, conventional commits (`feat:`/`fix:`/`chore:`/`docs:`/`refactor:`/`test:`, optionally with a leading `[id]` spec tag — no `#`, which would collide with GitHub's issue/PR autolink), **no silent deferrals** (never narrow a spec's scope silently — surface each deferred in-scope item with its reason, get a per-item build-now-or-re-home decision, cross-link, and record it as a `deferrals:` front-matter entry; deferrals gate `DONE`, mechanically — the commit guard, `/flow:lint`, and `/flow:ship` all block a `DONE` spec with an unresolved deferral).
 - **`## Spec Status Vocabulary`** — `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
-- **`## Feature Completion Checklist`** — tailored; always include: **deferrals reconciled** (every in-scope item was built or re-homed by user decision, cross-linked, and recorded in the spec's `deferrals:` front-matter with a resolved `to` — machine-checked; no silent scope narrowing); **restart affected local services + smoke-test** (restart every service the change touched so nothing serves stale code, then drive the changed behavior end-to-end — Claude-automated wherever feasible — and show a brief pass/fail verification checklist before marking DONE); update the index status + archive the detail file; update `specs/<id>.md` Progress/Decisions; update CLAUDE.md patterns if new conventions introduced. If MARKETING.md exists, add its feature-highlights update.
+- **`## Feature Completion Checklist`** — tailored; always include: **deferrals reconciled** (every in-scope item was built or re-homed by user decision, cross-linked, and recorded in the spec's `deferrals:` front-matter with a resolved `to` — machine-checked; no silent scope narrowing); **restart affected local services + smoke-test** (restart every service the change touched so nothing serves stale code, then drive the changed behavior end-to-end — Claude-automated wherever feasible — and show a brief pass/fail verification checklist before marking DONE); set the terminal status (index in local, the card's state in ado) + archive the detail file to `<spec_dir>/archive/` — both backends, filename unchanged; update the detail file's Progress/Decisions; update CLAUDE.md patterns if new conventions introduced. If MARKETING.md exists, add its feature-highlights update.
 - **`## Project Structure`** — directory tree with one-line descriptions (include `specs/`).
 - **`## See Also`** — pointer to subdirectory CLAUDE.md files.
 
@@ -188,7 +188,7 @@ Tell the user:
 - `/flow:review` — audit docs, UX, marketing, product
 - `/flow:lint` — check the CLAUDE.md hierarchy + index↔detail integrity; `--migrate` converts a legacy inline `SPECIFICATIONS.md` to the index + `specs/` model
 - `/flow:init` — re-run to update as the project evolves
-- Status lives in the index (or the board); detail lives in `specs/<id>.md`; archived specs move to `specs/archive/<id>.md` — id never reused.
+- Status lives in the index (or the board); detail lives in `<spec_dir>/<id>-<slug>.md`; a finished spec's detail moves to `<spec_dir>/archive/` with its filename unchanged, in **both** backends (`DONE` and `SUPERSEDED` share the one folder — the outcome is single-source in the index/board) — id never reused.
 
 ## Rules
 
