@@ -6,7 +6,7 @@
 > Vocabulary: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
 ## Phase 1 — Features
-_(all shipped — see Archive)_
+- **1.18** Archive completed specs in ado mode — un-gate the move + reconcile cards closed outside flow — `IN PROGRESS` — [detail](specs/1.18-archive-completed-specs-in-ado.md)
 
 ## Archive
 - **1.17** Descriptive spec filenames — `<id>-<slug>` files, config knob, opt-in rename migration — `DONE` — [detail](specs/archive/1.17-descriptive-spec-filenames/1.17-descriptive-spec-filenames.md)
