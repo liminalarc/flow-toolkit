@@ -49,11 +49,14 @@ If at any point you're about to drop or narrow something the spec put in scope, 
   - **Triage before `DONE`.** Surface the prioritized findings. Each open finding must be **resolved** — either fixed here (re-run the affected lens to confirm), or explicitly re-homed through the **deferral protocol** (below), which records a `deferrals:` entry and mechanically gates `DONE`. Do not flip `DONE` with an untriaged finding standing.
 - **Status** → `DONE` in the index (local), or transition the card's `System.State` (ado, propose-only) after the user confirms.
 - Update `specs/<id>.md`: tick the AC checkboxes, append Decisions/Verification, add a Progress-log entry with the commit SHA(s); commit it. The detail file — not a tracker comment thread — is the canonical working record.
-- **Archive** (local): move the index entry to the `## Archive` section and relocate its detail, **keeping its filename unchanged** — a flat detail file → `<spec_dir>/archive/<same-name>.md`, or a whole directory → `<spec_dir>/archive/<same-dir>/` (orchestrator + every task file, moved together). The id is never reused — reference integrity for commits/PRs is preserved.
+- **Archive — both backends.** Relocate the detail with `git mv`, **keeping its filename unchanged** — a flat detail file → `<spec_dir>/archive/<same-name>.md`, or a whole directory → `<spec_dir>/archive/<same-dir>/` (orchestrator + every task file, moved together). The id is never reused — reference integrity for commits/PRs is preserved. One `archive/` folder holds **both** terminal outcomes: `DONE` and `SUPERSEDED` archive by the identical path, because the outcome is already single-source in the index/board and encoding it in the folder would be a second source of truth to drift.
+  - **local**: also move the index entry to the `## Archive` section.
+  - **ado**: there is no index entry to move, so archive when the card reaches a **Closed-category** state (the `state_map` category, never a hardcoded state name — a team may rename its board states). Without this an ado repo's `specs/` accumulates every closed story forever. If the card is *not* in a terminal state, leave the file in place — the board owns lifecycle.
+  - Cards closed **outside flow** (someone closed it in the ADO UI) are reconciled by `/flow:lint`, not here.
 - Update `CLAUDE.md` if new conventions were introduced.
 - Update `MARKETING.md` if the spec changed user-facing capabilities (if the file exists).
 - Run the project's feature completion checklist (from `CLAUDE.md`).
-- ado only: refresh the single "Spec:" pointer comment (`Spec: specs/<id>.md @ <sha>`) rather than posting a fresh comment each time.
+- ado only: refresh the single "Spec:" pointer comment (`Spec: <path> @ <sha>`) rather than posting a fresh comment each time. Do this **after** archiving so the path points at the file's final home — resolve it with `flow-preflight.sh spec-path <id>`, never a hand-built path.
 - Hand off with a summary; `/flow:ship` cuts the release when ready.
 
 ## The deferral protocol
