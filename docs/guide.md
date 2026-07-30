@@ -106,7 +106,9 @@ Break out by a manual guideline — **≥3 tasks, or a task with its own AC** �
 
 **Status vocabulary** — exactly one per index entry: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
-**Archival** — when a spec is DONE/SUPERSEDED, `/flow:run` moves its index entry to `## Archive` and its detail file into `specs/archive/`, **name unchanged** (a flat file, or the whole directory). **Ids are never reused** — "closes 2.3" stays meaningful forever.
+**Archival — both backends.** When a spec reaches a terminal state, `/flow:run` moves its detail file into `specs/archive/`, **name unchanged** (a flat file, or the whole directory). In `local` it also moves the index entry to `## Archive`; in `ado` there's no index entry to move, so the trigger is the card reaching a **Closed-category** state per `state_map`. One folder holds both outcomes — `DONE` and `SUPERSEDED` archive identically, because *which* outcome it was is already single-source in the index/board, and encoding it in the folder path would be a second source of truth to drift. **Ids are never reused** — "closes 2.3" stays meaningful forever.
+
+Cards closed **outside flow** (someone closed one in the ADO UI) leave their detail file behind; `/flow:lint` reconciles those — see [Section 4](#flowlint).
 
 **Terseness by rule** — a detail file is read every time its spec is worked, so bloat is wasted budget. `/flow:run --add` authors to three rules (one job per section, shortest lossless form, append-only one-line Progress log); a soft line budget (default 120, `spec.maxLines`) *warns* on drift but never blocks. `/flow:run --condense` is the judgment pass that tightens an existing spec losslessly.
 
@@ -129,7 +131,7 @@ The backend is set by an optional `.flow/config.yml`. **Absent ⇒ local mode** 
 - **`local`** — the index is `SPECIFICATIONS.md`; `/flow:run` owns the full lifecycle; ids are `Phase.Spec` (`1.2`, `2.37a`); the status vocabulary is used directly (no translation).
 - **`ado`** — the **board is the index** (no `SPECIFICATIONS.md`); ids are work-item numbers, so a detail file is named from the story title (`specs/642103-add-user-login.md`); the board owns the state machine, so a `state_map` translates each board state → a canonical token. The board may live in a **different ADO project/org than the repo** — only the detail files live in the repo. Flow's card writes are **propose-only**: it transitions state on your sign-off and refreshes one "Spec:" pointer comment — never reprioritizing, reassigning, or closing a card unprompted.
 
-Detail files are **byte-for-byte the same shape** in both modes; only *where lifecycle is owned* changes, and where the filename's slug comes from (the index Title vs `System.Title`). Set up ado with `/flow:init --backend ado` (it auto-builds the `state_map` from ADO state categories).
+Detail files are **byte-for-byte the same shape** in both modes; only *where lifecycle is owned* changes, and where the filename's slug comes from (the index Title vs `System.Title`). **Archival behaves identically in both** — a finished spec's detail moves to `specs/archive/` either way; ado just takes its trigger from the card's state category instead of an index edit. Set up ado with `/flow:init --backend ado` (it auto-builds the `state_map` from ADO state categories).
 
 ### 2.4 Autonomy — checkpoint vs auto-build
 
@@ -345,6 +347,8 @@ Audit the CLAUDE.md hierarchy + spec integrity. **Dispatches no sub-agents.**
 ```
 
 Checks (with severity `ERROR` / `WARNING` / `INFO`): CLAUDE.md caps + required sections + no root-duplication; index entry format + valid/unique statuses; every entry has a detail file and vice-versa; no two files claiming one id; the filename stem matches the file's `id:` and carries no status; index links point at the real file; `## Value` reads as a user story; deferral well-formedness + the DONE-gate; DONE specs have no unchecked AC; archive holds only DONE/SUPERSEDED. `--fix` never touches CLAUDE.md *content* or resolves ambiguous issues.
+
+**ado only — archival reconciliation.** Because cards close on the board, sometimes outside flow, `/flow:lint` queries Closed-category work items and flags any whose detail file is still in the active folder, offering the `git mv` confirm-first. Skipped wholesale in local mode (where the index entry and the file move in one commit and can't drift). MCP-first with an `az boards` fallback that is **announced** — if the board is unreachable it reports that the check couldn't be evaluated rather than passing it.
 
 `--rename` is the **opt-in retrofit** to descriptive `<id>-<slug>` filenames: dry-run by default, `git mv` only (history preserved), file contents never rewritten, index links updated in the same change, collisions skipped rather than forced, and idempotent — so `--rename --all` is safe to re-run. Never part of an audit or `--fix`.
 

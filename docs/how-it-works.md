@@ -101,7 +101,7 @@ flowchart TD
         IP -.-> SU
     end
 
-    DN --> Arch["Archive: index entry to ## Archive<br/>detail to specs/archive/, name unchanged<br/>id never reused"]
+    DN --> Arch["Archive (both backends): detail to specs/archive/<br/>name unchanged · local also moves the index entry<br/>ado triggers on Closed-category state · id never reused"]
     SU --> Arch
 ```
 

@@ -42,7 +42,7 @@ Before marking a spec `DONE`:
 - [ ] **Installers verified in lockstep** — if install/registration behavior changed, both `install.sh` and `install.ps1` were updated and a dry install was exercised.
 - [ ] **Smoke-test the changed behavior end-to-end** — actually run the affected command or hook against a scratch spec/repo and confirm the real behavior, not just that files parse. Show a brief pass/fail checklist.
 - [ ] **README + docs updated** — any user-visible change in command behavior, hook rules, install steps, or file formats is reflected in `README.md`.
-- [ ] **Index status updated + detail archived** — set status in `SPECIFICATIONS.md`; `/flow:run` moves the entry to `## Archive` and the detail file to `specs/archive/<id>.md`.
+- [ ] **Index status updated + detail archived** — set status in `SPECIFICATIONS.md`; `/flow:run` moves the entry to `## Archive` and the detail file to `specs/archive/`, filename unchanged.
 - [ ] **`specs/<id>.md` Progress/Decisions updated**; CLAUDE.md patterns updated if a new convention was introduced.
 
 ## Project Structure
