@@ -1,8 +1,8 @@
-name: hook tests
+name: tests
 
-# Runs the bash hook test harness on every push and PR to main, so the
-# /flow-ship CI gate is real. Hooks are POSIX bash — a single ubuntu runner
-# suffices; Windows Git Bash parity is owned by the portability rule, not CI.
+# Runs the bash test harnesses on every push and PR to main, so the /flow:ship
+# CI gate is real. Hooks are POSIX bash — a single ubuntu runner suffices;
+# Windows Git Bash parity is owned by the portability rule, not CI.
 on:
   push:
     branches: [main]
@@ -16,3 +16,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run hook tests
         run: bash hooks/hooks.test.sh
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # CI is set by Actions, so a missing toolchain fails here rather than
+      # skipping — the diagrams must actually be parsed on every push.
+      - name: Parse Mermaid diagrams
+        run: bash docs/mermaid.test.sh

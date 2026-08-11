@@ -409,7 +409,7 @@ You can run it directly: `bash ~/.claude/hooks/flow-preflight.sh git-state --rep
 flow-toolkit: Spec 1.1 — User Authentication is IN PROGRESS · 12 NOT STARTED · 8 DONE — run /flow:run for the board
 ```
 
-The parsing is unit-tested (`hooks/hooks.test.sh`) and CI runs that harness on every push/PR to `main`, so `/flow:ship`'s CI gate has something real to check.
+The parsing is unit-tested (`hooks/hooks.test.sh`) and CI runs that harness on every push/PR to `main`, so `/flow:ship`'s CI gate has something real to check. A second harness, `docs/mermaid.test.sh`, parses every ` ```mermaid ` block in tracked Markdown with the real mermaid parser — GitHub renders a malformed diagram as "Unable to render rich display", so CI catches it instead of a reader. It skips locally when node isn't installed; under CI a missing toolchain is a failure, never a silent pass.
 
 ---
 

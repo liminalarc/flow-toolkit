@@ -23,6 +23,7 @@ flow-toolkit is a set of Claude Code slash commands + hooks that implement a con
 - **A rule lives in exactly one place.** Machine-checkable invariants belong in `flow-preflight.sh`, consumed by guards + commands. Never re-implement a check inline in a command or a second hook.
 - **Hooks must fail fast and cheap.** Every hook's first job is to detect "does not apply" and exit 0 immediately. Never make a hook that adds latency or noise to unrelated projects.
 - **TDD for hook logic.** Any change to hook parsing/validation gets a matching case in `hooks/hooks.test.sh`; run it before committing. CI (`.github/workflows/test.yml`) also runs it on every push/PR to `main`, so `/flow:ship`'s CI gate is real. Command (`.md`) changes are verified by exercising the command, not by unit test.
+- **Mermaid diagrams are parsed, not eyeballed.** Every ` ```mermaid ` block in tracked Markdown is run through the real parser by `docs/mermaid.test.sh` (CI job `docs`) — GitHub degrades a bad block to "Unable to render rich display", which no reviewer sees in a diff. **Quote any node label containing `[`, `]`, `(`, `)`, `{`, `}` or a quote** — `Build["… tagged '[id]'"]`; unquoted, the inner bracket reads as a new node and the whole diagram fails.
 - **Commands, hooks, and README stay in sync.** The hooks enforce the exact file formats the commands emit. Changing a spec-model format, status vocabulary, or commit convention means updating the command(s), the guard(s), `flow-preflight.sh`, AND the README's documentation of that behavior — together.
 - **Thin slices, no premature abstraction.** Ship one coherent capability per spec; don't add config knobs or generalization until a second real use exists.
 - **Conventional commits** — `feat:`/`fix:`/`chore:`/`docs:`/`refactor:`/`test:`. An optional leading `[id]` spec tag is allowed (e.g. `[1.12] feat: …`) — **no `#`**, which would collide with GitHub's `#N` issue/PR autolink and mis-link every dotted id to issue 1. The toolkit's own commit guard enforces this here (we eat our own dog food), and `/flow:ship` derives version bumps from commit types — a malformed message silently breaks releases.
@@ -77,6 +78,7 @@ flow-toolkit/
 │   ├── hooks.json           # event → hook registrations (${CLAUDE_PLUGIN_ROOT}; installer substitutes for fallback)
 │   └── hooks.test.sh        # bash test harness for hook parsing/validation
 ├── docs/                # how-it-works.md (diagrams), guide.md (usage manual), architecture.md (ADR), authoring-commands.md — dev docs (not shipped as commands)
+│   └── mermaid.test.sh  # parses every ```mermaid block in tracked .md (CI job `docs`)
 ├── install.sh           # Fallback installer (Mac/Linux) — must mirror install.ps1
 ├── install.ps1          # Fallback installer (Windows) — must mirror install.sh
 ├── uninstall.sh         # Purge a manual install (plugin-only migration) — mirrors uninstall.ps1
