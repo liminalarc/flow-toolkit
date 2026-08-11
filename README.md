@@ -128,6 +128,7 @@ Full detail — plus autonomy modes, the spec model, and agent dispatch — in t
 
 | Entry point | What it does |
 |---|---|
+| `/flow:help` | One-screen map of everything below, generated from the installed files — start here when you forget what's available |
 | `/flow:init` | Bootstrap or adopt a project — CLAUDE.md hierarchy + spec model |
 | `/flow:run` _(skill)_ | Implement specs, manage the backlog, brainstorm |
 | `/flow:hunt` _(skill)_ | Researched opportunity hunt through a domain persona panel |

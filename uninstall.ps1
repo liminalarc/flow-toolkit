@@ -28,7 +28,7 @@ Write-Host "Detected Claude profile(s): $(( $profiles | ForEach-Object { Split-P
 Write-Host ""
 
 # Exact toolkit artifacts a manual install created — exact-name only.
-$staleCommands = @('flow.md','flow-hunt.md','flow-init.md','flow-lint.md','flow-ship.md','flow-pr.md','flow-review.md','init.md','lint.md','ship.md')
+$staleCommands = @('flow.md','flow-hunt.md','flow-init.md','flow-lint.md','flow-ship.md','flow-pr.md','flow-review.md','init.md','lint.md','ship.md','help.md')
 $staleSkills   = @('flow','flow-hunt','flow-review','flow-pr','run','hunt','review','pr')
 $staleAgents   = @('flow-implementer.md','flow-verifier.md','flow-researcher.md','flow-reviewer.md','flow-pr-reviewer.md')
 

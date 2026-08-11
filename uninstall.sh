@@ -36,7 +36,7 @@ echo ""
 
 # The exact toolkit artifacts a manual install created (old bare + renamed set).
 # Exact-name only — never a glob that could catch a user's own commands/skills.
-STALE_COMMANDS="flow.md flow-hunt.md flow-init.md flow-lint.md flow-ship.md flow-pr.md flow-review.md init.md lint.md ship.md"
+STALE_COMMANDS="flow.md flow-hunt.md flow-init.md flow-lint.md flow-ship.md flow-pr.md flow-review.md init.md lint.md ship.md help.md"
 STALE_SKILLS="flow flow-hunt flow-review flow-pr run hunt review pr"
 STALE_AGENTS="flow-implementer.md flow-verifier.md flow-researcher.md flow-reviewer.md flow-pr-reviewer.md"
 

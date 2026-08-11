@@ -20,7 +20,7 @@ and, for each skill, **exactly when its sub-agents get dispatched**.
   - [2.6 The validation done-gate — declared per-spec](#26-the-validation-done-gate--declared-per-spec)
   - [2.7 The persisted project rubric — .flow/validate/*.md](#27-the-persisted-project-rubric--flowvalidatemd)
 - [3. Commands & skills, with examples](#3-commands--skills-with-examples)
-  - [/flow:init](#flowinit) · [/flow:run](#flowrun) · [/flow:hunt](#flowhunt) · [/flow:review](#flowreview) · [/flow:pr](#flowpr) · [/flow:validate](#flowvalidate) · [/flow:ship](#flowship) · [/flow:lint](#flowlint)
+  - [/flow:help](#flowhelp) · [/flow:init](#flowinit) · [/flow:run](#flowrun) · [/flow:hunt](#flowhunt) · [/flow:review](#flowreview) · [/flow:pr](#flowpr) · [/flow:validate](#flowvalidate) · [/flow:ship](#flowship) · [/flow:lint](#flowlint)
 - [4. The sub-agent catalog](#4-the-sub-agent-catalog)
 - [5. The hooks (the always-on seatbelt)](#5-the-hooks-the-always-on-seatbelt)
 - [6. Worked walkthroughs](#6-worked-walkthroughs)
@@ -216,7 +216,21 @@ The interactive bootstrap/refresh lives in [`/flow:validate`](#flowvalidate); [`
 
 ## 3. Commands & skills, with examples
 
-Every entry point lives under the `flow:` namespace. **Skills** (`run`, `hunt`, `review`, `pr`) load only the path you invoke and can fan out to sub-agents; **commands** (`init`, `lint`, `ship`) run inline.
+Every entry point lives under the `flow:` namespace. **Skills** (`run`, `hunt`, `review`, `pr`, `validate`) load only the path you invoke and can fan out to sub-agents; **commands** (`help`, `init`, `lint`, `ship`) run inline.
+
+### /flow:help
+
+The recall surface — when you can't remember what's available, this is the one command to reach for. **Dispatches no sub-agents.**
+
+```
+/flow:help              # one-screen map of every entry point, grouped by job
+/flow:help build        # drill into one area: the /flow:run paths + autonomy
+/flow:help ambient      # everything that fires WITHOUT being invoked
+```
+
+The map is **generated from the installed files' front-matter**, never from a list written into the command — so it cannot drift as skills are added or renamed. It closes with two state-aware lines: where you are (backend, any `IN PROGRESS` spec) and the one command that fits that state. Topic nouns: `specs`, `build`, `review`, `agents`, `hooks`, `ambient`.
+
+`ambient` is the one worth knowing about: invocable features remind you they exist because you type them, but the deferral protocol, verifier gating, the `validate:` done-gate, auto-archival, rubric drift, and the guards all fire on their own — so they're the easiest to forget you have.
 
 ### /flow:init
 
@@ -500,6 +514,7 @@ A single repo-root file (next to `.git`) tunes the toolkit per project. Any key 
 
 | I want to… | Run |
 |---|---|
+| Remember what any of this does | `/flow:help` (`/flow:help ambient` for what fires on its own) |
 | See the backlog / pick next | `/flow:run` |
 | Plan + build a spec | `/flow:run <id>` |
 | Capture a new spec | `/flow:run --add` |

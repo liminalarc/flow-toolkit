@@ -53,6 +53,7 @@ flow-toolkit/
 ├── .github/workflows/  # CI — runs hooks.test.sh on push/PR to main
 ├── .claude-plugin/      # Plugin distribution — plugin.json (name: flow) + marketplace.json
 ├── commands/            # Thin slash commands — markdown prompt files (see docs/authoring-commands.md)
+│   ├── help.md          #   one-screen map of the surface     → /flow:help
 │   ├── init.md          #   bootstrap/adopt a project        → /flow:init
 │   ├── ship.md          #   cut a release                     → /flow:ship
 │   └── lint.md          #   audit CLAUDE.md hierarchy + specs → /flow:lint
