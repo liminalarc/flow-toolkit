@@ -140,7 +140,7 @@ Full detail — plus autonomy modes, the spec model, and agent dispatch — in t
 
 **Sub-agents** — skills fan work out to these ([when + why](docs/guide.md#4-the-sub-agent-catalog)): `flow-implementer` (the only one that writes), `flow-verifier`, `flow-researcher`, `flow-reviewer`, `flow-pr-reviewer`, `flow-ux-validator` (the only one that drives a running app).
 
-**Hooks** — an always-on, zero-token seatbelt: `flow-spec-guard`, `flow-claude-guard`, `flow-commit-guard`, `flow-session-brief`, all funnelling machine-checkable rules through the single-source `flow-preflight.sh`.
+**Hooks** — an always-on, zero-token seatbelt: `flow-spec-guard`, `flow-claude-guard`, `flow-commit-guard`, `flow-session-brief` (opens each session with the backlog *and* the one nudge that fits its state), all funnelling machine-checkable rules through the single-source `flow-preflight.sh`.
 
 ---
 

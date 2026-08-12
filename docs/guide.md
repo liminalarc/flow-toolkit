@@ -402,7 +402,7 @@ Where `/flow:lint` is the audit you run on demand, hooks are always on. Each fir
 | `flow-spec-guard.sh` | PostToolUse (Edit\|Write) | Validates index entries + detail files the moment they change (either filename form) |
 | `flow-claude-guard.sh` | PostToolUse (Edit\|Write) | Enforces CLAUDE.md line caps (300 root / 200 subdir, or `.flow-toolkit.json`) |
 | `flow-commit-guard.sh` | PreToolUse (Bash) | Conventional-commit format + spec validity + deferral DONE-gate + soft `[id]`/spec-less nudges |
-| `flow-session-brief.sh` | SessionStart | Injects ~30 tokens of backlog orientation into each new session |
+| `flow-session-brief.sh` | SessionStart | Injects ~30 tokens of backlog orientation + the one nudge that fits the repo's current state |
 
 The key difference from a git hook: when a guard blocks, **Claude reads the error and fixes the file in the same turn** — format drift is corrected the moment it's introduced.
 
@@ -417,11 +417,17 @@ The key difference from a git hook: when a guard blocks, **Claude reads the erro
 
 You can run it directly: `bash ~/.claude/hooks/flow-preflight.sh git-state --repo .`
 
-**Session brief example** (SessionStart output):
+**Session brief example** (SessionStart output). The state summary is constant; the clause after the dash is a **priority ladder** — the highest true tier wins and only one ever prints, because a brief that suggests three things trains you to skip it:
 
 ```
-flow-toolkit: Spec 1.1 — User Authentication is IN PROGRESS · 12 NOT STARTED · 8 DONE — run /flow:run for the board
+⚠ open deferral   flow-toolkit: … · 8 DONE — ⚠ 1.14 is DONE with an open deferral; /flow:run 1.14 reconciles it
+in flight         flow-toolkit: User Authentication is IN PROGRESS · 12 NOT STARTED — /flow:run 1.1 resumes it
+unshipped         flow-toolkit: no spec IN PROGRESS · 8 DONE — 3 specs DONE since v1.5.0; /flow:ship when ready
+idle              flow-toolkit: no spec IN PROGRESS · 12 NOT STARTED · 8 DONE — run /flow:run for the board
+ado               flow-toolkit: ado backend — Contoso · Contoso\Web — /flow:run for the board
 ```
+
+Two deliberate constraints. The brief **never queries a board or the network** — it runs at every session start in every project, so an ado project is oriented from `.flow/config.yml` alone. And each nudge reads as state plus an available option rather than an imperative: this text lands in Claude's context, not just your eyes, so "`/flow:ship` when ready" must not read as an instruction to go and release something.
 
 The parsing is unit-tested (`hooks/hooks.test.sh`) and CI runs that harness on every push/PR to `main`, so `/flow:ship`'s CI gate has something real to check. A second harness, `docs/mermaid.test.sh`, parses every ` ```mermaid ` block in tracked Markdown with the real mermaid parser — GitHub renders a malformed diagram as "Unable to render rich display", so CI catches it instead of a reader. It skips locally when node isn't installed; under CI a missing toolchain is a failure, never a silent pass.
 

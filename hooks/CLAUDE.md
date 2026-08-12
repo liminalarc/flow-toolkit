@@ -9,7 +9,7 @@ Authoring conventions for the bash hooks. Additive to root `CLAUDE.md` — read 
 | `flow-spec-guard.sh` | PostToolUse (Edit\|Write) | Validate index entries + detail files on every edit (either filename form) |
 | `flow-claude-guard.sh` | PostToolUse (Edit\|Write) | Enforce CLAUDE.md line caps (300 root / 200 subdir, or `.flow-toolkit.json`) |
 | `flow-commit-guard.sh` | PreToolUse (Bash) | Conventional-commit format + spec validity + deferral `DONE`-gate + spec-less nudge |
-| `flow-session-brief.sh` | SessionStart | Inject ~30 tokens of backlog orientation |
+| `flow-session-brief.sh` | SessionStart | Inject ~30 tokens of backlog orientation + one state-chosen nudge (ladder: open deferral > in progress > unshipped > board; ado orients from config) |
 | `flow-preflight.sh` | (not an event hook) | Shared source-of-truth checks called by the above + `/flow:lint` + `/flow:ship` |
 
 `hooks.json` maps events → scripts using the `${CLAUDE_PLUGIN_ROOT}/hooks` prefix. The plugin runtime expands `${CLAUDE_PLUGIN_ROOT}` natively; the fallback installer substitutes that same prefix with each profile's real hooks path — one file, both consumers.
