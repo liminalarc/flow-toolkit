@@ -837,5 +837,186 @@ bash "$PREFLIGHT" rubric-drift "$rb/.flow/validate/ux.md" --repo "$rb" 2>/dev/nu
 bash "$PREFLIGHT" rubric-drift "$rb/.flow/validate/none.md" --repo "$rb" 2>/dev/null; exit_is "rubric-drift: absent rubric exit 0" 0 $?
 rm -rf "$rb"
 
+# ---- flow-session-brief: the contextual nudge ladder (1.19) ----
+# Exactly one nudge is printed and the highest true tier wins, so each tier
+# asserts both its own text AND the absence of the tier below it.
+sb="$tmp/sb"; mkdir -p "$sb/specs"
+brief_for() { printf '{"cwd":"%s"}' "$1" | bash "$BRIEF"; }
+
+# T4 (fallback) — nothing in flight keeps today's exact line.
+cat > "$sb/SPECIFICATIONS.md" <<'EOF'
+# Proj — Specifications
+## Phase 1
+- **1.1** Alpha — `NOT STARTED` — [detail](specs/1.1.md)
+EOF
+b=$(brief_for "$sb")
+out_has "T4 idle keeps the board line" "run /flow:run for the board" "$b"
+out_has "T4 still reports state" "no spec IN PROGRESS" "$b"
+
+# T2 — an IN PROGRESS spec names itself and how to resume, and drops T4's line.
+cat > "$sb/SPECIFICATIONS.md" <<'EOF'
+# Proj — Specifications
+## Phase 1
+- **1.2** Beta — `IN PROGRESS` — [detail](specs/1.2.md)
+- **1.1** Alpha — `NOT STARTED` — [detail](specs/1.1.md)
+EOF
+b=$(brief_for "$sb")
+out_has "T2 names the resume command" "/flow:run 1.2 resumes" "$b"
+out_lacks "T2 outranks T4" "for the board" "$b"
+
+# T1 — a DONE spec with an unresolved deferral outranks the IN PROGRESS nudge.
+cat > "$sb/SPECIFICATIONS.md" <<'EOF'
+# Proj — Specifications
+## Phase 1
+- **1.2** Beta — `IN PROGRESS` — [detail](specs/1.2.md)
+## Archive
+- **1.3** Gamma — `DONE` — [detail](specs/1.3.md)
+EOF
+cat > "$sb/specs/1.3.md" <<'EOF'
+---
+id: 1.3
+title: Gamma
+deferrals:
+  - what: "file import"
+    why: "scope"
+    to: 9.9
+---
+## Problem
+x
+EOF
+b=$(brief_for "$sb")
+out_has "T1 names the blocked spec" "1.3" "$b"
+out_has "T1 says why it blocks" "open deferral" "$b"
+out_lacks "T1 outranks T2" "resumes" "$b"
+
+# T3 — DONE specs tagged since the last tag, clean tree, nothing in progress.
+sbg="$tmp/sbgit"; mkdir -p "$sbg/specs"
+git init -q "$sbg" 2>/dev/null
+git -C "$sbg" config user.email flow@test.local
+git -C "$sbg" config user.name "flow test"
+git -C "$sbg" config commit.gpgsign false
+cat > "$sbg/SPECIFICATIONS.md" <<'EOF'
+# Proj — Specifications
+## Archive
+- **1.1** Alpha — `DONE` — [detail](specs/1.1.md)
+EOF
+git -C "$sbg" add -A >/dev/null 2>&1
+git -C "$sbg" commit -qm "chore: init" >/dev/null 2>&1
+git -C "$sbg" tag v0.1.0 >/dev/null 2>&1
+echo "x" > "$sbg/specs/1.1.md"
+git -C "$sbg" add -A >/dev/null 2>&1
+git -C "$sbg" commit -qm "[1.1] feat: alpha" >/dev/null 2>&1
+b=$(brief_for "$sbg")
+out_has "T3 names the last tag" "since v0.1.0" "$b"
+out_has "T3 offers the release" "/flow:ship" "$b"
+out_lacks "T3 outranks T4" "for the board" "$b"
+
+# A dirty tree is mid-work, not a release candidate → fall back to T4.
+echo "dirty" > "$sbg/scratch.txt"
+b=$(brief_for "$sbg")
+out_has "T3 defers to T4 on a dirty tree" "for the board" "$b"
+rm -f "$sbg/scratch.txt"
+
+# ado — no index at all, but a config: orient instead of staying silent.
+sba="$tmp/sbado"; mkdir -p "$sba/.flow"
+cat > "$sba/.flow/config.yml" <<'EOF'
+flow:
+  lifecycle_authority: ado
+  ado:
+    project: "Contoso"
+    area: "Contoso\\Web"
+EOF
+b=$(brief_for "$sba")
+out_has "ado brief names the backend" "ado" "$b"
+out_has "ado brief names the project" "Contoso" "$b"
+
+# Fast exit — a project with neither index nor config stays silent.
+sbn="$tmp/sbnone"; mkdir -p "$sbn"
+b=$(brief_for "$sbn")
+out_lacks "non-flow project prints nothing" "flow-toolkit" "$b"
+printf '{"cwd":"%s"}' "$sbn" | bash "$BRIEF" >/dev/null 2>&1; exit_is "non-flow project exits 0" 0 $?
+
+# Cost — the brief runs in every project at every session start, so what matters
+# is that it does NOT scale with backlog size. Absolute wall clock is dominated
+# by process startup (~100ms per subprocess under Git Bash — the pre-1.19 script
+# already cost ~400ms/run), so pinning an absolute per-run budget would test the
+# platform, not this code. Assert the two things that are actually ours:
+#   1. a 100-DONE index costs no more than a 1-DONE index (no O(n) blowup)
+#   2. a generous ceiling that still catches a gross regression
+# Integer SECONDS keeps this portable across Git Bash / macOS / Linux.
+sbp="$tmp/sbperf"; mkdir -p "$sbp/specs"
+{
+    echo "# Proj — Specifications"
+    echo "## Archive"
+    i=1
+    while [ "$i" -le 100 ]; do
+        echo "- **9.$i** Spec $i — \`DONE\` — [detail](specs/9.$i.md)"
+        i=$((i + 1))
+    done
+} > "$sbp/SPECIFICATIONS.md"
+sbs="$tmp/sbsmall"; mkdir -p "$sbs/specs"
+printf '# Proj — Specifications\n## Archive\n- **9.1** Spec 1 — `DONE` — [detail](specs/9.1.md)\n' > "$sbs/SPECIFICATIONS.md"
+
+time_10() { # dir -> seconds for 10 runs
+    _s=$SECONDS; _i=0
+    while [ "$_i" -lt 10 ]; do brief_for "$1" >/dev/null 2>&1; _i=$((_i + 1)); done
+    echo $((SECONDS - _s))
+}
+big=$(time_10 "$sbp")
+small=$(time_10 "$sbs")
+if [ $((big - small)) -le 1 ]; then
+    pass=$((pass+1))
+else
+    fail=$((fail+1)); echo "FAIL: brief scales with backlog size — 100 specs ${big}s vs 1 spec ${small}s over 10 runs"
+fi
+if [ "$big" -le 8 ]; then
+    pass=$((pass+1))
+else
+    fail=$((fail+1)); echo "FAIL: brief exceeded the gross-regression ceiling — 10 runs took ${big}s (ceiling 8s)"
+fi
+
+# T1 narrowing — when ONE spec in a 100-DONE backlog carries a `deferrals:`
+# key, the helper must be handed that one id, not all 100. Measured against the
+# same backlog with no deferrals at all: the delta is the narrowed helper call,
+# and it must not grow with the backlog. (Unnarrowed this took 3s per run on an
+# 18-spec repo and scaled from there.)
+sbd="$tmp/sbdefer"; mkdir -p "$sbd/specs"
+cp "$sbp/SPECIFICATIONS.md" "$sbd/SPECIFICATIONS.md"
+cat > "$sbd/specs/9.1.md" <<'EOF'
+---
+id: 9.1
+title: Spec 1
+deferrals:
+  - what: "a cut"
+    why: "scope"
+    to: built
+---
+## Problem
+x
+EOF
+# Compare like with like: ONE deferral-carrying spec in each, 100 DONE vs 1
+# DONE. Both hand the helper exactly one id, so the delta isolates backlog
+# scaling from the fixed cost of spawning the helper at all.
+sbd1="$tmp/sbdefer1"; mkdir -p "$sbd1/specs"
+printf '# Proj — Specifications\n## Archive\n- **9.1** Spec 1 — `DONE` — [detail](specs/9.1.md)\n' > "$sbd1/SPECIFICATIONS.md"
+cp "$sbd/specs/9.1.md" "$sbd1/specs/9.1.md"
+deferred=$(time_10 "$sbd")
+deferred1=$(time_10 "$sbd1")
+if [ $((deferred - deferred1)) -le 1 ]; then
+    pass=$((pass+1))
+else
+    fail=$((fail+1)); echo "FAIL: T1 not narrowed — 1-of-100 backlog ${deferred}s vs 1-of-1 ${deferred1}s over 10 runs"
+fi
+b=$(brief_for "$sbd")
+out_lacks "a resolved deferral (to: built) raises no warning" "open deferral" "$b"
+
+# The cheap prefilter is what keeps T1 off the hot path: with no `deferrals:`
+# anywhere in the spec tree, the helper must never be invoked at all.
+sbf="$tmp/sbfilter"; mkdir -p "$sbf/specs"
+printf '# Proj — Specifications\n## Archive\n- **1.1** A — `DONE` — [detail](specs/1.1.md)\n' > "$sbf/SPECIFICATIONS.md"
+printf -- '---\nid: 1.1\ntitle: A\n---\n## Problem\nx\n' > "$sbf/specs/1.1.md"
+b=$(brief_for "$sbf")
+out_lacks "no deferrals anywhere → T1 never fires" "open deferral" "$b"
+
 echo "hooks.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
