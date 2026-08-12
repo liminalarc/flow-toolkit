@@ -6,7 +6,7 @@
 > Vocabulary: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
 ## Phase 1 — Features
-_(all shipped — see Archive)_
+- **1.19** Contextual session brief — state-aware nudge + ado orientation — `IN PROGRESS` — [detail](specs/1.19-contextual-session-brief-state-aware.md)
 
 ## Archive
 - **1.18** Archive completed specs in ado mode — un-gate the move + reconcile cards closed outside flow — `DONE` — [detail](specs/archive/1.18-archive-completed-specs-in-ado.md)
