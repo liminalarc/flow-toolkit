@@ -6,7 +6,7 @@
 > Vocabulary: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
 ## Phase 1 — Features
-- **1.20** Spec reviewer agent — INVEST/SMART rubric gate before build — `NOT STARTED` — [detail](specs/1.20-spec-reviewer-agent-invest-smart-rubric/1.20-spec-reviewer-agent-invest-smart-rubric.md)
+- **1.20** Spec reviewer agent — INVEST/SMART rubric gate before build — `IN PROGRESS` — [detail](specs/1.20-spec-reviewer-agent-invest-smart-rubric/1.20-spec-reviewer-agent-invest-smart-rubric.md)
 - **1.21** Unified outcome declaration — scenarios in front-matter, two executors — `NOT STARTED` — [detail](specs/1.21-unified-outcome-declaration-scenarios/1.21-unified-outcome-declaration-scenarios.md)
 
 ## Archive
