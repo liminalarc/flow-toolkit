@@ -12,4 +12,6 @@ Ask: what is it, who is it for, what does success look like? Then create **both*
 
 Show the draft (index line + detail) and confirm before writing.
 
+**Offer a spec review at that confirm step** — one `flow:flow-spec-reviewer` on the draft (rubric: `reference/spec-review.md`), which judges INVEST on the spec and SMART on each acceptance criterion and returns `PASS`/`CONCERNS`. Offer it; never impose it. `--add` is the cheapest, most frequent action in flow and idea capture shouldn't pay an agent round-trip it didn't ask for — on decline, write exactly as you would have. (The review is **mandatory** on the build path, `reference/implement.md` §2, where the stakes are highest and the cost is already amortized.)
+
 Author to the terseness rules in `reference/authoring.md` — one job per section, shortest lossless form, append-only one-line Progress log. After any write the spec guard re-validates the file and re-checks the budget on save.
