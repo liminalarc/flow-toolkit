@@ -261,13 +261,15 @@ The primary development command — all backlog management and implementation. A
 /flow:run --condense --all --check   # audit terseness across the backlog, don't rewrite
 ```
 
-**> When agents fire:** only on the **build path** (`/flow:run <id>` or a description that maps to a spec), and only **after** the plan is settled (after sign-off in `checkpoint`; immediately after the plan is written in `auto-build`). For each task/layer:
+**> When agents fire:** one **`flow-spec-reviewer`** fires *before* the plan is settled — on the draft spec, pre-sign-off (and offered on `--add`). Everything else fires **after** the plan is settled (after sign-off in `checkpoint`; immediately after the plan is written in `auto-build`). For each task/layer:
 > - one **`flow-implementer`** builds it to the task's local AC (worktree-isolated when layers run in parallel), then
 > - one **`flow-verifier`** independently checks that diff before it integrates — **blocking** under `auto-build`, **advisory** under `checkpoint`.
 >
 > A single-layer spec in `checkpoint` mode may be built inline (verifier still runs, advisory). The backlog view, `--ideas`, `--add`, `--clean`, and `--condense` paths dispatch **no agents**.
 
-The build cycle is Understand → Plan → **Checkpoint** → Build (test-first, per-slice commits tagged `[id]`) → Done (restart services, smoke-test end-to-end, verification checklist, status → DONE, archive). See the [full walkthrough](#61-a-full-spec-start-to-finish-checkpoint).
+**Spec review before sign-off.** `implement.md` §2 dispatches a **`flow-spec-reviewer`** on the draft spec before you sign off — or, under `auto-build`, before anything is written. It judges **INVEST** on the spec (Independent, Negotiable, Valuable, Estimable, Small, Testable) and **SMART** on each acceptance criterion (Specific, Measurable, Achievable, Relevant, Time-bound), and greps `specs/archive/` for a decision the draft contradicts. `checkpoint` → the verdict is **advisory**, shown beside the plan you're already reading. `auto-build` → a `CONCERNS` **blocks**, gets one bounded revision and a re-review, then escalates to `checkpoint` — the counterpart to the verifier, so auto-build now has a check on the *what* as well as the *how*. It never authors or rewrites spec text; you apply fixes with the user. Structure (missing sections, filename/id, line budget, deferral shape) is **not** its job — that stays with `/flow:lint --specs` and `flow-spec-guard.sh`, and the rubric names those checks so the two never double-report.
+
+The build cycle is Understand → Plan → **Spec review** → **Checkpoint** → Build (test-first, per-slice commits tagged `[id]`) → Done (restart services, smoke-test end-to-end, verification checklist, status → DONE, archive). See the [full walkthrough](#61-a-full-spec-start-to-finish-checkpoint).
 
 **Validation done-gate.** If the spec carries a `validate:` block, the done-step dispatches the **`flow-ux-validator`** agent (one per lens, serially) and triages its findings before flipping `DONE` — the [validation done-gate](#26-the-validation-done-gate--declared-per-spec). No block ⇒ no-op.
 
@@ -376,6 +378,7 @@ Six isolated-context sub-agents. Only the **implementer** writes; the other five
 |---|---|---|---|---|
 | **flow-implementer** | `/flow:run` build path | Per task/layer, post-plan; worktree-isolated when parallel | **write** (code) | A diff + report: what it built, tests run, files touched, any out-of-scope items hit |
 | **flow-verifier** | `/flow:run` build path | After each implementer, before integration | read-only | `VERDICT: PASS\|FAIL` + per-criterion `MET/UNMET/UNCONFIRMED` + test result |
+| **flow-spec-reviewer** | `/flow:run` implement §2 (mandatory) + `--add` (offered) | On the draft spec, **before** sign-off / the auto-build write | read-only (critiques, never authors) | `VERDICT: PASS\|CONCERNS` + per-INVEST-letter and per-criterion SMART rows + prior-art hit |
 | **flow-researcher** | `/flow:hunt` | Phase 2, one per research dimension, parallel | read-only | Scored opportunity candidates (insight, user problem, angle, gap, Impact×Effort, spec seed) |
 | **flow-reviewer** | `/flow:review` | One per lens, parallel | read-only | Prioritized findings (location + problem + suggested fix) for its lens |
 | **flow-pr-reviewer** | `/flow:pr` | Phase 2, one per dimension, parallel | read-only | Findings (`BLOCKER/SHOULD FIX/NIT` + `file:line` + fix); scorecard (spec) or test result (tests) |
@@ -538,6 +541,7 @@ A single repo-root file (next to `.git`) tunes the toolkit per project. Any key 
 
 | Agents fire when… | Skill | Agent(s) |
 |---|---|---|
+| Drafting/planning a spec (pre-sign-off) | `/flow:run <id>`, `/flow:run --add` | `flow-spec-reviewer` on the draft |
 | Building a spec (post-plan) | `/flow:run <id>` | `flow-implementer` → `flow-verifier` per task |
 | Hunting opportunities (Phase 2) | `/flow:hunt` | `flow-researcher` × dimensions |
 | Auditing a project | `/flow:review` | `flow-reviewer` × lenses |

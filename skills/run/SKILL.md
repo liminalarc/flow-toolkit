@@ -7,8 +7,6 @@ description: Implement specs, manage backlog, brainstorm — routes each path (i
 
 Conversational, fast development cycle. Implement specs, manage the backlog, brainstorm ideas. Reads `CLAUDE.md` and the project's spec model from the current project — works with any project initialized by `/flow:init`.
 
-For rigorous spec work with formal investigation and sign-off requirements, use `/card-spec` → `/card-implement`.
-
 Usage:
 - `/flow:run` — show backlog status and suggest next item
 - `/flow:run 2.84` — implement spec 2.84

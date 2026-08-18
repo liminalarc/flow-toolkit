@@ -29,12 +29,16 @@ and whether the verifier blocks. A spec that declares a `validate:` block also r
 flowchart TD
     Start(["/flow:run &lt;id&gt;"]) --> U[Understand<br/>read index entry + specs detail file]
     U --> P[Plan<br/>thin slices, files, tests, Value]
-    P --> Mode{autonomy?<br/>flow-preflight.sh autonomy}
+    P --> SR["flow-spec-reviewer judges the draft<br/>INVEST on the spec, SMART per criterion<br/>prior art vs the archive"]
+    SR --> Mode{autonomy?<br/>flow-preflight.sh autonomy}
 
-    Mode -->|checkpoint default| CP{Plan sign-off?}
+    Mode -->|checkpoint default| CP{Plan sign-off?<br/>verdict advisory}
     CP -->|redirect| P
     CP -->|approve| Write[Write + commit detail file<br/>set IN PROGRESS in index]
-    Mode -->|auto-build| Write
+    Mode -->|auto-build: blocking| SB{VERDICT?}
+    SB -->|CONCERNS| SRetry[one bounded revision<br/>then escalate to checkpoint]
+    SRetry --> SR
+    SB -->|PASS| Write
 
     Write --> Build["Build test-first<br/>small commits tagged '[id]'"]
     Build --> Defer{About to narrow<br/>in-scope work?}

@@ -19,6 +19,8 @@ This is the *design*; each piece below is built by its own implementation spec (
 - **D4 — First skill migration = `flow-review`, then `flow-pr`.** `flow-review`'s four independent read-only lenses are the cleanest fan-out + most natural per-lens `reference/*` split.
 - **D5 — Distribution = both, criterion-gated transition.** Plugin becomes primary for skills/agents/commands; installer stays for hook registration + fallback. Retire the installer only once the plugin registers the toolkit's hooks reliably across both profiles AND every in-use project has migrated — not a fixed date.
 
+- **D6 — The spec gets a read-only adversary, not a write-capable author** _(1.20, reverses this ADR's original Spec-writer row)_. The catalog below first ratified a **Spec-writer** (`Read, Write, Edit, Grep, Glob`, "write (specs only)") to draft specs and enforce terseness. It was never built, and 1.20 concluded it should not be: every judging agent in the toolkit is read-only by design — a judge that patches its own findings is no longer independent (the same reason the verifier never fixes). The gap was never an author; `--add` and implement §2 already draft specs inline and cheaply. The gap was that the spec — the artifact every other check builds *to* — was the only one with no independent adversary, and under `auto-build` no check at all. So the row becomes a read-only **Spec-reviewer** judging INVEST (spec) and SMART (each criterion). Terseness enforcement, the old row's other job, stays where it already lives: `flow-spec-guard.sh`'s soft budget and `/flow:run --condense`.
+
 ## Sub-agent catalog
 
 | Agent | Purpose | Tools | R/W | Invoked |
@@ -27,7 +29,7 @@ This is the *design*; each piece below is built by its own implementation spec (
 | Researcher | Explore one `flow-hunt` persona × dimension | Read, Grep, Glob, WebSearch, WebFetch | read-only | persona-panel fan-out |
 | Implementer | Build one task against the approved contract | Read, Edit, Write, Bash, Grep, Glob | write (worktree-isolated when parallel) | one per task file, post-sign-off |
 | Verifier | Check an implementer's diff vs the task's local AC | Read, Grep, Glob, Bash | read-only (judges, never fixes) | after each implementer, pre-integration; gates per D3 |
-| Spec-writer | Draft specs, enforce 1.1 terseness | Read, Write, Edit, Grep, Glob | write (specs only) | `/flow --add`, spec spawning |
+| Spec-reviewer | Judge a draft spec vs the INVEST/SMART rubric before build | Read, Grep, Glob | read-only (critiques, never authors) | `/flow:run` implement §2 pre-sign-off (mandatory), `--add` (offered) _(added 1.20; **replaces** the write-capable Spec-writer this table originally ratified — see below)_ |
 | UX-validator | Drive a **running app**, score one UI/UX lens vs a rubric | Read, Grep, Glob, Bash | read-only (drives + judges, never fixes) | `/flow:validate` (one per lens, serial) + `/flow:run` done-gate _(added 1.14; the only agent that runs the app)_ |
 
 ## Concrete edits the task model (a) forces
