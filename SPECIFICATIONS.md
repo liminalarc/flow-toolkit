@@ -6,10 +6,10 @@
 > Vocabulary: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
 ## Phase 1 — Features
-- **1.20** Spec reviewer agent — INVEST/SMART rubric gate before build — `IN PROGRESS` — [detail](specs/1.20-spec-reviewer-agent-invest-smart-rubric/1.20-spec-reviewer-agent-invest-smart-rubric.md)
 - **1.21** Unified outcome declaration — scenarios in front-matter, two executors — `NOT STARTED` — [detail](specs/1.21-unified-outcome-declaration-scenarios/1.21-unified-outcome-declaration-scenarios.md)
 
 ## Archive
+- **1.20** Spec reviewer agent — INVEST/SMART rubric gate before build — `DONE` — [detail](specs/archive/1.20-spec-reviewer-agent-invest-smart-rubric/1.20-spec-reviewer-agent-invest-smart-rubric.md)
 - **1.19** Contextual session brief — state-aware nudge + ado orientation — `DONE` — [detail](specs/archive/1.19-contextual-session-brief-state-aware.md)
 - **1.18** Archive completed specs in ado mode — un-gate the move + reconcile cards closed outside flow — `DONE` — [detail](specs/archive/1.18-archive-completed-specs-in-ado.md)
 - **1.17** Descriptive spec filenames — `<id>-<slug>` files, config knob, opt-in rename migration — `DONE` — [detail](specs/archive/1.17-descriptive-spec-filenames/1.17-descriptive-spec-filenames.md)
