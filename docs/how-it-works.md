@@ -35,10 +35,10 @@ flowchart TD
     Mode -->|checkpoint default| CP{Plan sign-off?<br/>verdict advisory}
     CP -->|redirect| P
     CP -->|approve| Write[Write + commit detail file<br/>set IN PROGRESS in index]
-    Mode -->|auto-build: blocking| SB{VERDICT?}
-    SB -->|CONCERNS| SRetry[one bounded revision<br/>then escalate to checkpoint]
+    Mode -->|auto-build| SB{"BLOCKING?<br/>any INVEST letter WEAK"}
+    SB -->|yes| SRetry["one bounded revision<br/>then escalate to checkpoint"]
     SRetry --> SR
-    SB -->|PASS| Write
+    SB -->|"no: criteria only"| Write
 
     Write --> Build["Build test-first<br/>small commits tagged '[id]'"]
     Build --> Defer{About to narrow<br/>in-scope work?}
@@ -218,7 +218,8 @@ flowchart TD
 ## 5. Agent dispatch — when sub-agents fire
 
 The five skills fan work out to read-only or write sub-agents. This is the "when do agents
-get fired off" picture: `run` dispatches on the **build path** (after plan sign-off) — the
+get fired off" picture: `run` dispatches **`flow-spec-reviewer` before the plan is signed off**
+(the gate on the *what* — advisory in `checkpoint`, `BLOCKING`-gated in `auto-build`), then on the **build path** — the
 implementer/verifier pair per task, plus **`flow-ux-validator` at the done-gate** when the spec
 declares a `validate:` block (one per lens, serial); `hunt`/`review`/`pr` dispatch **one agent per
 unit** (dimension / lens / dimension) and run them in parallel; `validate` drives the running app
@@ -227,8 +228,10 @@ unit** (dimension / lens / dimension) and run them in parallel; `validate` drive
 
 ```mermaid
 flowchart TD
-    subgraph run["/flow:run &lt;id&gt; — build path, post sign-off"]
+    subgraph run["/flow:run &lt;id&gt; — plan gate, then build path"]
         RUN[main thread]
+        RUN -->|"PRE sign-off, on the draft spec"| SPR["flow-spec-reviewer<br/>READ-ONLY, INVEST + SMART + prior art<br/>never authors"]
+        SPR -->|"PASS/CONCERNS + BLOCKING<br/>advisory in checkpoint"| RUN
         RUN -->|one per task/layer<br/>worktree-isolated when parallel| IMP["flow-implementer<br/>WRITES to local AC, stops at seam"]
         IMP -->|diff| VER["flow-verifier<br/>READ-ONLY, PASS/FAIL, never fixes"]
         VER -->|auto-build blocking · checkpoint advisory| RUN

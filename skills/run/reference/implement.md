@@ -18,7 +18,9 @@ Concise plan: thin vertical slices, files/layers touched, test strategy, risks, 
 
 Gating reuses the mode already resolved at the top of this path — no second precedence chain, no new config key:
 - **`checkpoint` → advisory.** Surface the verdict alongside the plan. The human is already paused; they decide whether a `CONCERNS` matters.
-- **`auto-build` → blocking on `CONCERNS`.** This is the counterpart to the verifier at step 3: today `auto-build` checks the *how* and nothing checks the *what*. Revise the draft against the findings **once**, re-review; if it still returns `CONCERNS`, **escalate** — fall back to `checkpoint` and hand the verdict to the user.
+- **`auto-build` → gate on `BLOCKING`, not on `CONCERNS`.** This is the counterpart to the verifier at step 3: today `auto-build` checks the *how* and nothing checks the *what*. The agent derives `BLOCKING` mechanically — `yes` when any **INVEST** letter is WEAK (the spec is mis-shaped: wrong size, wrong dependency, no real benefit), `no` when only individual **SMART** criteria are WEAK.
+  - `BLOCKING: yes` → revise the draft against the findings **once**, re-review; if it still blocks, **escalate** — fall back to `checkpoint` and hand the verdict to the user.
+  - `BLOCKING: no` → **surface the findings and proceed.** A criterion that needs sharpening is fixed while building; it does not mean the spec is wrong. Gating on every `CONCERNS` would make auto-build escalate on almost any substantial spec — two review rounds to reach the human that `checkpoint` reaches immediately — which is the failure mode this tiering exists to avoid.
 
 On sign-off (checkpoint) or immediately (auto-build), write/update the detail file (Problem, Value, Scope, AC, Plan, Decisions — see `reference/authoring.md` for the template, including how the filename's `<id>-<slug>` is derived) and commit it. Then set the item IN PROGRESS in the index (local) or, if `Backlog`/`Ready`, offer to transition the card (ado, with a comment noting work started) — checkpoint only after sign-off. For cross-cutting work, this is where the API contract / seam is locked so parallel layers build to the same interface.
 

@@ -102,9 +102,9 @@ flowchart TD
     Mode -->|checkpoint default| CP{Plan sign-off?}
     CP -->|redirect| P
     CP -->|approve| Write[Write + commit detail file<br/>set IN PROGRESS]
-    Mode -->|auto-build| SB{VERDICT?}
-    SB -->|CONCERNS| P
-    SB -->|PASS| Write
+    Mode -->|auto-build| SB{BLOCKING?}
+    SB -->|"yes: INVEST weak"| P
+    SB -->|"no: criteria only"| Write
     Write --> Build["Build test-first<br/>small commits tagged '[id]'"]
     Build --> Verify[flow-verifier checks diff<br/>vs task AC]
     Verify --> Gate{deferrals resolved?}
@@ -117,7 +117,7 @@ flowchart TD
     Done --> End([hand off; /flow:ship cuts the release])
 ```
 
-**The spec gets a second set of eyes:** before you sign off — and before `auto-build` writes anything — an independent read-only agent judges the draft spec on **INVEST** (is this one shippable story?) and each acceptance criterion on **SMART** (is this line actually provable?), and checks it against decisions already settled in your archive. Under `checkpoint` the verdict is advisory, next to the plan you're already reading; under `auto-build` a `CONCERNS` blocks, gets one bounded revision, then escalates to you. It critiques but never authors — the same separation that keeps the verifier from patching its own findings.
+**The spec gets a second set of eyes:** before you sign off — and before `auto-build` writes anything — an independent read-only agent judges the draft spec on **INVEST** (is this one shippable story?) and each acceptance criterion on **SMART** (is this line actually provable?), and checks it against decisions already settled in your archive. Under `checkpoint` the verdict is advisory, next to the plan you're already reading. Under `auto-build` it gates by altitude: a weak **INVEST** letter means the spec is mis-shaped, so it blocks, gets one bounded revision, then escalates to you — while a criterion that just needs sharpening is surfaced and built through. It critiques but never authors — the same separation that keeps the verifier from patching its own findings.
 
 **No silent deferrals:** scope only narrows by *your* decision — the moment Claude would drop something in scope, it stops, explains why, and asks you to build it now or re-home it (recorded as a machine-checked `deferrals:` entry that gates `DONE`).
 

@@ -82,7 +82,7 @@ Read the index first to avoid re-suggesting existing specs. Brainstorm through t
 
 - Checkpoint after the plan — in `checkpoint` mode never write code before sign-off; `auto-build` skips only the approval pause and still records the plan first. (See `reference/implement.md`.)
 - **Autonomy gates only the plan-approval pause** — resolved via `flow-preflight.sh autonomy`. `auto-build` never bypasses Claude Code permissions, edits config, or self-approves; its safety net is the verifier.
-- **Nothing builds unreviewed** — `implement.md` §2 dispatches a `flow:flow-spec-reviewer` on the draft spec before sign-off (INVEST on the spec, SMART per criterion, prior art vs the archive). `checkpoint` → advisory; `auto-build` → blocking on `CONCERNS`, one bounded revision, then escalate. It judges, never authors. `--add` offers it rather than imposing it.
+- **Nothing builds unreviewed** — `implement.md` §2 dispatches a `flow:flow-spec-reviewer` on the draft spec before sign-off (INVEST on the spec, SMART per criterion, prior art vs the archive). `checkpoint` → advisory; `auto-build` → gates on the verdict's `BLOCKING` line (`yes` only when an INVEST letter is WEAK): blocking → one bounded revision then escalate; criterion-only findings surface and proceed. It judges, never authors. `--add` offers it rather than imposing it.
 - **Nothing integrates unverified under `auto-build`** — a `flow:flow-verifier` FAIL blocks; one bounded retry, then escalate to `checkpoint`. Verifiers judge, never fix; implementers build only to the task-local AC and never touch status/index/`deferrals:`.
 - TDD — test first, per `CLAUDE.md`.
 - **Status is single-source** — the index (local) or the board (ado). Never write a status into a `specs/<id>.md` detail file.

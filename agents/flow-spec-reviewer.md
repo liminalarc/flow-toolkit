@@ -46,7 +46,10 @@ CRITERIA:
   - <AC text, truncated> — SMART: OK | WEAK — <which letter fails and what would fix it>
   ...
 PRIOR ART: <archived spec id + the colliding decision, or "none found">
+BLOCKING: yes | no
 RATIONALE: <one or two lines: why PASS, or the concerns that matter most>
 ```
 
-`VERDICT: PASS` only when every INVEST letter and every criterion is OK. Any WEAK → `CONCERNS`. Emit exactly one `VERDICT:` line. When you are unsure whether something is provable, mark it WEAK and say what would make it provable — an unfalsifiable criterion is the defect this gate exists to catch.
+`VERDICT: PASS` only when every INVEST letter and every criterion is OK. Any WEAK → `CONCERNS`. Emit exactly one `VERDICT:` line.
+
+**`BLOCKING` is a mechanical derivation, not a judgment call** — it is `yes` if and only if **any INVEST letter is WEAK** (or a prior-art collision is unacknowledged), and `no` when the only WEAK findings are individual criteria. The distinction is about *altitude*: a WEAK INVEST letter means the spec is mis-shaped — wrong size, wrong dependency, no real benefit — and building it produces the wrong thing. A WEAK criterion means one line needs sharpening, which the engineer can do while building without the spec being wrong. Never set `BLOCKING: yes` to add emphasis to criterion-level findings, and never set `no` to be agreeable about a mis-shaped spec. When you are unsure whether something is provable, mark it WEAK and say what would make it provable — an unfalsifiable criterion is the defect this gate exists to catch.
