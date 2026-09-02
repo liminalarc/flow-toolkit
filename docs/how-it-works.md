@@ -19,10 +19,11 @@ with examples); [**architecture.md**](architecture.md) is the *why it's shaped t
 
 ## 1. Development cycle + checkpoint loop
 
-The spine of `/flow:run <id>`: understand → plan → **checkpoint** → build → done, with
-the deferral protocol branching off anywhere scope would narrow, and the DONE-gate at
-the end. Autonomy (`checkpoint` vs `auto-build`) changes only the plan-approval pause
-and whether the verifier blocks. A spec that declares a `validate:` block also runs the
+The spine of `/flow:run <id>`: understand → plan → **spec review** → **checkpoint** → build
+→ done, with the deferral protocol branching off anywhere scope would narrow, and the
+DONE-gate at the end. Autonomy (`checkpoint` vs `auto-build`) changes the plan-approval
+pause and whether the two judges block — the spec reviewer on the *what*, before anything
+is written, and the verifier on the *how*, before a diff integrates. A spec that declares a `validate:` block also runs the
 **validation done-gate** before `DONE` — `flow-ux-validator` per lens, findings triaged.
 
 ```mermaid
@@ -66,9 +67,10 @@ flowchart TD
     Done --> End([hand off; /flow:ship cuts the release])
 ```
 
-**Sources:** `skills/run/reference/implement.md` (the numbered steps + deferral protocol + validation
-done-gate), `skills/run/SKILL.md` (autonomy rules), `agents/flow-ux-validator.md` (the done-gate agent),
-`hooks/flow-preflight.sh` (`autonomy`, `resolved`).
+**Sources:** `skills/run/reference/implement.md` (the numbered steps + spec-review gate + deferral
+protocol + validation done-gate), `skills/run/SKILL.md` (autonomy rules),
+`agents/flow-spec-reviewer.md` + `skills/run/reference/spec-review.md` (the pre-sign-off gate),
+`agents/flow-ux-validator.md` (the done-gate agent), `hooks/flow-preflight.sh` (`autonomy`, `resolved`).
 
 ---
 
@@ -275,8 +277,8 @@ source — writing only throwaway screenshots to a scratch dir. The persisted pr
 (`.flow/validate/*.md`) is likewise agent-proposed but **main-thread-written**, confirm-first —
 the agent never touches the project tree (spec 1.16).
 
-**Sources:** `skills/run/reference/implement.md` (implementer/verifier dispatch + gating + validation
-done-gate), `skills/hunt/SKILL.md` (Phase 2 fan-out), `skills/review/SKILL.md` (lens dispatch),
+**Sources:** `skills/run/reference/implement.md` (spec-reviewer dispatch at §2, implementer/verifier
+dispatch + gating, validation done-gate), `skills/hunt/SKILL.md` (Phase 2 fan-out), `skills/review/SKILL.md` (lens dispatch),
 `skills/pr/SKILL.md` (Phase 2 fan-out), `skills/validate/SKILL.md` (serial lens dispatch + rubric persist),
 `skills/validate/reference/rubric.md` (rubric format + bootstrap/refresh protocol),
 `hooks/flow-preflight.sh` (`rubric-basis`/`rubric-drift`), `agents/flow-implementer.md`,

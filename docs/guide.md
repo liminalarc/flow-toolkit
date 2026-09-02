@@ -444,6 +444,8 @@ The parsing is unit-tested (`hooks/hooks.test.sh`) and CI runs that harness on e
 You:    /flow:run 2.3
 Claude: [reads the index entry + specs/2.3-csv-export.md, restates the problem]
         [presents a plan: thin slices, files touched, test strategy, Value story]
+        [dispatches a flow-spec-reviewer on the draft — INVEST + SMART + prior art —
+         and shows you the verdict alongside the plan; advisory in checkpoint]
         — CHECKPOINT — waits. No code is written yet.
 You:    "looks good, go"
 Claude: writes/commits specs/2.3-csv-export.md, sets 2.3 IN PROGRESS in the index
@@ -461,6 +463,10 @@ A spec touching `server/` + `web/`, with `autonomy: auto-build`:
 
 ```
 /flow:run 3.1
+  → flow-spec-reviewer judges the draft spec BEFORE anything is written
+       BLOCKING: no  (criterion-level findings only) → surface them, carry on
+       BLOCKING: yes (an INVEST letter weak — the spec is mis-shaped)
+         → one bounded revision → re-review → still blocking → escalate to checkpoint
   → plan written + committed (no approval pause — auto-build)
   → API contract / seam locked in the plan
   → fan out, in parallel:
@@ -474,7 +480,7 @@ A spec touching `server/` + `web/`, with `autonomy: auto-build`:
   → smoke-test, DONE, archive
 ```
 
-The implementers never merge or touch status; the verifiers judge but never fix. Nothing integrates unverified.
+The implementers never merge or touch status; the reviewers and verifiers judge but never fix or author. Nothing integrates unverified — and under `auto-build`, nothing mis-shaped gets built in the first place.
 
 ### 6.3 An opportunity hunt — researcher fan-out
 

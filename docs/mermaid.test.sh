@@ -37,7 +37,9 @@ command -v node >/dev/null 2>&1 || skip_or_fail "node not found"
 command -v npm  >/dev/null 2>&1 || skip_or_fail "npm not found"
 
 # ---- toolchain (cached across runs) ----
-if [ ! -d "$CACHE/node_modules/mermaid" ]; then
+# Check BOTH packages: a cache holding mermaid but not jsdom used to skip the
+# install and then crash at import time with ERR_MODULE_NOT_FOUND.
+if [ ! -d "$CACHE/node_modules/mermaid" ] || [ ! -d "$CACHE/node_modules/jsdom" ]; then
     mkdir -p "$CACHE" || skip_or_fail "cannot create cache dir $CACHE"
     echo "installing mermaid@$VERSION + jsdom into $CACHE (first run only)..."
     ( cd "$CACHE" \

@@ -50,6 +50,7 @@ Usage: `/flow:help` · `/flow:help specs` · `/flow:help build` · `/flow:help r
 Invocable features are self-reminding: you type them. These are not, so they are the ones that get lost. `/flow:help ambient` (and a compact 3-4 line callout on the main screen) must cover:
 
 - **Deferral protocol** — narrowing scope mid-build stops and asks; each cut is recorded in `deferrals:` and mechanically gates `DONE`.
+- **Spec review before build** — the draft spec is judged by an independent `flow-spec-reviewer` (INVEST on the spec, SMART per criterion, prior art vs the archive) *before* sign-off; advisory under `checkpoint`, and under `auto-build` it gates on the verdict's `BLOCKING` line — set only when the spec is mis-shaped, not when a single criterion needs sharpening.
 - **Verifier gating** — every implementer diff is checked by an independent `flow-verifier` before integration; blocking under `auto-build`, advisory under `checkpoint`.
 - **Validation done-gate** — a spec carrying a `validate:` block dispatches `flow-ux-validator` per lens before `DONE`.
 - **Archival** — a spec reaching `DONE`/`SUPERSEDED` moves itself to `specs/archive/`, index entry and all.

@@ -8,7 +8,7 @@
     {
       "name": "flow",
       "source": "./",
-      "description": "Conversational, spec-driven development workflow: /flow:run, /flow:hunt, /flow:init, /flow:lint, /flow:ship, /flow:review, /flow:pr + always-on spec/commit guard hooks."
+      "description": "Conversational, spec-driven development workflow: /flow:help, /flow:init, /flow:run, /flow:hunt, /flow:review, /flow:pr, /flow:validate, /flow:lint, /flow:ship + independent spec/diff review agents and always-on spec/commit guard hooks."
     }
   ]
 }
