@@ -415,6 +415,8 @@ The key difference from a git hook: when a guard blocks, **Claude reads the erro
 - `resolved` — the deferral DONE-gate (no `DONE` spec with an unresolved `to`).
 - `wellformed` — one detail file's `deferrals:` shape (each entry has `what`/`why`/`to`).
 - `spec-path` — turns an id into its detail file's path, across every shape (flat/directory), name form (`<id>` / `<id>-<slug>`) and location (active/archive). Exit 1 = no such spec, 2 = two files claim the id.
+- `spawns` — validates a spec's `spawns:` block: every entry has `id` and `after`, every id resolves to a detail file, and the graph is acyclic. Exits 0 silently when the key is absent.
+- `blocking` — the reverse lookup: given a **member** id, prints the `after` ids not yet `DONE`. `after` lives on the orchestrator, so a caller holding only a member id cannot see its blockers without this. Both take the DONE set the same way `resolved` does.
 - `autonomy` — resolves a spec's `checkpoint`/`auto-build` mode by precedence.
 - `rubric-basis` / `rubric-drift` — fingerprint the persisted validation rubric's source files and detect when the design system has drifted.
 
