@@ -143,9 +143,11 @@ flowchart LR
         R3[wellformed<br/>deferral shape]
         R4[autonomy<br/>checkpoint / auto-build]
         R5[rubric-basis / rubric-drift<br/>validation-rubric fingerprint]
+        R6["spawns / blocking<br/>spec-group order + unmet prerequisites"]
     end
 
     SG --> R3
+    SG --> R6
     CMG --> R2
     CMG --> R3
 
@@ -157,10 +159,12 @@ flowchart LR
     end
 
     C1 --> R2
+    C1 --> R6
     C2 --> R1
     C2 --> R2
     C3 --> R4
     C3 --> R5
+    C3 --> R6
     C4 --> R5
 ```
 

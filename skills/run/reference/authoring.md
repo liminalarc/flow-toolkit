@@ -74,6 +74,12 @@ links: []            # related spec ids or external URLs
 #   intent: "a new user buys one item and reaches confirmation"  # required with target
 #   lens: [ui, ux]   #   optional — default both; ui = design-system, ux = task+friction
 #   design_system: design/tokens.md   # optional — else .flow/validate/* (1.16) / infer
+# spawns:           # OPTIONAL — only on a spec whose deliverable is an ordered
+#   - id: 1.6       #   GROUP of other specs. `after` is a scalar: [], [1.6],
+#     after: []     #   [1.6, 1.8], or a bare 1.6 all parse. It records and
+#   - id: 1.7       #   orders; it never gates DONE (a design spec legitimately
+#     after: [1.6]  #   closes once the backlog exists). See `flow-preflight.sh
+#                   #   spawns` / `blocking`.
 # deferrals:         # OPTIONAL — omit entirely if nothing was deferred.
 #   - what: "<what was cut>"
 #     why: "<the reason>"

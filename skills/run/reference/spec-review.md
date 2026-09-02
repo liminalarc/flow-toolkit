@@ -14,7 +14,7 @@ Judge the **spec** on INVEST and **each acceptance criterion** on SMART. Applyin
 
 | Letter | Ask | A violation looks like |
 |---|---|---|
-| **I**ndependent | Can this ship without unfinished work landing first? | Scope depends on a spec still `NOT STARTED`, with no stated seam or fallback. |
+| **I**ndependent | Can this ship without unfinished work landing first? **If the dispatch supplied blocker ids** (from `flow-preflight.sh blocking`), treat them as fact and judge against them — they come from a declared `spawns:` order, not inference. "No blockers" means unblocked; no blocker line at all means it was not checked, so fall back to reading Scope. | Scope depends on a spec still `NOT STARTED`, with no stated seam or fallback — or a supplied blocker id is unmet and the spec never mentions it. |
 | **N**egotiable | Does Scope state an outcome, or dictate an implementation? | "Add a `useSpecCache` React hook" where the outcome is "re-opening a spec doesn't re-read it". |
 | **V**aluable | Is the Value benefit an outcome for someone, or a restatement of Problem? | "…so that the spec has a reviewer" — the capability repeated, no benefit. |
 | **E**stimable | Is anything unknown enough that the work can't be sized? | "Support every tracker backend" with no list and no spike. |

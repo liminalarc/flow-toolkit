@@ -40,6 +40,7 @@ Every rule reads only the repo's own files, so it behaves identically in local a
 
 ## Rules
 
+- `spawns` / `blocking` (spec 1.22) validate a `spawns:` block — entry shape, id resolution, acyclicity — and reverse-look-up a member's unmet prerequisites. `after` is parsed as a **scalar**, not a nested sequence: `parse_deferrals` treats any `- ` line inside a block as a new entry, so a nested list under `after:` would be misread as extra spawn entries. Validation is one `awk` pass over one directory listing because the spec guard calls it on every save of a spec carrying the key.
 - A machine-checkable rule is defined once, in `flow-preflight.sh`.
 - Every hook exits 0 instantly when it doesn't apply.
 - Changes to hook behavior get a `hooks.test.sh` case and a README update if user-visible.
