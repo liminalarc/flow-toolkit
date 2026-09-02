@@ -8,6 +8,7 @@
 ## Phase 1 — Features
 - **1.21** Unified outcome declaration — scenarios in front-matter, two executors — `NOT STARTED` — [detail](specs/1.21-unified-outcome-declaration-scenarios/1.21-unified-outcome-declaration-scenarios.md)
 - **1.22** Spawned plans — declare and validate a spec group's order — `NOT STARTED` — [detail](specs/1.22-spawned-plans-declare-and-validate.md)
+- **1.23** Scope-amendment protocol — `NOT STARTED` — [detail](specs/1.23-scope-amendment-protocol.md)
 
 ## Archive
 - **1.20** Spec reviewer agent — INVEST/SMART rubric gate before build — `DONE` — [detail](specs/archive/1.20-spec-reviewer-agent-invest-smart-rubric/1.20-spec-reviewer-agent-invest-smart-rubric.md)
