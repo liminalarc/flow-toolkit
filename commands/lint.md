@@ -86,6 +86,7 @@ Detail files come in two shapes — **flat** or a **directory** holding an orche
 | Detail file under the line budget | INFO | `specs/<id>.md` exceeds the soft spec budget (default 120; overridable via `spec.maxLines` in `.flow-toolkit.json`). Same nudge `flow-spec-guard.sh` emits on edit — run `/flow:run --condense <id>` to rewrite it losslessly (or raise the budget). Never an ERROR; specs legitimately vary. |
 | DONE spec has no unchecked AC | WARNING | Index says DONE but `specs/<id>.md` still has `- [ ]` acceptance criteria. |
 | Non-DONE spec with all AC checked | INFO | All `- [x]` but status isn't DONE — probably needs a status update. |
+| `spawns:` front-matter well-formed | ERROR | **Only when the file carries a `spawns:` key** — otherwise this row does not apply and nothing is reported. Run `flow-preflight.sh spawns <file> --repo .`: every entry needs `id` and `after`, every id (spawned and `after`) must resolve to a detail file, and the graph must be acyclic. An `after` naming a resolvable id outside the set is a legitimate cross-spec blocker, not an error. |
 | Deferrals front-matter well-formed | ERROR | A `deferrals:` entry is missing `what`, `why`, or `to`. Run `flow-preflight.sh wellformed <file>` per detail file. |
 | DONE spec has no unreconciled deferral | ERROR | Index (local) / board (ado) says DONE but a `deferrals:` entry has an unresolved `to` (not `built`, and no spec with that id exists). Run `flow-preflight.sh resolved` — see below. |
 

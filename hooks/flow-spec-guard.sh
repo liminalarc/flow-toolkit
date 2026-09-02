@@ -133,6 +133,13 @@ if [ "$kind" = "detail" ]; then
     SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
     if [ -f "$SCRIPT_DIR/flow-preflight.sh" ]; then
         bash "$SCRIPT_DIR/flow-preflight.sh" wellformed "$FILE" || exit 2
+        # A `spawns:` block (spec 1.22) is validated the same way — shape, id
+        # resolution, acyclicity. Cheap by construction: the helper exits 0
+        # immediately when the key is absent, so specs without one pay one
+        # process and nothing else.
+        if grep -q '^spawns:' "$FILE" 2>/dev/null; then
+            bash "$SCRIPT_DIR/flow-preflight.sh" spawns "$FILE"                 --repo "$(cd "$(dirname "$FILE")/.." && pwd)" || exit 2
+        fi
     fi
 
     # --- Soft nudges (a nudge, NEVER a block) ---------------------------------

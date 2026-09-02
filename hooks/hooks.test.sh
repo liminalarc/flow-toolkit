@@ -1018,5 +1018,173 @@ printf -- '---\nid: 1.1\ntitle: A\n---\n## Problem\nx\n' > "$sbf/specs/1.1.md"
 b=$(brief_for "$sbf")
 out_lacks "no deferrals anywhere → T1 never fires" "open deferral" "$b"
 
+
+# ============================================================================
+# flow-preflight: spawns / blocking  (spec 1.22)
+# ============================================================================
+sp="$tmp/spawns"; mkdir -p "$sp/specs" "$sp/specs/archive"
+mkspec() { printf -- '---\nid: %s\ntitle: %s\n---\n## Problem\nx\n' "$1" "${2:-S$1}" > "$sp/specs/$1.md"; }
+for i in 1.6 1.7 1.8 1.9 1.10 1.11; do mkspec "$i"; done
+
+# The orchestrator carrying a spawn set: 1.2's real graph — a parallel branch
+# (1.10) and a non-linear edge (1.11 after 1.8, not 1.9).
+cat > "$sp/specs/1.2.md" <<'EOF'
+---
+id: 1.2
+title: Architecture
+spawns:
+  - id: 1.6
+    after: []
+  - id: 1.7
+    after: [1.6]
+  - id: 1.8
+    after: [1.7]
+  - id: 1.9
+    after: [1.8]
+  - id: 1.10
+    after: []
+  - id: 1.11
+    after: [1.8]
+---
+## Problem
+x
+EOF
+cat > "$sp/SPECIFICATIONS.md" <<'EOF'
+# Proj — Specifications
+## Phase 1
+- **1.2** Architecture — `DONE` — [detail](specs/1.2.md)
+- **1.6** S1.6 — `DONE` — [detail](specs/1.6.md)
+- **1.7** S1.7 — `DONE` — [detail](specs/1.7.md)
+- **1.8** S1.8 — `NOT STARTED` — [detail](specs/1.8.md)
+- **1.9** S1.9 — `NOT STARTED` — [detail](specs/1.9.md)
+- **1.10** S1.10 — `NOT STARTED` — [detail](specs/1.10.md)
+- **1.11** S1.11 — `NOT STARTED` — [detail](specs/1.11.md)
+EOF
+
+# --- AC1: after parses as a scalar in every spelling ---
+bash "$PREFLIGHT" spawns "$sp/specs/1.2.md" --repo "$sp" >/dev/null 2>&1
+exit_is "spawns: well-formed set passes" 0 $?
+cat > "$sp/specs/multi.md" <<'EOF'
+---
+id: multi
+title: Multi
+spawns:
+  - id: 1.9
+    after: [1.6, 1.8]
+  - id: 1.10
+    after: 1.6
+---
+## Problem
+x
+EOF
+bash "$PREFLIGHT" spawns "$sp/specs/multi.md" --repo "$sp" >/dev/null 2>&1
+exit_is "spawns: multi-id and bare scalar after parse" 0 $?
+
+# --- AC2/AC3: missing keys ---
+printf -- '---\nid: noid\ntitle: N\nspawns:\n  - after: []\n---\n## Problem\nx\n' > "$sp/specs/noid.md"
+r=$(bash "$PREFLIGHT" spawns "$sp/specs/noid.md" --repo "$sp" 2>&1); exit_is "spawns: entry missing id blocks" 2 $?
+out_has "spawns: names the entry missing id" "id" "$r"
+printf -- '---\nid: noaft\ntitle: N\nspawns:\n  - id: 1.6\n---\n## Problem\nx\n' > "$sp/specs/noaft.md"
+r=$(bash "$PREFLIGHT" spawns "$sp/specs/noaft.md" --repo "$sp" 2>&1); exit_is "spawns: entry missing after blocks" 2 $?
+out_has "spawns: names the entry missing after" "after" "$r"
+
+# --- AC4/AC5: unresolvable ids (spawned id, and an after target) ---
+printf -- '---\nid: ghost\ntitle: G\nspawns:\n  - id: 9.9\n    after: []\n---\n## Problem\nx\n' > "$sp/specs/ghost.md"
+r=$(bash "$PREFLIGHT" spawns "$sp/specs/ghost.md" --repo "$sp" 2>&1); exit_is "spawns: spawned id with no detail file blocks" 2 $?
+out_has "spawns: names the unresolvable spawned id" "9.9" "$r"
+printf -- '---\nid: gaft\ntitle: G\nspawns:\n  - id: 1.6\n    after: [9.9]\n---\n## Problem\nx\n' > "$sp/specs/gaft.md"
+r=$(bash "$PREFLIGHT" spawns "$sp/specs/gaft.md" --repo "$sp" 2>&1); exit_is "spawns: after id with no detail file blocks" 2 $?
+out_has "spawns: names the unresolvable after id" "9.9" "$r"
+
+# --- AC6: cycle ---
+cat > "$sp/specs/cyc.md" <<'EOF'
+---
+id: cyc
+title: Cycle
+spawns:
+  - id: 1.6
+    after: [1.7]
+  - id: 1.7
+    after: [1.6]
+---
+## Problem
+x
+EOF
+r=$(bash "$PREFLIGHT" spawns "$sp/specs/cyc.md" --repo "$sp" 2>&1); exit_is "spawns: cycle blocks" 2 $?
+out_has "spawns: names an id in the cycle" "1.6" "$r"
+out_has "spawns: names the other id in the cycle" "1.7" "$r"
+
+# --- AC7: DONE set resolution mirrors cmd_resolved ---
+bash "$PREFLIGHT" blocking 1.8 --repo "$sp" --done "1.6,1.7" >/dev/null 2>&1
+exit_is "blocking: --done wins" 0 $?
+mkdir -p "$tmp/noidx/specs"; cp "$sp/specs/1.2.md" "$tmp/noidx/specs/1.2.md"
+r=$(bash "$PREFLIGHT" blocking 1.8 --repo "$tmp/noidx" 2>&1); exit_is "blocking: no index and no --done cannot determine" 2 $?
+out_has "blocking: says why it cannot determine" "DONE" "$r"
+
+# --- AC8/AC9: the reverse lookup ---
+r=$(bash "$PREFLIGHT" blocking 1.9 --repo "$sp" 2>/dev/null); exit_is "blocking: blocked member exits 0" 0 $?
+out_has "blocking: reports the unmet after id" "1.8" "$r"
+r=$(bash "$PREFLIGHT" blocking 1.7 --repo "$sp" 2>/dev/null); exit_is "blocking: unblocked member exits 0" 0 $?
+[ -z "$r" ] && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: blocking: unblocked member prints nothing — got: $r"; }
+r=$(bash "$PREFLIGHT" blocking 4.4 --repo "$sp" 2>/dev/null); exit_is "blocking: non-member exits 0" 0 $?
+[ -z "$r" ] && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: blocking: non-member prints nothing — got: $r"; }
+r=$(bash "$PREFLIGHT" blocking 1.10 --repo "$sp" 2>/dev/null)
+[ -z "$r" ] && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: blocking: parallel branch is unblocked — got: $r"; }
+
+# --- AC10: archived orchestrator still resolves ---
+mkdir -p "$tmp/arch/specs/archive"; cp "$sp"/specs/1.*.md "$tmp/arch/specs/" 2>/dev/null
+mv "$tmp/arch/specs/1.2.md" "$tmp/arch/specs/archive/1.2.md"
+cp "$sp/SPECIFICATIONS.md" "$tmp/arch/SPECIFICATIONS.md"
+r=$(bash "$PREFLIGHT" blocking 1.9 --repo "$tmp/arch" 2>/dev/null); exit_is "blocking: archived orchestrator exits 0" 0 $?
+out_has "blocking: resolves a spawn set from specs/archive/" "1.8" "$r"
+
+# --- AC11: a spawning spec reaches DONE with members open (the 1.2 shape) ---
+bash "$PREFLIGHT" resolved --repo "$sp" >/dev/null 2>&1
+exit_is "resolved: DONE spec with open spawns is not gated" 0 $?
+
+# --- AC12: spawns: and deferrals: coexist, either order ---
+cat > "$sp/specs/both.md" <<'EOF'
+---
+id: both
+title: Both
+spawns:
+  - id: 1.6
+    after: []
+deferrals:
+  - what: "csv export"
+    why: "scope"
+    to: built
+---
+## Problem
+x
+EOF
+bash "$PREFLIGHT" wellformed "$sp/specs/both.md" >/dev/null 2>&1
+exit_is "wellformed: deferrals parse with spawns above them" 0 $?
+cat > "$sp/specs/both2.md" <<'EOF'
+---
+id: both2
+title: Both2
+deferrals:
+  - what: "csv export"
+    why: "scope"
+    to: built
+spawns:
+  - id: 1.6
+    after: []
+---
+## Problem
+x
+EOF
+bash "$PREFLIGHT" wellformed "$sp/specs/both2.md" >/dev/null 2>&1
+exit_is "wellformed: deferrals parse with spawns below them" 0 $?
+printf -- '---\nid: bad\ntitle: Bad\nspawns:\n  - id: 1.6\n    after: []\ndeferrals:\n  - what: "x"\n    why: "y"\n---\n## Problem\nx\n' > "$sp/specs/bad.md"
+bash "$PREFLIGHT" wellformed "$sp/specs/bad.md" >/dev/null 2>&1
+exit_is "wellformed: a malformed deferral is still caught alongside spawns" 2 $?
+
+# --- AC13: the guard ---
+bash "$GUARD" "$sp/specs/1.2.md" >/dev/null 2>&1; exit_is "guard: valid spawns block passes on save" 0 $?
+bash "$GUARD" "$sp/specs/noid.md" >/dev/null 2>&1; exit_is "guard: malformed spawns block blocks on save" 2 $?
+bash "$GUARD" "$sp/specs/1.6.md" >/dev/null 2>&1; exit_is "guard: silent when spawns is absent" 0 $?
+
 echo "hooks.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

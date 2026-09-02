@@ -283,6 +283,205 @@ EOF
     exit 0
 }
 
+# --- shared: emit the parsed spawns of a detail file (spec 1.22) -----------
+# Prints one record per entry: <id><US><space-separated after ids><US><index>
+# A missing key is emitted as \002 so the caller can tell "absent" from "empty".
+# `after` is a SCALAR, split on [ ] , and whitespace. It is deliberately not a
+# nested YAML sequence: parse_deferrals treats any `^[[:space:]]*-[[:space:]]`
+# line inside a block as a NEW entry, so a nested list would be misread as
+# extra spawn entries. Keeping it scalar leaves that parser untouched.
+parse_spawns() {
+    awk '
+    function unq(v) {
+        sub(/\r$/, "", v)
+        if (v ~ /^"/)    { sub(/^"/, "", v);     sub(/".*$/, "", v);    return v }
+        if (v ~ /^\047/) { sub(/^\047/, "", v);  sub(/\047.*$/, "", v); return v }
+        sub(/[[:space:]]*#.*$/, "", v)
+        sub(/[[:space:]]+$/, "", v)
+        return v
+    }
+    function idlist(v,   t) {
+        t = unq(v)
+        gsub(/[\[\],]/, " ", t)
+        gsub(/[[:space:]]+/, " ", t)
+        sub(/^ /, "", t); sub(/ $/, "", t)
+        return t
+    }
+    function assign(str, idx,   v) {
+        if (str ~ /^id:/)         { v = str; sub(/^id:[[:space:]]*/, "", v);    sid[idx] = unq(v);    seenid[idx] = 1 }
+        else if (str ~ /^after:/) { v = str; sub(/^after:[[:space:]]*/, "", v); aft[idx] = idlist(v); seenaf[idx] = 1 }
+    }
+    BEGIN { fm = 0; insp = 0; n = 0; MISS = sprintf("%c", 2) }
+    {
+        line = $0; sub(/\r$/, "", line)
+        if (fm == 0 && NR == 1 && line ~ /^---[[:space:]]*$/) { fm = 1; next }
+        if (fm == 1 && line ~ /^---[[:space:]]*$/) { fm = 2; next }
+        if (fm != 1) next
+        if (line ~ /^spawns:[[:space:]]*$/) { insp = 1; next }
+        if (insp == 1 && line ~ /^[^[:space:]-]/) insp = 0
+        if (insp != 1) next
+        if (line ~ /^[[:space:]]*-[[:space:]]/) {
+            n++; sid[n] = ""; aft[n] = ""; seenid[n] = 0; seenaf[n] = 0
+            rest = line; sub(/^[[:space:]]*-[[:space:]]*/, "", rest)
+            if (rest != "") assign(rest, n)
+        } else if (n > 0) {
+            t = line; sub(/^[[:space:]]+/, "", t); assign(t, n)
+        }
+    }
+    END {
+        for (i = 1; i <= n; i++)
+            printf "%s%s%s%s%d\n", (seenid[i] ? sid[i] : MISS), US, (seenaf[i] ? aft[i] : MISS), US, i
+    }
+    ' US="$US" "$1"
+}
+
+# Resolve the DONE set exactly as cmd_resolved does: --done wins (ado /
+# caller-supplied), else the local index, else "cannot determine" — never a
+# silent pass. Echoes a newline list; returns 2 when it cannot determine.
+spawn_done_set() { # <repo> <done_ids>
+    _d="$2"
+    if [ -z "$_d" ]; then
+        _idx="$1/SPECIFICATIONS.md"
+        if [ ! -f "$_idx" ]; then
+            echo "flow-toolkit preflight: no --done set given and no SPECIFICATIONS.md at $1 — cannot determine which specs are DONE. Pass --done <ids> (e.g. from the board)." >&2
+            return 2
+        fi
+        _d=$(grep -oE '^- \*\*[A-Za-z0-9][A-Za-z0-9.-]*\*\* .+ — `DONE` —' "$_idx" \
+             | sed -E 's/^- \*\*([^*]+)\*\*.*/\1/' | paste -sd, - 2>/dev/null || true)
+    fi
+    printf '%s' "$_d" | tr ', ' '\n\n' | grep -v '^$' || true
+}
+
+# --- subcommand: spawns ----------------------------------------------------
+# Validates a `spawns:` block: entry shape, id resolution, and acyclicity.
+# Kept cheap because flow-spec-guard.sh calls it on every save of a spec that
+# carries the key: ONE awk parse, ONE directory listing, and cycle detection
+# in awk — no per-entry subprocess (that cost 2.5s on a 4-node graph).
+cmd_spawns() {
+    file=""; repo="."; spec_dir="specs"
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --repo) repo="$2"; shift 2 ;;
+            --spec-dir) spec_dir="$2"; shift 2 ;;
+            --done) shift 2 ;;
+            *) [ -z "$file" ] && file="$1"; shift ;;
+        esac
+    done
+    if [ -z "$file" ] || [ ! -f "$file" ]; then
+        echo "usage: flow-preflight.sh spawns <spec.md> [--repo DIR] [--spec-dir specs]" >&2
+        exit 64
+    fi
+    recs=$(parse_spawns "$file")
+    [ -n "$recs" ] || exit 0
+
+    # Every id that exists in the spec tree, one listing, stems only. Covers
+    # both filename forms (<id>.md, <id>-<slug>.md) and both shapes, mirroring
+    # spec_path_candidates without paying a process per lookup.
+    dir="$repo/$spec_dir"
+    known=$(ls -1 "$dir" "$dir"/archive "$dir"/*/ "$dir"/archive/*/ 2>/dev/null \
+            | sed -n 's/\.md$//p' \
+            | sed -E 's/^([A-Za-z0-9][A-Za-z0-9.-]*)(-.*)?$/\1/' \
+            | sort -u)
+
+    errs=$(printf '%s\n' "$recs" | awk -v US="$US" -v known="$known" '
+        BEGIN {
+            FS = US; MISS = sprintf("%c", 2)
+            n = split(known, K, "\n"); for (i = 1; i <= n; i++) have[K[i]] = 1
+            m = 0
+        }
+        {
+            id = $1; aft = $2; idx = $3
+            if (id == MISS)  { err[++e] = "  entry " idx ": missing `id`"; next }
+            if (aft == MISS) { err[++e] = "  entry " idx " (id: " id "): missing `after` — use `after: []` for none"; next }
+            if (!(id in have)) err[++e] = "  entry " idx ": spawned id " id " — no detail file"
+            m++; node[m] = id; deps[m] = aft
+            k = split(aft, A, " ")
+            for (i = 1; i <= k; i++)
+                if (A[i] != "" && !(A[i] in have))
+                    err[++e] = "  entry " idx " (id: " id "): after id " A[i] " — no detail file; a typo here would become a permanent silent blocker"
+        }
+        END {
+            # Cycle detection by iterative peeling: drop each node whose deps
+            # are all outside the remaining set. Survivors are in, or
+            # downstream of, a cycle.
+            for (i = 1; i <= m; i++) live[node[i]] = i
+            do {
+                removed = 0
+                for (i = 1; i <= m; i++) {
+                    if (!(node[i] in live)) continue
+                    blocked = 0
+                    k = split(deps[i], A, " ")
+                    for (j = 1; j <= k; j++) if (A[j] != "" && (A[j] in live)) blocked = 1
+                    if (!blocked) { delete live[node[i]]; removed = 1 }
+                }
+            } while (removed)
+            cyc = ""
+            for (i = 1; i <= m; i++)
+                if (node[i] in live) cyc = cyc (cyc == "" ? "" : ", ") node[i]
+            if (cyc != "") err[++e] = "  dependency cycle among: " cyc
+            for (i = 1; i <= e; i++) print err[i]
+        }
+    ')
+
+    if [ -n "$errs" ]; then
+        {
+            echo "flow-toolkit preflight: malformed \`spawns:\` in $file"
+            printf '%s\n' "$errs"
+        } >&2
+        exit 2
+    fi
+    exit 0
+}
+
+# --- subcommand: blocking --------------------------------------------------
+# Reverse lookup: given a MEMBER id, print the after-ids not yet DONE, one per
+# line. `after` lives on the ORCHESTRATOR, so a caller holding only a member id
+# (the spec-review gate, for one) cannot see its blockers without this.
+cmd_blocking() {
+    id=""; repo="."; spec_dir="specs"; done_ids=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --repo) repo="$2"; shift 2 ;;
+            --spec-dir) spec_dir="$2"; shift 2 ;;
+            --done) done_ids="$2"; shift 2 ;;
+            *) [ -z "$id" ] && id="$1"; shift ;;
+        esac
+    done
+    if [ -z "$id" ]; then
+        echo "usage: flow-preflight.sh blocking <id> [--repo DIR] [--done ids]" >&2
+        exit 64
+    fi
+    dir="$repo/$spec_dir"
+    [ -d "$dir" ] || exit 0
+    done_list=$(spawn_done_set "$repo" "$done_ids") || exit 2
+    MISS=$(printf '\002')
+    out=""
+    for f in "$dir"/*.md "$dir"/*/*.md "$dir"/archive/*.md "$dir"/archive/*/*.md; do
+        [ -f "$f" ] || continue
+        grep -q '^spawns:' "$f" 2>/dev/null || continue
+        recs=$(parse_spawns "$f")
+        while IFS= read -r rec; do
+            [ -n "$rec" ] || continue
+            sid=$(printf '%s' "$rec" | cut -d"$US" -f1)
+            [ "$sid" = "$id" ] || continue
+            aft=$(printf '%s' "$rec" | cut -d"$US" -f2)
+            [ "$aft" = "$MISS" ] && continue
+            for a in $aft; do
+                if ! printf '%s\n' "$done_list" | grep -qx "$a"; then
+                    out="$out$a
+"
+                fi
+            done
+        done <<EOF
+$recs
+EOF
+    done
+    if [ -n "$out" ]; then
+        printf '%s' "$out" | grep . | sort -u
+    fi
+    exit 0
+}
+
 # --- subcommand: autonomy --------------------------------------------------
 # Read a scalar from the FIRST front-matter block only (between the opening ---
 # on line 1 and the next ---), stripping quotes and any inline comment.
@@ -553,10 +752,12 @@ case "$sub" in
     resolved)      cmd_resolved "$@" ;;
     wellformed)    cmd_wellformed "$@" ;;
     spec-path)     cmd_spec_path "$@" ;;
+    spawns)        cmd_spawns "$@" ;;
+    blocking)      cmd_blocking "$@" ;;
     autonomy)      cmd_autonomy "$@" ;;
     rubric-basis)  cmd_rubric_basis "$@" ;;
     rubric-drift)  cmd_rubric_drift "$@" ;;
     *)
-        echo "usage: flow-preflight.sh <git-state|resolved|wellformed|spec-path|autonomy|rubric-basis|rubric-drift> [args]" >&2
+        echo "usage: flow-preflight.sh <git-state|resolved|wellformed|spec-path|spawns|blocking|autonomy|rubric-basis|rubric-drift> [args]" >&2
         exit 64 ;;
 esac
