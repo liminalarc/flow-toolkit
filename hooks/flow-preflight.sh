@@ -772,6 +772,165 @@ cmd_git_state() {
     exit 0
 }
 
+
+# --- shared: parse `flow.related_repos` from a config file ------------------
+# Emits R<US><repo_name> when `flow.repo_name` is declared, then one
+# E<US><name><US><space-separated keys> per sibling entry. Indentation-aware:
+# the block is nested under `flow:`, so the list ends at the first non-list
+# line indented no deeper than `related_repos:` itself.
+parse_related() { # <config file>
+    [ -f "$1" ] || return 0
+    awk -v US="$US" '
+    function ind(s,   i) { i = match(s, /[^ \t]/); return i ? i - 1 : 999 }
+    function unq(v) {
+        sub(/\r$/, "", v)
+        sub(/[[:space:]]*#.*$/, "", v)
+        sub(/^"/, "", v);    sub(/"[[:space:]]*$/, "", v)
+        sub(/^\047/, "", v); sub(/\047[[:space:]]*$/, "", v)
+        sub(/[[:space:]]+$/, "", v)
+        return v
+    }
+    function assignkv(s, idx,   k, v) {
+        if (s !~ /^[A-Za-z_][A-Za-z0-9_-]*:/) return
+        k = s; sub(/:.*$/, "", k)
+        v = s; sub(/^[^:]*:[[:space:]]*/, "", v)
+        if (k == "name") nm[idx] = unq(v)
+        ks[idx] = ks[idx] (ks[idx] == "" ? "" : " ") k
+    }
+    BEGIN { inrr = 0; n = 0; rn = "" }
+    {
+        line = $0; sub(/\r$/, "", line)
+        if (line !~ /[^[:space:]]/) next
+        i = ind(line)
+        if (inrr && i <= rrind && line !~ /^[[:space:]]*-/) inrr = 0
+        if (line ~ /^[[:space:]]*related_repos:[[:space:]]*$/) { inrr = 1; rrind = i; next }
+        if (!inrr) {
+            if (line ~ /^[[:space:]]*repo_name:/) {
+                v = line; sub(/^[[:space:]]*repo_name:[[:space:]]*/, "", v); rn = unq(v)
+            }
+            next
+        }
+        if (line ~ /^[[:space:]]*-[[:space:]]*/) {
+            n++; nm[n] = ""; ks[n] = ""
+            rest = line; sub(/^[[:space:]]*-[[:space:]]*/, "", rest)
+            if (rest != "") assignkv(rest, n)
+        } else if (n > 0) {
+            s = line; sub(/^[[:space:]]+/, "", s)
+            assignkv(s, n)
+        }
+    }
+    END {
+        if (rn != "") print "R" US rn US ""
+        for (j = 1; j <= n; j++) print "E" US nm[j] US ks[j]
+    }
+    ' "$1"
+}
+
+# --- subcommand: repos <detail.md> -----------------------------------------
+# Validate a spec's declared cross-repo footprint against the project's
+# declared siblings (spec 1.25). LOCAL ONLY — it never reads a sibling repo;
+# resolving the footprint is 1.29's job. Errors exit 2; advisory findings go to
+# stderr and exit 0, so a typo surfaces without blocking the save.
+cmd_repos() {
+    file=""; repo=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --repo) repo="$2"; shift 2 ;;
+            *) [ -z "$file" ] && file="$1"; shift ;;
+        esac
+    done
+    if [ -z "$file" ] || [ ! -f "$file" ]; then
+        echo "usage: flow-preflight.sh repos <detail.md> [--repo DIR]" >&2
+        exit 64
+    fi
+    # No key, no opinion — the cheap exit every guard-called check owes.
+    grep -q '^repos:' "$file" 2>/dev/null || exit 0
+
+    # Derive the repo root by walking up for .flow/.git rather than assuming a
+    # flat spec: `specs/<id>/<id>.md` would otherwise resolve to `specs/`.
+    if [ -z "$repo" ]; then
+        d=$(cd "$(dirname "$file")" && pwd)
+        while [ "$d" != "/" ] && [ -n "$d" ]; do
+            if [ -d "$d/.flow" ] || [ -d "$d/.git" ]; then repo="$d"; break; fi
+            d=$(dirname "$d")
+        done
+        [ -n "$repo" ] || repo="."
+    fi
+
+    cfg="$repo/.flow/config.yml"
+    local_cfg="$repo/.flow/config.local.yml"
+    errs=""; warns=""
+
+    declared=$(parse_related "$cfg")
+    repo_name=$(printf '%s\n' "$declared" | awk -F"$US" '$1 == "R" { print $2; exit }')
+    known=$(printf '%s\n' "$declared" | awk -F"$US" '$1 == "E" && $2 != "" { print $2 }')
+    [ -n "$repo_name" ] && known="$repo_name
+$known"
+
+    # `local_path` is a per-machine path: it belongs in the gitignored override,
+    # never in the file everyone shares.
+    bad_lp=$(printf '%s\n' "$declared" | awk -F"$US" -v q="'" '
+        $1 == "E" { n = split($3, k, " "); for (i = 1; i <= n; i++) if (k[i] == "local_path") print $2 }')
+    for b in $bad_lp; do
+        errs="${errs}  sibling ${b}: local_path belongs in .flow/config.local.yml (gitignored), not the committed config
+"
+    done
+    # Anything else under an entry is a typo that would silently do nothing.
+    unknown=$(printf '%s\n' "$declared" | awk -F"$US" '
+        $1 == "E" {
+            n = split($3, k, " ")
+            for (i = 1; i <= n; i++)
+                if (k[i] != "name" && k[i] != "project" && k[i] != "repo" && k[i] != "clone" && k[i] != "local_path")
+                    print $2 ": " k[i]
+        }')
+    [ -n "$unknown" ] && warns="${warns}$(printf '%s\n' "$unknown" | sed 's/^/  unknown key under sibling /')
+"
+    # An override that is not ignored will be committed by the next `git add`.
+    if [ -f "$local_cfg" ] && ! grep -q 'config\.local\.yml' "$repo/.gitignore" 2>/dev/null; then
+        warns="${warns}  .flow/config.local.yml exists but is not in .gitignore — it carries per-machine paths and must not be committed
+"
+    fi
+
+    names=$(fm_scalar "$file" repos | tr '[],' '   ' | tr -s ' ' | sed 's/^ *//; s/ *$//')
+    canon=$(fm_scalar "$file" canonical_repo)
+    has_wi=$(awk 'NR==1 && /^---/ {fm=1; next} fm==1 && /^---/ {exit} fm==1 && /^work_item:/ {print "y"; exit}' "$file")
+    wi=$(fm_scalar "$file" work_item)
+
+    if [ -n "$names" ] && [ -z "$repo_name" ]; then
+        errs="${errs}  flow.repo_name is not declared in .flow/config.yml — a footprint cannot name this repo without it
+"
+    fi
+    for n in $names; do
+        printf '%s\n' "$known" | grep -qx "$n" || \
+            errs="${errs}  ${n} is neither flow.repo_name nor a declared flow.related_repos entry
+"
+    done
+    # `work_item:` defaults to `id:` (1.24 D7), so absent is fine — blank is not.
+    if [ -n "$has_wi" ] && [ -z "$wi" ]; then
+        errs="${errs}  work_item is present but empty — omit it to default to id, or give it a value
+"
+    fi
+    # More than this repo means a canonical holder has to be named.
+    others=$(printf '%s\n' $names | grep -vx "${repo_name:-__none__}" | grep . | wc -l | tr -d ' ')
+    if [ "${others:-0}" -gt 0 ]; then
+        if [ -z "$canon" ]; then
+            errs="${errs}  canonical_repo is required when repos names a repo beyond this one
+"
+        elif ! printf '%s\n' $names | grep -qx "$canon"; then
+            errs="${errs}  canonical_repo ${canon} is not one of the repos: names
+"
+        fi
+    fi
+
+    if [ -n "$errs" ]; then
+        { echo "flow-toolkit preflight: invalid cross-repo declaration in $file"; printf '%s' "$errs"
+          [ -n "$warns" ] && printf '%s' "$warns"; } >&2
+        exit 2
+    fi
+    [ -n "$warns" ] && { echo "flow-toolkit preflight: cross-repo declaration notes for $file" >&2; printf '%s' "$warns" >&2; }
+    exit 0
+}
+
 # --- dispatch --------------------------------------------------------------
 sub="${1:-}"
 [ $# -gt 0 ] && shift
@@ -781,11 +940,12 @@ case "$sub" in
     wellformed)    cmd_wellformed "$@" ;;
     spec-path)     cmd_spec_path "$@" ;;
     spawns)        cmd_spawns "$@" ;;
+    repos)         cmd_repos "$@" ;;
     blocking)      cmd_blocking "$@" ;;
     autonomy)      cmd_autonomy "$@" ;;
     rubric-basis)  cmd_rubric_basis "$@" ;;
     rubric-drift)  cmd_rubric_drift "$@" ;;
     *)
-        echo "usage: flow-preflight.sh <git-state|resolved|wellformed|spec-path|spawns|blocking|autonomy|rubric-basis|rubric-drift> [args]" >&2
+        echo "usage: flow-preflight.sh <git-state|resolved|wellformed|spec-path|spawns|blocking|repos|autonomy|rubric-basis|rubric-drift> [args]" >&2
         exit 64 ;;
 esac

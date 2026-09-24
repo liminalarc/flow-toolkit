@@ -44,12 +44,22 @@ if [ ! -f "$SPEC" ]; then
     CFG="$CWD/.flow/config.yml"
     [ -f "$CFG" ] || exit 0
     grep -q 'lifecycle_authority:[[:space:]]*ado' "$CFG" 2>/dev/null || exit 0
+    # Scoped to the `ado:` block. `flow.related_repos` entries (1.25) may carry
+    # their own `project:`, and an indentation-agnostic first-match would let a
+    # sibling shadow the board coordinate. Anchoring at column 0 is not the fix
+    # either — the real keys are nested two levels under `flow:`.
     coord=$(tr -d '\r' < "$CFG" | awk '
-        /^[[:space:]]*project:[[:space:]]*/ && p == "" {
-            p = $0; sub(/^[[:space:]]*project:[[:space:]]*/, "", p); gsub(/"/, "", p)
-        }
-        /^[[:space:]]*area:[[:space:]]*/ && a == "" {
-            a = $0; sub(/^[[:space:]]*area:[[:space:]]*/, "", a); gsub(/"/, "", a)
+        function ind(s,   i) { i = match(s, /[^ \t]/); return i ? i - 1 : 999 }
+        /^[[:space:]]*ado:[[:space:]]*$/ { inado = 1; adoind = ind($0); next }
+        {
+            if (inado && $0 ~ /[^[:space:]]/ && ind($0) <= adoind) inado = 0
+            if (!inado) next
+            if ($0 ~ /^[[:space:]]*project:/ && p == "") {
+                p = $0; sub(/^[[:space:]]*project:[[:space:]]*/, "", p); gsub(/"/, "", p)
+            }
+            if ($0 ~ /^[[:space:]]*area:/ && a == "") {
+                a = $0; sub(/^[[:space:]]*area:[[:space:]]*/, "", a); gsub(/"/, "", a)
+            }
         }
         END { if (p != "" && a != "") print p " · " a; else print p a }
     ')

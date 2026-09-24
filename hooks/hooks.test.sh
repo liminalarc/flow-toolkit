@@ -1236,5 +1236,153 @@ bash "$GUARD" "$sp/specs/1.2.md" >/dev/null 2>&1; exit_is "guard: valid spawns b
 bash "$GUARD" "$sp/specs/noid.md" >/dev/null 2>&1; exit_is "guard: malformed spawns block blocks on save" 2 $?
 bash "$GUARD" "$sp/specs/1.6.md" >/dev/null 2>&1; exit_is "guard: silent when spawns is absent" 0 $?
 
+
+# ============================================================================
+# flow-preflight: repos  (spec 1.25)
+# ============================================================================
+rp="$tmp/repos"; mkdir -p "$rp/specs" "$rp/.flow"
+mkcfg() { cat > "$rp/.flow/config.yml"; }
+mkspecr() { printf -- '---\nid: %s\ntitle: T\n%s---\n## Problem\nx\n' "$1" "$2" > "$rp/specs/$1.md"; }
+cfg_ok() { mkcfg <<'EOF'
+flow:
+  repo_name: toolkit
+  related_repos:
+    - name: ratchet-store
+      repo: DEVOPS_Ratchet
+EOF
+}
+cfg_ok
+
+# --- AC1: repos: parses in every scalar spelling ---
+mkspecr 3.1 'repos: []
+'
+bash "$PREFLIGHT" repos "$rp/specs/3.1.md" --repo "$rp" >/dev/null 2>&1
+exit_is "repos: empty list is clean" 0 $?
+mkspecr 3.2 'repos: [toolkit]
+'
+bash "$PREFLIGHT" repos "$rp/specs/3.2.md" --repo "$rp" >/dev/null 2>&1
+exit_is "repos: single name resolves" 0 $?
+mkspecr 3.3 'repos: [toolkit, ratchet-store]
+canonical_repo: toolkit
+'
+bash "$PREFLIGHT" repos "$rp/specs/3.3.md" --repo "$rp" >/dev/null 2>&1
+exit_is "repos: two names resolve" 0 $?
+mkspecr 3.4 'repos: toolkit
+'
+bash "$PREFLIGHT" repos "$rp/specs/3.4.md" --repo "$rp" >/dev/null 2>&1
+exit_is "repos: bare scalar resolves" 0 $?
+
+# --- AC2: unknown name, and a missing repo_name ---
+mkspecr 3.5 'repos: [toolkit, typo-store]
+canonical_repo: toolkit
+'
+r=$(bash "$PREFLIGHT" repos "$rp/specs/3.5.md" --repo "$rp" 2>&1); exit_is "repos: unknown name blocks" 2 $?
+out_has "repos: names the unknown token" "typo-store" "$r"
+mkcfg <<'EOF'
+flow:
+  related_repos:
+    - name: ratchet-store
+EOF
+r=$(bash "$PREFLIGHT" repos "$rp/specs/3.2.md" --repo "$rp" 2>&1); exit_is "repos: missing repo_name blocks" 2 $?
+out_has "repos: names the missing repo_name key" "repo_name" "$r"
+cfg_ok
+
+# --- AC3: canonical_repo ---
+mkspecr 3.6 'repos: [toolkit, ratchet-store]
+'
+r=$(bash "$PREFLIGHT" repos "$rp/specs/3.6.md" --repo "$rp" 2>&1); exit_is "repos: missing canonical_repo blocks" 2 $?
+out_has "repos: names canonical_repo when absent" "canonical_repo" "$r"
+mkspecr 3.7 'repos: [toolkit, ratchet-store]
+canonical_repo: elsewhere
+'
+r=$(bash "$PREFLIGHT" repos "$rp/specs/3.7.md" --repo "$rp" 2>&1); exit_is "repos: canonical_repo outside repos blocks" 2 $?
+out_has "repos: names the offending canonical_repo" "elsewhere" "$r"
+
+# --- AC4: work_item defaults to id, empty is rejected ---
+bash "$PREFLIGHT" repos "$rp/specs/3.2.md" --repo "$rp" >/dev/null 2>&1
+exit_is "repos: absent work_item is clean (defaults to id)" 0 $?
+mkspecr 3.8 'repos: [toolkit]
+work_item:
+'
+r=$(bash "$PREFLIGHT" repos "$rp/specs/3.8.md" --repo "$rp" 2>&1); exit_is "repos: empty work_item blocks" 2 $?
+out_has "repos: names work_item when empty" "work_item" "$r"
+
+# --- AC5: local_path placement ---
+mkcfg <<'EOF'
+flow:
+  repo_name: toolkit
+  related_repos:
+    - name: ratchet-store
+      local_path: ../ratchet
+EOF
+r=$(bash "$PREFLIGHT" repos "$rp/specs/3.2.md" --repo "$rp" 2>&1); exit_is "repos: local_path in committed config blocks" 2 $?
+out_has "repos: names local_path and the override file" "config.local.yml" "$r"
+cfg_ok
+cat > "$rp/.flow/config.local.yml" <<'EOF'
+flow:
+  related_repos:
+    - name: ratchet-store
+      local_path: ../ratchet
+EOF
+printf '.flow/config.local.yml\n' > "$rp/.gitignore"
+bash "$PREFLIGHT" repos "$rp/specs/3.2.md" --repo "$rp" >/dev/null 2>&1
+exit_is "repos: local_path in the override file is clean" 0 $?
+
+# --- AC6: the override must actually be ignored ---
+rm -f "$rp/.gitignore"
+r=$(bash "$PREFLIGHT" repos "$rp/specs/3.2.md" --repo "$rp" 2>&1); exit_is "repos: unignored override warns, never blocks" 0 $?
+out_has "repos: says the override is not gitignored" "gitignore" "$r"
+printf '.flow/config.local.yml\n' > "$rp/.gitignore"
+
+# --- AC7: unknown key under a sibling entry warns without failing ---
+mkcfg <<'EOF'
+flow:
+  repo_name: toolkit
+  related_repos:
+    - name: ratchet-store
+      local-path: ../typo
+EOF
+r=$(bash "$PREFLIGHT" repos "$rp/specs/3.2.md" --repo "$rp" 2>&1); exit_is "repos: unknown sibling key warns, never blocks" 0 $?
+out_has "repos: names the unknown key" "local-path" "$r"
+cfg_ok
+
+# --- AC8: the guard calls it, and is silent when the key is absent ---
+guard_in() { printf '{"tool_input":{"file_path":"%s"}}' "$1"; }
+r=$(cd "$rp" && guard_in "specs/3.5.md" | bash "$GUARD" 2>&1); exit_is "spec-guard: rejects a bad repos: block on save" 2 $?
+mkspecr 3.9 ''
+r=$(cd "$rp" && guard_in "specs/3.9.md" | bash "$GUARD" 2>&1); exit_is "spec-guard: silent when repos: is absent" 0 $?
+out_lacks "spec-guard: says nothing about repos when absent" "repos" "$r"
+
+# AC7's other half: an advisory must reach a human/model. A preflight exit-0
+# stderr is dropped in hook mode, so the guard has to relay it as a soft nudge.
+mkcfg <<'EOF'
+flow:
+  repo_name: toolkit
+  related_repos:
+    - name: ratchet-store
+      local-path: ../typo
+EOF
+r=$(cd "$rp" && guard_in "specs/3.2.md" | bash "$GUARD" 2>/dev/null); exit_is "spec-guard: advisory does not block the save" 0 $?
+out_has "spec-guard: relays the advisory as a hook note" "additionalContext" "$r"
+out_has "spec-guard: the note names the unknown key" "local-path" "$r"
+cfg_ok
+
+# --- AC11: a sibling project: must not shadow the ado coordinate ---
+sbr="$tmp/sbrepos"; mkdir -p "$sbr/.flow"
+cat > "$sbr/.flow/config.yml" <<'EOF'
+flow:
+  lifecycle_authority: ado
+  repo_name: toolkit
+  related_repos:
+    - name: ratchet-store
+      project: WRONG_PROJECT
+  ado:
+    project: "Contoso"
+    area: "Contoso\Web"
+EOF
+b=$(brief_for "$sbr")
+out_has "brief: reports the ado block's project" "Contoso" "$b"
+out_lacks "brief: a sibling project does not shadow it" "WRONG_PROJECT" "$b"
+
 echo "hooks.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

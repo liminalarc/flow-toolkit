@@ -140,12 +140,27 @@ if [ "$kind" = "detail" ]; then
         if grep -q '^spawns:' "$FILE" 2>/dev/null; then
             bash "$SCRIPT_DIR/flow-preflight.sh" spawns "$FILE"                 --repo "$(cd "$(dirname "$FILE")/.." && pwd)" || exit 2
         fi
+        # A `repos:` footprint (spec 1.25) is validated the same way. It finds
+        # the repo root itself rather than taking --repo, so a directory-form
+        # spec resolves correctly. Advisory findings come back on stderr with
+        # exit 0; relay them as a soft nudge, since a preflight stderr is
+        # dropped in hook mode and an unseen warning warns nobody.
+        if grep -q '^repos:' "$FILE" 2>/dev/null; then
+            repos_out=$(bash "$SCRIPT_DIR/flow-preflight.sh" repos "$FILE" 2>&1) || {
+                printf '%s
+' "$repos_out" >&2
+                exit 2
+            }
+            repos_soft="$repos_out"
+        fi
     fi
 
     # --- Soft nudges (a nudge, NEVER a block) ---------------------------------
     # Accumulate into one message so hook mode emits a single valid JSON note.
     # All quote-free so they embed safely in the hook-note JSON string below.
     soft=""
+    [ -n "${repos_soft:-}" ] && soft="${soft}$(printf '%s' "$repos_soft" | tr '
+' ' ')  "
 
     # Task-file local-AC presence. A big spec earns specs/<id>/ = orchestrator
     # <id>.md + task files <id>.T<n>.md; a task file carries the "how" plus a
