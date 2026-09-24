@@ -60,6 +60,11 @@ flow:
   lifecycle_authority: ado
   spec_dir: specs
   spec_filename: id-slug   # optional — `id` for bare <id>.md filenames
+  repo_name: <this-repo>   # optional — this repo's handle, required before any
+  related_repos:           #   spec may declare a `repos:` footprint
+    - name: <sibling>      #   the handle used in `repos:` front-matter
+      repo: <RepoName>     #   optional coordinates
+      clone: <url>         #   optional — shown as copy-paste text, never fetched
   ado:
     org: https://dev.azure.com/<org>/
     project: "<Project>"

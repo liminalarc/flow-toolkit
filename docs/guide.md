@@ -68,6 +68,9 @@ A spec = **one index entry** + **one detail file**. The split keeps the working 
 id: 1.1
 title: User Authentication
 links: []
+# repos: [toolkit, ratchet-store]   # OPTIONAL — the repos this item touches (§2.7)
+# work_item: ratchet-rollout        #   the cross-repo join handle; defaults to `id:`
+# canonical_repo: toolkit           #   which repo holds the full spec
 # validate:         # OPTIONAL — declare a UI/UX validation target (see §2.6)
 #   target: login
 #   intent: "a returning user signs in and lands on their dashboard"
@@ -528,6 +531,9 @@ A single repo-root file (next to `.git`) tunes the toolkit per project. Any key 
 - **`autonomy.default` / `force`** — see [2.4](#24-autonomy--checkpoint-vs-auto-build). `force` is a hard project override; `default` is the fallback when a spec is silent.
 
 ## 8. Cheat sheet
+
+**Cross-repo footprint** — `repos: [a, b]` + `work_item:` + `canonical_repo:` in a spec's front-matter, against `flow.repo_name`/`flow.related_repos` in `.flow/config.yml`. Validate with `flow-preflight.sh repos <detail.md>`.
+
 
 | I want to… | Run |
 |---|---|

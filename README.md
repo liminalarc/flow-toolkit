@@ -123,6 +123,8 @@ flowchart TD
 
 **No silent deferrals:** scope only narrows by *your* decision — the moment Claude would drop something in scope, it stops, explains why, and asks you to build it now or re-home it (recorded as a machine-checked `deferrals:` entry that gates `DONE`).
 
+**A work item can span repos:** declare the siblings once in `.flow/config.yml` (`flow.repo_name` + `flow.related_repos`), then a spec names the repos it touches with `repos: [toolkit, ratchet-store]`, a `work_item:` handle joining the slices, and `canonical_repo:` naming which repo holds the full spec. Each repo keeps its own id and its own index entry — the handle is the join, because every repo numbers its own backlog. Per-machine sibling paths go in a gitignored `.flow/config.local.yml`. Flow reads a sibling; it never builds one.
+
 **Specs are named, not numbered:** a detail file is `specs/1.2-password-reset.md` — the id plus a slug of its title (the story title on an ADO board) — so the backlog reads clearly in a file tree, an editor tab, or a PR's changed-files list. The bare `specs/1.2.md` form stays valid forever; set `flow.spec_filename: id` in `.flow/config.yml` to keep it, or run `/flow:lint --rename --all` once to retrofit an existing repo.
 
 Full detail — plus autonomy modes, the spec model, and agent dispatch — in the [guide](docs/guide.md) and [diagrams](docs/how-it-works.md).

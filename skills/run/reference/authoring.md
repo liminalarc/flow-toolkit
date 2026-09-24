@@ -69,6 +69,10 @@ A soft budget (default 120 lines; `spec.maxLines` in `.flow-toolkit.json`) warns
 id: <id>
 title: <Title>
 links: []            # related spec ids or external URLs
+# repos: [a, b]      # OPTIONAL — the repos this work item touches. Names must be
+# work_item: <handle>#   `flow.repo_name` or a `flow.related_repos` entry in
+# canonical_repo: a  #   .flow/config.yml. `work_item:` defaults to `id:`; it is the
+                     #   join across repos, since each repo numbers its own ids.
 # validate:          # OPTIONAL — declare a UI/UX validation target; omit for specs that
 #   target: checkout #   don't touch the interface (then /flow:run's done-gate is a no-op).
 #   intent: "a new user buys one item and reaches confirmation"  # required with target

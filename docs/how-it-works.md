@@ -87,7 +87,7 @@ flowchart TD
     end
 
     subgraph Detail["Detail file — no status field · id: is the identity"]
-        Flat["specs/&lt;id&gt;-&lt;slug&gt;.md<br/>Problem/Value/Scope/AC/Plan/Decisions<br/>+ optional deferrals front-matter"]
+        Flat["specs/&lt;id&gt;-&lt;slug&gt;.md<br/>Problem/Value/Scope/AC/Plan/Decisions<br/>+ optional deferrals front-matter<br/>+ optional repos: footprint · work_item: join"]
         Dir["specs/&lt;id&gt;-&lt;slug&gt;/ grew large<br/>orchestrator owns status+deferrals<br/>&lt;id&gt;-&lt;slug&gt;.T&lt;n&gt;-&lt;ctx&gt;.md carry local AC only"]
     end
 
