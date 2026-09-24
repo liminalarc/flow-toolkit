@@ -1114,6 +1114,56 @@ r=$(bash "$PREFLIGHT" spawns "$sp/specs/cyc.md" --repo "$sp" 2>&1); exit_is "spa
 out_has "spawns: names an id in the cycle" "1.6" "$r"
 out_has "spawns: names the other id in the cycle" "1.7" "$r"
 
+# --- Members named <id>-<slug>.md (1.17's default) resolve -----------------
+# Regression: ids were once derived from the filename stem, so a descriptive
+# name reduced to itself rather than to its id and every member read as
+# "no detail file" — which also made the spec guard reject the save.
+sl="$tmp/spawnslug"; mkdir -p "$sl/specs/archive"
+printf -- '---\nid: 2.1\ntitle: First\n---\n## Problem\nx\n'  > "$sl/specs/2.1-first-member.md"
+printf -- '---\nid: 2.2\ntitle: Second\n---\n## Problem\nx\n' > "$sl/specs/2.2-second-member.md"
+printf -- '---\nid: BL-12\ntitle: Dashed\n---\n## Problem\nx\n' > "$sl/specs/BL-12-dashed-id-member.md"
+cat > "$sl/specs/2.0-orchestrator.md" <<'EOF'
+---
+id: 2.0
+title: Orchestrator
+spawns:
+  - id: 2.1
+    after: []
+  - id: 2.2
+    after: [2.1]
+  - id: BL-12
+    after: [2.2]
+---
+## Problem
+x
+EOF
+cat > "$sl/SPECIFICATIONS.md" <<'EOF'
+# Proj — Specifications
+## Phase 2
+- **2.0** Orchestrator — `NOT STARTED` — [detail](specs/2.0-orchestrator.md)
+- **2.1** First — `DONE` — [detail](specs/2.1-first-member.md)
+- **2.2** Second — `NOT STARTED` — [detail](specs/2.2-second-member.md)
+- **BL-12** Dashed — `NOT STARTED` — [detail](specs/BL-12-dashed-id-member.md)
+EOF
+bash "$PREFLIGHT" spawns "$sl/specs/2.0-orchestrator.md" --repo "$sl" >/dev/null 2>&1
+exit_is "spawns: members named <id>-<slug>.md resolve" 0 $?
+r=$(printf '%s\n' '{"tool_input":{"file_path":"specs/2.0-orchestrator.md"}}' \
+    | (cd "$sl" && bash "$GUARD") 2>&1); exit_is "spec-guard: accepts a spawns set with descriptive filenames" 0 $?
+# A dashed id must not be truncated at its own hyphen — the reason the id is
+# read from front-matter rather than parsed back out of the stem.
+r=$(bash "$PREFLIGHT" blocking BL-12 --repo "$sl" 2>/dev/null)
+out_has "blocking: dashed id resolves whole, not truncated" "2.2" "$r"
+# The fix must not make every id resolvable: a real typo still blocks.
+printf -- '---\nid: 2.9\ntitle: Ghost\nspawns:\n  - id: 2.7\n    after: []\n---\n## Problem\nx\n' > "$sl/specs/2.9-ghost.md"
+r=$(bash "$PREFLIGHT" spawns "$sl/specs/2.9-ghost.md" --repo "$sl" 2>&1)
+exit_is "spawns: an id matching no front-matter still blocks" 2 $?
+out_has "spawns: names the unresolvable id under descriptive naming" "2.7" "$r"
+# A filename whose stem differs from its id resolves by the id, never the stem.
+printf -- '---\nid: 2.5\ntitle: Renamed\n---\n## Problem\nx\n' > "$sl/specs/2.5-stale-slug-from-an-old-title.md"
+printf -- '---\nid: 2.6\ntitle: Ref\nspawns:\n  - id: 2.5\n    after: []\n---\n## Problem\nx\n' > "$sl/specs/2.6-ref.md"
+bash "$PREFLIGHT" spawns "$sl/specs/2.6-ref.md" --repo "$sl" >/dev/null 2>&1
+exit_is "spawns: id resolves regardless of the slug in the filename" 0 $?
+
 # --- AC7: DONE set resolution mirrors cmd_resolved ---
 bash "$PREFLIGHT" blocking 1.8 --repo "$sp" --done "1.6,1.7" >/dev/null 2>&1
 exit_is "blocking: --done wins" 0 $?

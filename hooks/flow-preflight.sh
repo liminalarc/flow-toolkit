@@ -357,6 +357,39 @@ spawn_done_set() { # <repo> <done_ids>
 # Kept cheap because flow-spec-guard.sh calls it on every save of a spec that
 # carries the key: ONE awk parse, ONE directory listing, and cycle detection
 # in awk — no per-entry subprocess (that cost 2.5s on a 4-node graph).
+# --- shared: every spec id in the tree, from front-matter ------------------
+# Ids come from each file's `id:` key, NEVER from its filename. A descriptive
+# name (<id>-<slug>.md) and a dashed id (BL-12) are mutually ambiguous — no
+# regex can split `BL-12-dashed-title` correctly without knowing the id first —
+# which is exactly why root CLAUDE.md says the id "is never parsed back out of
+# the filename". One awk pass over one file list keeps this at the single-
+# subprocess cost the spec guard budgets for on every save.
+spec_ids() { # <spec dir>
+    d="$1"; set --
+    for f in "$d"/*.md "$d"/*/*.md "$d"/archive/*.md "$d"/archive/*/*.md; do
+        [ -f "$f" ] && set -- "$@" "$f"
+    done
+    [ $# -gt 0 ] || return 0
+    awk '
+    FNR == 1 { fm = 0; got = 0 }
+    got { next }
+    {
+        line = $0; sub(/\r$/, "", line)
+        if (FNR == 1) { if (line ~ /^---[[:space:]]*$/) fm = 1; next }
+        if (fm != 1) next
+        if (line ~ /^---[[:space:]]*$/) { got = 1; next }   # front-matter closed
+        if (line ~ /^id:[[:space:]]*/) {
+            v = line; sub(/^id:[[:space:]]*/, "", v)
+            sub(/[[:space:]]*#.*$/, "", v)
+            sub(/^"/, "", v);    sub(/"[[:space:]]*$/, "", v)
+            sub(/^\047/, "", v); sub(/\047[[:space:]]*$/, "", v)
+            sub(/[[:space:]]+$/, "", v)
+            if (v != "") print v
+            got = 1
+        }
+    }' "$@" | sort -u
+}
+
 cmd_spawns() {
     file=""; repo="."; spec_dir="specs"
     while [ $# -gt 0 ]; do
@@ -374,14 +407,9 @@ cmd_spawns() {
     recs=$(parse_spawns "$file")
     [ -n "$recs" ] || exit 0
 
-    # Every id that exists in the spec tree, one listing, stems only. Covers
-    # both filename forms (<id>.md, <id>-<slug>.md) and both shapes, mirroring
-    # spec_path_candidates without paying a process per lookup.
+    # Every id that exists in the spec tree, read from each file's `id:` key.
     dir="$repo/$spec_dir"
-    known=$(ls -1 "$dir" "$dir"/archive "$dir"/*/ "$dir"/archive/*/ 2>/dev/null \
-            | sed -n 's/\.md$//p' \
-            | sed -E 's/^([A-Za-z0-9][A-Za-z0-9.-]*)(-.*)?$/\1/' \
-            | sort -u)
+    known=$(spec_ids "$dir")
 
     errs=$(printf '%s\n' "$recs" | awk -v US="$US" -v known="$known" '
         BEGIN {
