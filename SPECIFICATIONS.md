@@ -8,7 +8,6 @@
 ## Phase 1 — Features
 - **1.21** Unified outcome declaration — scenarios in front-matter, two executors — `NOT STARTED` — [detail](specs/1.21-unified-outcome-declaration-scenarios/1.21-unified-outcome-declaration-scenarios.md)
 - **1.23** Scope-amendment protocol — `NOT STARTED` — [detail](specs/1.23-scope-amendment-protocol.md)
-- **1.24** Related-repos awareness — one work item across repos — `IN PROGRESS` — [detail](specs/1.24-related-repos-awareness-one-work-item.md)
 - **1.25** Related-repos declaration + validation — `NOT STARTED` — [detail](specs/1.25-related-repos-declaration-validation.md)
 - **1.29** Cross-repo resolvers — `NOT STARTED` — [detail](specs/1.29-cross-repo-resolvers.md)
 - **1.26** Cross-repo footprint banner + sibling reminder — `NOT STARTED` — [detail](specs/1.26-cross-repo-footprint-banner-sibling.md)
@@ -16,6 +15,7 @@
 - **1.28** Cross-repo authoring + sibling discovery — `NOT STARTED` — [detail](specs/1.28-cross-repo-authoring-sibling-discovery.md)
 
 ## Archive
+- **1.24** Related-repos awareness — one work item across repos — `DONE` — [detail](specs/archive/1.24-related-repos-awareness-one-work-item.md)
 - **1.22** Spawned plans — declare and validate a spec group's order — `DONE` — [detail](specs/archive/1.22-spawned-plans-declare-and-validate.md)
 - **1.20** Spec reviewer agent — INVEST/SMART rubric gate before build — `DONE` — [detail](specs/archive/1.20-spec-reviewer-agent-invest-smart-rubric/1.20-spec-reviewer-agent-invest-smart-rubric.md)
 - **1.19** Contextual session brief — state-aware nudge + ado orientation — `DONE` — [detail](specs/archive/1.19-contextual-session-brief-state-aware.md)
