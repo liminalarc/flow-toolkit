@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Write-capture double for ADO card writes (spec 1.27).
+#
+# Put this directory FIRST on PATH and every `az` invocation is recorded
+# instead of executed, one line per call with full argv:
+#
+#   PATH="$(git rev-parse --show-toplevel)/hooks/fixtures/ado-capture:$PATH" \
+#   FLOW_ADO_CAPTURE_LOG=/tmp/calls.log  <run the thing under test>
+#
+# Then assert against the log — e.g. that a done-step added exactly one
+# `slice-done:<repo>` tag, wrote no other field, and posted no new comment.
+#
+# Why a double at all: 1.29's resolvers are read-only by design and cannot
+# witness a write, and this repo has no board. 1.18's precedent covers the
+# other half — the real round-trip ships specified-but-unexercised and is
+# field-verified after release. This proves the *intent* offline: what flow
+# tried to do, exactly once, and nothing else.
+#
+# It is a durable fixture, not scratch: 1.24's shared-mechanism table names
+# 1.27 as its owner and 1.28 as a consumer.
+#
+# Exits 0 and prints nothing, so a caller that pipes or checks status behaves
+# as it would against a successful real call.
+
+set -u
+LOG="${FLOW_ADO_CAPTURE_LOG:-${TMPDIR:-/tmp}/flow-ado-capture.log}"
+mkdir -p "$(dirname "$LOG")" 2>/dev/null || true
+
+# One line per call, argv space-joined. Arguments containing spaces are quoted
+# so a reader can tell `--fields "a b"` from two separate arguments.
+line="az"
+for a in "$@"; do
+    case "$a" in
+        *[[:space:]]*) line="$line \"$a\"" ;;
+        *)             line="$line $a" ;;
+    esac
+done
+printf '%s\n' "$line" >> "$LOG"
+exit 0

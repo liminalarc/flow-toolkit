@@ -39,6 +39,8 @@ Every rule reads only the repo's own files, so it behaves identically in local a
 
 ## Testing
 
+`fixtures/ado-capture/az` is the **write-capture double** for ADO card writes (spec 1.27). Put that directory first on `PATH`, set `FLOW_ADO_CAPTURE_LOG`, and every `az` call is recorded with full argv instead of executed — so a prompt-level ado write can be asserted offline (exactly one `slice-done:<repo>` tag, no other field, no new comment). 1.29's resolvers are read-only and cannot witness a write, and this repo has no board; the real round-trip is field-verified after release, per 1.18.
+
 `hooks.test.sh` is the bash test harness for hook parsing/validation. Any change to how a hook parses or validates gets a matching case here, and `bash hooks/hooks.test.sh` must be green before committing (TDD mandate from root). CI (`.github/workflows/test.yml`) runs the same harness on every push/PR to `main`.
 
 ## Rules

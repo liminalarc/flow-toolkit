@@ -31,6 +31,7 @@ Usage: `/flow:ship` · `/flow:ship --dry-run`
      - **local**: `flow-preflight.sh resolved --repo .` (reads `SPECIFICATIONS.md` for the DONE set).
      - **ado**: resolve the DONE work items from the board, then `flow-preflight.sh resolved --repo . --done <id,id,...>`.
      Surface any unresolved deferral (which DONE spec, what was deferred). This can't be auto-fixed — the fix is a `/flow:run` deferral-protocol decision. **Block the release.**
+   - **No half-shipped cross-repo item.** For each release spec carrying a `repos:` footprint (or whose card carries `repo:` tags), run `flow-preflight.sh slice-status <detail.md> --repo .` — in ado also `--tags` and `--slice-done` from the card. Every repo must report `done`. Surface any `open`, `absent` or `cannot-determine` with its repo and reason. Like the deferral row this can't be auto-fixed and ship can't wait for it — the fix is a `/flow:run` in the other repo. **Block the release.** If the footprint or tag set can't be evaluated at all, that's a ⚠️ — which blocks, per the rule above. The done-step's confirm-first override lives in `/flow:run`, **not here**: a release is the wrong place to wave through an unbuilt slice.
    - **CLAUDE.md patterns are current** — spot-check against the shipped work.
 
 3. **Determine the version.** Read recent tags (`git tag --sort=-v:refname | head -10`) and commits (`git log --oneline -20`). The version bump is **commit-derived** (the reliable, mechanical signal):
