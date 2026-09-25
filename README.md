@@ -93,7 +93,7 @@ That's the whole loop. Pass a concept to `/flow:init` or leave it blank to answe
 
 By default (`checkpoint` mode) `/flow:run` never writes code until you approve the plan; a spec can opt into `auto-build` to skip that pause, with an independent verifier as the safety net.
 
-A spec carrying a `repos:` footprint also opens with a **cross-repo banner** — the full footprint, which slice this run builds, where each sibling's slice lives and whether it is done — and closes with a reminder of the siblings still outstanding. Both are advisory; flow reads a sibling and never builds one.
+A spec carrying a `repos:` footprint cannot reach `DONE` while another repo's slice is unbuilt — flat-file refuses the status change, ado declines to propose the card transition and offers a confirm-first override. Completion is recorded per repo: each repo's own index in flat-file mode, a `slice-done:<repo>` card tag in ado. It also opens with a **cross-repo banner** — the full footprint, which slice this run builds, where each sibling's slice lives and whether it is done — and closes with a reminder of the siblings still outstanding. Both are advisory; flow reads a sibling and never builds one.
 
 ```mermaid
 flowchart TD

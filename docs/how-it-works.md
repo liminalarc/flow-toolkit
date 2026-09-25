@@ -86,7 +86,9 @@ protocol + validation done-gate), `skills/run/SKILL.md` (autonomy rules),
 
 A spec is an **index entry** (status lives here — single source of truth) plus **one
 detail file**. The detail file is flat until it grows, then earns a directory of task
-files. When DONE/SUPERSEDED it archives; its id is never reused.
+files. When DONE/SUPERSEDED it archives; its id is never reused. A spec whose `repos:` footprint
+spans repos is **held** at the terminal step until every slice reports done — read from each
+repo's own index in flat-file mode, or from `slice-done:<repo>` card tags in ado.
 
 ```mermaid
 flowchart TD
@@ -114,6 +116,11 @@ flowchart TD
         NS -.-> SU[SUPERSEDED]
         IP -.-> SU
     end
+
+    IP --> XR{"cross-repo?<br/>slice-status per repo"}
+    XR -->|"a slice not done"| Held["Held: flat-file refuses DONE<br/>ado declines to propose + confirm-first override"]
+    Held --> IP
+    XR -->|"all done / single repo"| DN
 
     DN --> Arch["Archive (both backends): detail to specs/archive/<br/>name unchanged · local also moves the index entry<br/>ado triggers on Closed-category state · id never reused"]
     SU --> Arch

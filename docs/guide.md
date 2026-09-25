@@ -262,7 +262,7 @@ This run builds the toolkit slice only.
 Remember to run /flow:run in ratchet-store and docs-site too.
 ```
 
-`absent` means the sibling is reachable and simply has no slice yet; `cannot-determine` means flow could not tell, and always says why. Neither is ever reported as done.
+`absent` means the sibling is reachable and simply has no slice yet; `cannot-determine` means flow could not tell, and always says why. Neither is ever reported as done — and at the done-step **neither lets the item close**: flat-file refuses `DONE`, ado declines to propose the card transition and offers a confirm-first override that records the bypass. `/flow:ship` blocks a release containing a half-shipped item, with no override — a release is the wrong place to wave through an unbuilt slice. Where completion is recorded differs by backend: flat-file reads each repo's own index, ado reads `slice-done:<repo>` tags that `/flow:run` adds to the card as each slice finishes (exactly one tag, no other field write).
 
 The primary development command — all backlog management and implementation. A **skill** that routes by invocation and loads only that path's reference.
 
@@ -489,6 +489,10 @@ Claude: Card 669562 spans: ratchet-store (this run) + toolkit.
           toolkit  slice: specs/669562-pipeline.md   status: done
         [builds the ratchet-store slice]
         All sibling slices report done.
+
+Had you tried to close 669562 from the toolkit repo first, the done-step
+would have refused: `ratchet-store — open`. That refusal is the point of
+the whole arrangement.
 ```
 
 Note the ids differ per repo — `669562` here, `12.4` there. Each repo numbers its own backlog, so the join is the `work_item:` handle, never the id. That is why "run the same id in the sibling" would open the wrong spec in flat-file mode.
