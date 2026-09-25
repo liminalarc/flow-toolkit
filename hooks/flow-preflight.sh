@@ -950,6 +950,97 @@ cmd_resolve_footprint() {
     exit 0
 }
 
+
+# One spec id's status from a repo's index. Prints nothing when the index is
+# absent or carries no entry for that id — the caller distinguishes the two.
+index_status_of() { # <repo root> <id>
+    _i="$1/SPECIFICATIONS.md"
+    [ -f "$_i" ] || return 0
+    # Literal prefix match, not a regex: an id contains dots (and may contain
+    # other metacharacters), and building a dynamic regex here already cost one
+    # round of awk string-escaping confusion.
+    awk -v id="$2" '
+        BEGIN { pfx = "- **" id "**" }
+        index($0, pfx) == 1 {
+            if (match($0, /`[A-Z][A-Z ]*`/)) {
+                v = substr($0, RSTART + 1, RLENGTH - 2); print v; exit
+            }
+        }' "$_i"
+}
+
+# --- subcommand: slice-status [<spec>] -------------------------------------
+# Per repo in the footprint: done | open | absent | cannot-determine.
+# The branch is chosen by --slice-done's PRESENCE (spec 1.29), so an empty
+# value is an ado run with no tags, never a flat-file run. Exit 0 always —
+# indeterminacy rides in the value, because the answer is per repo and a
+# process-wide exit code cannot carry a mixed result.
+cmd_slice_status() {
+    file=""; repo="."; sdone=""; sdone_seen=0
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --repo) repo="$2"; shift 2 ;;
+            --slice-done) sdone="$2"; sdone_seen=1; shift 2 ;;
+            --tags) shift 2 ;;
+            *) [ -z "$file" ] && file="$1"; shift ;;
+        esac
+    done
+    names=""
+    [ -n "$file" ] && [ -f "$file" ] && grep -q '^repos:' "$file" 2>/dev/null && \
+        names=$(fm_scalar "$file" repos | tr '[],' '   ' | tr -s ' ' | sed 's/^ *//; s/ *$//')
+    [ -n "$names" ] || exit 0
+
+    cfg=$(parse_related "$repo/.flow/config.yml")
+    loc=$(parse_related "$repo/.flow/config.local.yml")
+    this=$(printf '%s\n' "$cfg" | awk -F"$US" '$1 == "R" { print $2; exit }')
+    wi=$(work_item_of "$file")
+
+    for n in $names; do
+        if [ "$sdone_seen" = "1" ]; then
+            # Ado: completion is the tag set 1.27 writes on the card.
+            if printf '%s' "$sdone" | tr ', ' '\n\n' | grep -qx "slice-done:$n"; then
+                st="done"
+            else
+                st="open"
+            fi
+            echo "repo: $n | status: $st"
+            continue
+        fi
+        # Flat-file: this repo answers from its own index; a sibling needs a
+        # readable, flow-managed checkout.
+        if [ -n "$this" ] && [ "$n" = "$this" ]; then
+            root="$repo"
+        else
+            root=$(related_val "$loc" "$n" local_path)
+        fi
+        if [ -z "$root" ] || [ ! -d "$root" ]; then
+            echo "repo: $n | status: cannot-determine (no readable local_path)"; continue
+        fi
+        if [ ! -d "$root/.flow" ] && [ ! -f "$root/SPECIFICATIONS.md" ]; then
+            echo "repo: $n | status: cannot-determine (not a flow-managed tree)"; continue
+        fi
+        matches=$(slice_file_for "$root" "$wi")
+        count=$(printf '%s' "$matches" | grep -c . || true)
+        if [ "${count:-0}" = "0" ]; then
+            echo "repo: $n | status: absent (no slice authored for $wi)"; continue
+        fi
+        if [ "${count:-0}" -gt 1 ]; then
+            echo "repo: $n | status: cannot-determine (two files claim $wi: $(printf '%s' "$matches" | tr '\n' ' '))"; continue
+        fi
+        if [ ! -f "$root/SPECIFICATIONS.md" ]; then
+            echo "repo: $n | status: cannot-determine (no index — board-backed sibling)"; continue
+        fi
+        sid=$(fm_scalar "$matches" id)
+        raw=$(index_status_of "$root" "$sid")
+        case "$raw" in
+            DONE|SUPERSEDED)                 echo "repo: $n | status: done" ;;
+            "NOT STARTED"|"IN PROGRESS"|PARTIAL) echo "repo: $n | status: open" ;;
+            "")  echo "repo: $n | status: cannot-determine (no index entry for $sid)" ;;
+            *)   echo "repo: $n | status: cannot-determine (unrecognized status $raw for $sid)" ;;
+        esac
+    done
+    exit 0
+}
+
 # --- subcommand: repos <detail.md> -----------------------------------------
 # Validate a spec's declared cross-repo footprint against the project's
 # declared siblings (spec 1.25). LOCAL ONLY — it never reads a sibling repo;
@@ -1066,11 +1157,12 @@ case "$sub" in
     spawns)        cmd_spawns "$@" ;;
     repos)         cmd_repos "$@" ;;
     resolve-footprint) cmd_resolve_footprint "$@" ;;
+    slice-status)  cmd_slice_status "$@" ;;
     blocking)      cmd_blocking "$@" ;;
     autonomy)      cmd_autonomy "$@" ;;
     rubric-basis)  cmd_rubric_basis "$@" ;;
     rubric-drift)  cmd_rubric_drift "$@" ;;
     *)
-        echo "usage: flow-preflight.sh <git-state|resolved|wellformed|spec-path|spawns|blocking|repos|resolve-footprint|autonomy|rubric-basis|rubric-drift> [args]" >&2
+        echo "usage: flow-preflight.sh <git-state|resolved|wellformed|spec-path|spawns|blocking|repos|resolve-footprint|slice-status|autonomy|rubric-basis|rubric-drift> [args]" >&2
         exit 64 ;;
 esac

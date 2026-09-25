@@ -1533,5 +1533,164 @@ exit_is "resolve-footprint: leaves the sibling tree untouched" 0 $([ "$before" =
 net=$(sed -n '/^cmd_resolve_footprint()/,/^}/p' "$PREFLIGHT" | grep -cE '(^|[^a-z])(az|curl|wget|git (fetch|ls-remote|clone))' || true)
 exit_is "resolve-footprint: contains no network or az call" 0 "$net"
 
+# ============================================================================
+# flow-preflight: slice-status  (spec 1.29)
+# ============================================================================
+ss="$tmp/ss"; ssib="$tmp/ssib"
+mkdir -p "$ss/specs" "$ss/.flow" "$ssib/specs/archive" "$ssib/.flow"
+cat > "$ss/.flow/config.yml" <<'EOF'
+flow:
+  repo_name: toolkit
+  related_repos:
+    - name: ratchet-store
+EOF
+cat > "$ss/.flow/config.local.yml" <<EOF
+flow:
+  related_repos:
+    - name: ratchet-store
+      local_path: $ssib
+EOF
+cat > "$ss/specs/5.1-x.md" <<'EOF'
+---
+id: 5.1
+title: X
+repos: [toolkit, ratchet-store]
+work_item: wi-1
+canonical_repo: toolkit
+---
+## Problem
+x
+EOF
+cat > "$ss/SPECIFICATIONS.md" <<'EOF'
+# Main
+## Phase 5
+- **5.1** X — `IN PROGRESS` — [detail](specs/5.1-x.md)
+EOF
+sib_slice() { # <id> <status>
+    cat > "$ssib/specs/$1-slice.md" <<EOF
+---
+id: $1
+title: Slice
+work_item: wi-1
+---
+## Problem
+x
+EOF
+    cat > "$ssib/SPECIFICATIONS.md" <<EOF
+# Sib
+## Phase 9
+- **$1** Slice — \`$2\` — [detail](specs/$1-slice.md)
+EOF
+}
+SS() { bash "$PREFLIGHT" slice-status "$@"; }
+sibstat() { printf '%s' "$1" | sed -n 's/^repo: ratchet-store .*status: //p'; }
+
+# --- AC: the five index values map to four ---
+for pair in "9.1 DONE done" "9.2 SUPERSEDED done" "9.3 NOT_STARTED open" "9.4 IN_PROGRESS open" "9.5 PARTIAL open"; do
+    set -- $pair
+    rm -f "$ssib"/specs/*-slice.md
+    sib_slice "$1" "$(printf '%s' "$2" | tr '_' ' ')"
+    r=$(SS "$ss/specs/5.1-x.md" --repo "$ss" 2>&1)
+    exit_is "slice-status: $2 maps to $3 (exit)" 0 $?
+    out_has "slice-status: $2 maps to $3" "status: $3" "$r"
+done
+
+# --- AC: resolves by work_item, not by this repo's id ---
+rm -f "$ssib"/specs/*-slice.md
+sib_slice 9.7 "DONE"
+cat > "$ssib/specs/5.1-decoy.md" <<'EOF'
+---
+id: 5.1
+title: Decoy
+---
+## Problem
+x
+EOF
+cat >> "$ssib/SPECIFICATIONS.md" <<'EOF'
+- **5.1** Decoy — `NOT STARTED` — [detail](specs/5.1-decoy.md)
+EOF
+r=$(SS "$ss/specs/5.1-x.md" --repo "$ss" 2>&1)
+out_has "slice-status: uses the work_item match, not the same-id decoy" "status: done" "$r"
+rm -f "$ssib/specs/5.1-decoy.md"; sib_slice 9.7 "DONE"
+
+# --- AC: absent = reachable, flow-managed, nothing matches the handle ---
+rm -f "$ssib"/specs/*-slice.md
+printf '# Sib\n## Phase 9\n' > "$ssib/SPECIFICATIONS.md"
+r=$(SS "$ss/specs/5.1-x.md" --repo "$ss" 2>&1)
+out_has "slice-status: unauthored slice is absent, not open" "status: absent" "$r"
+
+# --- AC: the cannot-determine conditions ---
+mv "$ss/.flow/config.local.yml" "$ss/.flow/config.local.off"
+r=$(SS "$ss/specs/5.1-x.md" --repo "$ss" 2>&1)
+out_has "slice-status: missing local_path cannot determine" "status: cannot-determine" "$r"
+mv "$ss/.flow/config.local.off" "$ss/.flow/config.local.yml"
+nf="$tmp/notflow"; mkdir -p "$nf"
+cat > "$ss/.flow/config.local.yml" <<EOF
+flow:
+  related_repos:
+    - name: ratchet-store
+      local_path: $nf
+EOF
+r=$(SS "$ss/specs/5.1-x.md" --repo "$ss" 2>&1)
+out_has "slice-status: a non-flow directory cannot determine" "status: cannot-determine" "$r"
+cat > "$ss/.flow/config.local.yml" <<EOF
+flow:
+  related_repos:
+    - name: ratchet-store
+      local_path: $ssib
+EOF
+# sibling is flow-managed but has NO index (an ado-backed sibling)
+sib_slice 9.7 "DONE"; rm -f "$ssib/SPECIFICATIONS.md"
+r=$(SS "$ss/specs/5.1-x.md" --repo "$ss" 2>&1)
+out_has "slice-status: an ado-backed sibling with no index cannot determine" "status: cannot-determine" "$r"
+# file matches but its id has no index entry
+sib_slice 9.7 "DONE"; printf '# Sib\n## Phase 9\n' > "$ssib/SPECIFICATIONS.md"
+r=$(SS "$ss/specs/5.1-x.md" --repo "$ss" 2>&1)
+out_has "slice-status: a slice with no index entry cannot determine" "status: cannot-determine" "$r"
+# two files claim the same handle
+sib_slice 9.7 "DONE"
+cat > "$ssib/specs/9.8-dupe.md" <<'EOF'
+---
+id: 9.8
+title: Dupe
+work_item: wi-1
+---
+## Problem
+x
+EOF
+r=$(SS "$ss/specs/5.1-x.md" --repo "$ss" 2>&1)
+out_has "slice-status: two files for one handle cannot determine" "status: cannot-determine" "$r"
+out_has "slice-status: names the first ambiguous path" "9.7-slice.md" "$r"
+out_has "slice-status: names the second ambiguous path" "9.8-dupe.md" "$r"
+rm -f "$ssib/specs/9.8-dupe.md"; sib_slice 9.7 "DONE"
+
+# --- AC: this repo's own slice resolves from its own index ---
+r=$(SS "$ss/specs/5.1-x.md" --repo "$ss" 2>&1)
+out_has "slice-status: this repo resolves its own slice" "repo: toolkit | status: open" "$r"
+
+# --- AC: the branch is chosen by flag presence, not emptiness ---
+r=$(SS "$ss/specs/5.1-x.md" --repo "$ss" --slice-done "slice-done:ratchet-store" 2>&1)
+out_has "slice-status: ado branch marks a tagged repo done" "repo: ratchet-store | status: done" "$r"
+out_has "slice-status: ado branch marks an untagged repo open" "repo: toolkit | status: open" "$r"
+r=$(SS "$ss/specs/5.1-x.md" --repo "$ss" --slice-done "" 2>&1)
+out_has "slice-status: an empty --slice-done is an ado run, not a flat-file one" "repo: ratchet-store | status: open" "$r"
+
+# --- AC: a mixed result is one line per repo, exit 0 ---
+mv "$ss/.flow/config.local.yml" "$ss/.flow/config.local.off"
+r=$(SS "$ss/specs/5.1-x.md" --repo "$ss" 2>&1); exit_is "slice-status: a mixed result exits 0" 0 $?
+out_has "slice-status: mixed keeps this repo's real status" "repo: toolkit | status: open" "$r"
+out_has "slice-status: mixed keeps the sibling's unknown" "repo: ratchet-store | status: cannot-determine" "$r"
+mv "$ss/.flow/config.local.off" "$ss/.flow/config.local.yml"
+
+# --- AC: no footprint ⇒ silent; no writes; no network ---
+printf -- '---\nid: 5.9\ntitle: Plain\n---\n## Problem\nx\n' > "$ss/specs/5.9-plain.md"
+r=$(SS "$ss/specs/5.9-plain.md" --repo "$ss" 2>&1); exit_is "slice-status: no footprint ⇒ exit 0" 0 $?
+out_lacks "slice-status: no footprint ⇒ silent" "status:" "$r"
+before=$(ls -1R "$ssib")
+SS "$ss/specs/5.1-x.md" --repo "$ss" >/dev/null 2>&1
+exit_is "slice-status: leaves the sibling tree untouched" 0 $([ "$before" = "$(ls -1R "$ssib")" ]; echo $?)
+net=$(sed -n '/^cmd_slice_status()/,/^}/p' "$PREFLIGHT" | grep -cE '(^|[^a-z])(az|curl|wget|git (fetch|ls-remote|clone))' || true)
+exit_is "slice-status: contains no network or az call" 0 "$net"
+
 echo "hooks.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
