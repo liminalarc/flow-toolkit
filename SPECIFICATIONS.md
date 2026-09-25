@@ -8,11 +8,11 @@
 ## Phase 1 — Features
 - **1.21** Unified outcome declaration — scenarios in front-matter, two executors — `NOT STARTED` — [detail](specs/1.21-unified-outcome-declaration-scenarios/1.21-unified-outcome-declaration-scenarios.md)
 - **1.23** Scope-amendment protocol — `NOT STARTED` — [detail](specs/1.23-scope-amendment-protocol.md)
-- **1.26** Cross-repo footprint banner + sibling reminder — `IN PROGRESS` — [detail](specs/1.26-cross-repo-footprint-banner-sibling.md)
 - **1.27** Per-slice completion + terminal gate — `NOT STARTED` — [detail](specs/1.27-per-slice-completion-terminal-gate.md)
 - **1.28** Cross-repo authoring + sibling discovery — `NOT STARTED` — [detail](specs/1.28-cross-repo-authoring-sibling-discovery.md)
 
 ## Archive
+- **1.26** Cross-repo footprint banner + sibling reminder — `DONE` — [detail](specs/archive/1.26-cross-repo-footprint-banner-sibling.md)
 - **1.29** Cross-repo resolvers — `DONE` — [detail](specs/archive/1.29-cross-repo-resolvers.md)
 - **1.25** Related-repos declaration + validation — `DONE` — [detail](specs/archive/1.25-related-repos-declaration-validation.md)
 - **1.24** Related-repos awareness — one work item across repos — `DONE` — [detail](specs/archive/1.24-related-repos-awareness-one-work-item.md)
