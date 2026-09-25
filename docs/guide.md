@@ -251,6 +251,19 @@ It reads any existing `CLAUDE.md`/`SPECIFICATIONS.md` (extends rather than overw
 
 ### /flow:run
 
+**Cross-repo runs.** When a spec carries a `repos:` footprint, `/flow:run` opens with a banner naming every repo the item touches, which slice this run builds, each sibling's slice path and status, and its `clone` string as copy-paste text (never fetched). At the done-step it lists the siblings still outstanding. A spec with no `repos:` adds no step and no message.
+
+```
+Card 669562 spans: toolkit (this run) + ratchet-store + docs-site.
+This run builds the toolkit slice only.
+  ratchet-store  slice: specs/12.4-state-writer.md   status: done
+                 clone: https://…/_git/ratchet
+  docs-site      slice: specs/                       status: absent (no slice authored for 669562)
+Remember to run /flow:run in ratchet-store and docs-site too.
+```
+
+`absent` means the sibling is reachable and simply has no slice yet; `cannot-determine` means flow could not tell, and always says why. Neither is ever reported as done.
+
 The primary development command — all backlog management and implementation. A **skill** that routes by invocation and loads only that path's reference.
 
 ```
@@ -458,6 +471,27 @@ repo: ratchet-store | status: done
 Note the sibling's slice is `12.4` while this repo's is `669562`: each repo numbers its own backlog, so the join is the `work_item:` handle, never the id.
 
 ## 6. Worked walkthroughs
+
+### 6.0 A cross-repo item, two repos
+
+One work item, two slices, two runs, two PRs — the human orchestrates; flow keeps the map.
+
+```
+You:    /flow:run 669562                     # in the toolkit repo
+Claude: Card 669562 spans: toolkit (this run) + ratchet-store.
+        This run builds the toolkit slice only.
+          ratchet-store  slice: specs/12.4-state-writer.md   status: open
+        [plans, checkpoints, builds, commits the toolkit slice]
+        Outstanding sibling slices:
+          ratchet-store — open
+You:    cd ../ratchet-store && /flow:run 669562
+Claude: Card 669562 spans: ratchet-store (this run) + toolkit.
+          toolkit  slice: specs/669562-pipeline.md   status: done
+        [builds the ratchet-store slice]
+        All sibling slices report done.
+```
+
+Note the ids differ per repo — `669562` here, `12.4` there. Each repo numbers its own backlog, so the join is the `work_item:` handle, never the id. That is why "run the same id in the sibling" would open the wrong spec in flat-file mode.
 
 ### 6.1 A full spec, start to finish (checkpoint)
 

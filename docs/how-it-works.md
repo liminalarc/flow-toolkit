@@ -29,7 +29,11 @@ is written, and the verifier on the *how*, before a diff integrates. A spec that
 ```mermaid
 flowchart TD
     Start(["/flow:run &lt;id&gt;"]) --> U[Understand<br/>read index entry + specs detail file]
-    U --> P[Plan<br/>thin slices, files, tests, Value]
+    U --> FP["repos: footprint?<br/>resolve-footprint + slice-status"]
+    FP -->|"cross-repo"| BAN["Banner: full footprint, this run's slice,<br/>each sibling's slice path + status + clone"]
+    FP -->|"single repo"| P
+    BAN --> P
+    P[Plan<br/>thin slices, files, tests, Value]
     P --> SR["flow-spec-reviewer judges the draft<br/>INVEST on the spec, SMART per criterion<br/>prior art vs the archive"]
     SR --> Mode{autonomy?<br/>flow-preflight.sh autonomy}
 
@@ -58,7 +62,11 @@ flowchart TD
     Integrate --> Gate{deferrals resolved?<br/>flow-preflight.sh resolved}
     Gate -->|open deferral| DP
     Gate -->|clear| Smoke[Restart services<br/>+ smoke-test end-to-end]
-    Smoke --> VGate{spec has<br/>validate: block?}
+    Smoke --> SibR{spec has<br/>repos: footprint?}
+    SibR -->|yes| Rem["Remind: sibling slices not done<br/>advisory here; 1.27 owns the gate"]
+    SibR -->|no| VGate
+    Rem --> VGate
+    VGate{spec has<br/>validate: block?}
     VGate -->|no| Done[Status to DONE<br/>tick AC, log SHA, archive]
     VGate -->|yes| VUX[flow-ux-validator per lens, serial<br/>N/A passes clean]
     VUX --> Triage{findings triaged?}
@@ -70,7 +78,7 @@ flowchart TD
 **Sources:** `skills/run/reference/implement.md` (the numbered steps + spec-review gate + deferral
 protocol + validation done-gate), `skills/run/SKILL.md` (autonomy rules),
 `agents/flow-spec-reviewer.md` + `skills/run/reference/spec-review.md` (the pre-sign-off gate),
-`agents/flow-ux-validator.md` (the done-gate agent), `hooks/flow-preflight.sh` (`autonomy`, `resolved`).
+`agents/flow-ux-validator.md` (the done-gate agent), `hooks/flow-preflight.sh` (`autonomy`, `resolved`, `resolve-footprint`, `slice-status`).
 
 ---
 
@@ -144,10 +152,12 @@ flowchart LR
         R4[autonomy<br/>checkpoint / auto-build]
         R5[rubric-basis / rubric-drift<br/>validation-rubric fingerprint]
         R6["spawns / blocking<br/>spec-group order + unmet prerequisites"]
+        R7["repos / resolve-footprint / slice-status<br/>cross-repo footprint + per-slice status"]
     end
 
     SG --> R3
     SG --> R6
+    SG --> R7
     CMG --> R2
     CMG --> R3
 
@@ -165,6 +175,8 @@ flowchart LR
     C3 --> R4
     C3 --> R5
     C3 --> R6
+    C3 --> R7
+    C1 --> R7
     C4 --> R5
 ```
 

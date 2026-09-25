@@ -93,6 +93,8 @@ That's the whole loop. Pass a concept to `/flow:init` or leave it blank to answe
 
 By default (`checkpoint` mode) `/flow:run` never writes code until you approve the plan; a spec can opt into `auto-build` to skip that pause, with an independent verifier as the safety net.
 
+A spec carrying a `repos:` footprint also opens with a **cross-repo banner** — the full footprint, which slice this run builds, where each sibling's slice lives and whether it is done — and closes with a reminder of the siblings still outstanding. Both are advisory; flow reads a sibling and never builds one.
+
 ```mermaid
 flowchart TD
     Start(["/flow:run &lt;id&gt;"]) --> U[Understand<br/>read index entry + specs detail file]
