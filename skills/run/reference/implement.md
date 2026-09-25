@@ -10,6 +10,24 @@ Read the index entry for that id, and **if a detail file exists for it, read it 
 
 If a free-form description maps to an existing spec, say so and switch to it. If it's net-new and will produce commits, offer `/flow:run --add` first so there's an id to tag.
 
+**Cross-repo footprint banner (1.26).** Run `flow-preflight.sh resolve-footprint <detail.md> --repo .` — in **ado** mode also pass the card's `repo:` tags as `--tags "repo:a repo:b"`, taken from the card data you just read (the skill already queries the board; the hook never does). Then `flow-preflight.sh slice-status <detail.md> --repo .`, with `--slice-done "<the card's slice-done: tags>"` in ado mode.
+
+**Fire the banner when** a `repo:` line's name differs from the `this:` line, **or** `this:` is absent while `repo:` lines exist. Otherwise say nothing — a single-repo spec must read exactly as it does today. **Render only; derive nothing** — every value below is a field the resolver returned, so never read `.flow/config.yml` or compose a slice path yourself. Ignore `undeclared:`/`undeclared-self:` here; 1.28 owns the asking.
+
+```
+Card 669562 spans: toolkit (this run) + ratchet-store.
+This run builds the toolkit slice only.
+  ratchet-store  slice: specs/12.4-state-writer.md   status: done
+                 clone: https://…/_git/ratchet
+Remember to run /flow:run in ratchet-store too.
+```
+
+- Name **every** repo on the footprint, not just the first.
+- `slice:` is whatever the resolver returned — a found path, or the directory the slice would land in (the sibling numbers its own backlog, so the filename is not predictable), or `-`.
+- Render `status:` verbatim from `slice-status`, **including the parenthesised reason** on `absent`/`cannot-determine`. That reason is what makes an unknown actionable; dropping it reports "nothing outstanding" when the truth is "cannot tell".
+- Print `clone:` as copy-paste text. **Never fetch it** — no `git fetch`, `ls-remote`, or `az` here.
+- When the resolver emits a `divergence:` line, print one line naming the repos the tags add or omit, use the front-matter set, and carry on. It is advisory; the gate is 1.27's.
+
 ## 2. Plan + CHECKPOINT
 
 Concise plan: thin vertical slices, files/layers touched, test strategy, risks, open questions. **The plan you present IS the draft detail file** — include the **Value** user story so it can be weighed against other specs. **In `checkpoint` mode, stop for sign-off before writing any code.** In `auto-build`, do not pause for approval — but still write and commit the detail file first (auto-build skips the human gate, never the record).
@@ -44,6 +62,7 @@ If at any point you're about to drop or narrow something the spec put in scope, 
 
 - **Reconcile deferrals** — every in-scope item you didn't build has been run through the deferral protocol (built here, or re-homed to a spec by user decision), cross-linked, and recorded in the spec's `deferrals:` front-matter with a resolved `to`. This is **machine-checked** (`flow-preflight.sh resolved`): the commit guard blocks a `DONE` spec with an open deferral, so it **must** be clear before the spec reaches `DONE`.
 - **Restart & smoke-test** — before flipping status, get the change actually running and exercise it. **Restart every local service the change touched** (use the run/dev commands in `CLAUDE.md`/`README.md`) so nothing is serving stale code. Then **run an automated smoke test yourself wherever it's feasible** — drive the changed behavior end-to-end (hit the endpoint, run the flow, exercise the CLI/UI), not just the unit suite. Where automation genuinely isn't possible (e.g. a manual-only device/UX step), say so and list it for the user rather than skipping silently. Finish by showing the user a **brief verification checklist**: each acceptance criterion with what you smoke-tested to prove it (✅ / ⚠️), plus any items they should confirm manually. Only proceed to `DONE` once this passes.
+- **Sibling slice reminder (1.26) — cross-repo only.** If the spec carries a `repos:` footprint, re-run `flow-preflight.sh slice-status <detail.md> --repo .` (ado: with the card's `slice-done:` tags) and list every repo **not** `done`, rendering each value and its parenthesised reason verbatim. Mark `absent` and `cannot-determine` as such rather than omitting them — an omitted sibling reads as "nothing outstanding", which is the silent pass 1.27's gate exists to prevent. Stay **silent** only when every repo reports `done`, and a no-`repos:` spec adds no step and no message. This is **advisory here** — it never blocks; 1.27 owns the terminal gate. No `repos:` block ⇒ a pure no-op.
 - **Validation gate (declared per-spec, opt-in).** If the spec's front-matter carries a `validate:` block, the done-step **dispatches the `flow:flow-ux-validator` agent** (the same 1.14 agent `/flow:validate` uses — dispatched directly, never via the skill) before flipping `DONE`. No `validate:` block ⇒ **the gate is a pure no-op** — say nothing, add no friction to specs that don't touch the interface.
   - **Read the block:** `target` (one screen/flow) and `intent` (the outcome) are required; `lens` defaults to both `ui`+`ux`; the design-system pointer resolves by precedence — the block's `design_system` > the project's persisted `.flow/validate/*.md` (1.16, when present) > "infer from source".
     ```yaml
