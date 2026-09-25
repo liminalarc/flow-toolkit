@@ -1384,5 +1384,154 @@ b=$(brief_for "$sbr")
 out_has "brief: reports the ado block's project" "Contoso" "$b"
 out_lacks "brief: a sibling project does not shadow it" "WRONG_PROJECT" "$b"
 
+# ============================================================================
+# flow-preflight: resolve-footprint  (spec 1.29)
+# ============================================================================
+rf="$tmp/rf"; sib="$tmp/ratchet"
+mkdir -p "$rf/specs" "$rf/.flow" "$sib/specs" "$sib/specs/archive" "$sib/.flow"
+cat > "$rf/.flow/config.yml" <<'EOF'
+flow:
+  repo_name: toolkit
+  related_repos:
+    - name: ratchet-store
+      repo: DEVOPS_Ratchet
+      clone: https://example/_git/ratchet
+EOF
+cat > "$rf/.flow/config.local.yml" <<EOF
+flow:
+  related_repos:
+    - name: ratchet-store
+      local_path: $sib
+      clone: SHOULD_BE_IGNORED
+EOF
+printf '.flow/config.local.yml\n' > "$rf/.gitignore"
+cat > "$rf/specs/4.1-cross.md" <<'EOF'
+---
+id: 4.1
+title: Cross
+repos: [toolkit, ratchet-store]
+work_item: ratchet-rollout
+canonical_repo: toolkit
+---
+## Problem
+x
+EOF
+# the sibling's slice: its OWN id, joined only by work_item
+cat > "$sib/specs/7.3-its-own-number.md" <<'EOF'
+---
+id: 7.3
+title: Its Own Number
+repos: [toolkit, ratchet-store]
+work_item: ratchet-rollout
+canonical_repo: toolkit
+---
+## Problem
+x
+EOF
+# a decoy: the sibling also uses 4.1 for something unrelated
+cat > "$sib/specs/4.1-unrelated.md" <<'EOF'
+---
+id: 4.1
+title: Unrelated
+---
+## Problem
+x
+EOF
+cat > "$sib/SPECIFICATIONS.md" <<'EOF'
+# Sib — Specifications
+## Phase 7
+- **7.3** Its Own Number — `NOT STARTED` — [detail](specs/7.3-its-own-number.md)
+- **4.1** Unrelated — `DONE` — [detail](specs/4.1-unrelated.md)
+EOF
+RF() { bash "$PREFLIGHT" resolve-footprint "$@"; }
+
+r=$(RF "$rf/specs/4.1-cross.md" --repo "$rf" 2>&1); exit_is "resolve-footprint: exits 0 on a valid footprint" 0 $?
+out_has "resolve-footprint: reports the front-matter source" "source: front-matter" "$r"
+out_has "resolve-footprint: names which record is this repo" "this: toolkit" "$r"
+out_has "resolve-footprint: emits a line for this repo" "repo: toolkit" "$r"
+out_has "resolve-footprint: emits a line for the sibling" "repo: ratchet-store" "$r"
+out_has "resolve-footprint: carries the declared clone" "https://example/_git/ratchet" "$r"
+out_has "resolve-footprint: carries the merged local_path" "$sib" "$r"
+out_lacks "resolve-footprint: the override cannot set clone" "SHOULD_BE_IGNORED" "$r"
+out_has "resolve-footprint: slice resolves by work_item, not by id" "7.3-its-own-number.md" "$r"
+out_lacks "resolve-footprint: does not pick the sibling's unrelated same-id spec" "4.1-unrelated.md" "$r"
+
+# slice: falls back to the spec directory when nothing matches the handle
+cat > "$rf/specs/4.2-nomatch.md" <<'EOF'
+---
+id: 4.2
+title: No Match
+repos: [toolkit, ratchet-store]
+work_item: nothing-matches-this
+canonical_repo: toolkit
+---
+## Problem
+x
+EOF
+r=$(RF "$rf/specs/4.2-nomatch.md" --repo "$rf" 2>&1)
+out_has "resolve-footprint: unmatched slice falls back to the spec dir" "slice: specs/" "$r"
+
+# slice: is - when local_path is unknown
+mv "$rf/.flow/config.local.yml" "$rf/.flow/config.local.off"
+r=$(RF "$rf/specs/4.1-cross.md" --repo "$rf" 2>&1)
+out_has "resolve-footprint: slice is - without local_path" "slice: -" "$r"
+mv "$rf/.flow/config.local.off" "$rf/.flow/config.local.yml"
+
+# --- tags path: no <spec> argument at all (ado first open) ---
+r=$(RF --repo "$rf" --tags "repo:toolkit repo:ratchet-store" 2>&1); exit_is "resolve-footprint: runs with no spec argument" 0 $?
+out_has "resolve-footprint: reports the tags source" "source: tags" "$r"
+out_has "resolve-footprint: resolves the tag set" "repo: ratchet-store" "$r"
+
+# --- divergence: every token, adds then omits, each sorted ---
+cat > "$rf/.flow/config.yml" <<'EOF'
+flow:
+  repo_name: toolkit
+  related_repos:
+    - name: ratchet-store
+    - name: zebra
+    - name: alpha
+EOF
+cat > "$rf/specs/4.3-div.md" <<'EOF'
+---
+id: 4.3
+title: Div
+repos: [toolkit, ratchet-store]
+canonical_repo: toolkit
+---
+## Problem
+x
+EOF
+r=$(RF "$rf/specs/4.3-div.md" --repo "$rf" --tags "repo:toolkit repo:zebra repo:alpha" 2>&1)
+out_has "resolve-footprint: front-matter wins over tags" "source: front-matter" "$r"
+out_has "resolve-footprint: divergence lists adds then omits, sorted" "divergence: +alpha +zebra -ratchet-store" "$r"
+
+# --- undeclared: mirrors cmd_repos's membership set ---
+out_lacks "resolve-footprint: a declared footprint emits no undeclared" "undeclared:" "$r"
+r=$(RF --repo "$rf" --tags "repo:toolkit repo:mystery" 2>&1)
+out_has "resolve-footprint: names an undeclared repo" "undeclared: mystery" "$r"
+out_lacks "resolve-footprint: does not flag this repo's own name" "undeclared: toolkit" "$r"
+exit_is "resolve-footprint: undeclared reports, never enforces" 0 $?
+cat > "$rf/.flow/config.yml" <<'EOF'
+flow:
+  related_repos:
+    - name: ratchet-store
+EOF
+r=$(RF --repo "$rf" --tags "repo:ratchet-store" 2>&1)
+out_has "resolve-footprint: reports an unset repo_name" "undeclared-self:" "$r"
+
+# --- no footprint from any source ⇒ silent, exit 0 ---
+printf -- '---\nid: 4.9\ntitle: Plain\n---\n## Problem\nx\n' > "$rf/specs/4.9-plain.md"
+r=$(RF "$rf/specs/4.9-plain.md" --repo "$rf" 2>&1); exit_is "resolve-footprint: no footprint ⇒ exit 0" 0 $?
+out_lacks "resolve-footprint: no footprint ⇒ silent" "repo:" "$r"
+
+# --- read-only + no network on any path ---
+( cd "$rf" && git init -q . 2>/dev/null; git -C "$rf" add -A >/dev/null 2>&1 )
+before=$(git -C "$sib" status --porcelain 2>/dev/null; ls -1 "$sib/specs")
+RF "$rf/specs/4.1-cross.md" --repo "$rf" >/dev/null 2>&1
+after=$(git -C "$sib" status --porcelain 2>/dev/null; ls -1 "$sib/specs")
+exit_is "resolve-footprint: leaves the sibling tree untouched" 0 $([ "$before" = "$after" ]; echo $?)
+net=$(sed -n '/^cmd_resolve_footprint()/,/^}/p' "$PREFLIGHT" | grep -cE '(^|[^a-z])(az|curl|wget|git (fetch|ls-remote|clone))' || true)
+exit_is "resolve-footprint: contains no network or az call" 0 "$net"
+
 echo "hooks.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

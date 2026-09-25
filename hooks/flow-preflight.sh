@@ -796,8 +796,9 @@ parse_related() { # <config file>
         v = s; sub(/^[^:]*:[[:space:]]*/, "", v)
         if (k == "name") nm[idx] = unq(v)
         ks[idx] = ks[idx] (ks[idx] == "" ? "" : " ") k
+        vs[idx] = vs[idx] (vs[idx] == "" ? "" : FSEP) k "=" unq(v)
     }
-    BEGIN { inrr = 0; n = 0; rn = "" }
+    BEGIN { inrr = 0; n = 0; rn = ""; FSEP = sprintf("%c", 28) }
     {
         line = $0; sub(/\r$/, "", line)
         if (line !~ /[^[:space:]]/) next
@@ -820,10 +821,133 @@ parse_related() { # <config file>
         }
     }
     END {
-        if (rn != "") print "R" US rn US ""
-        for (j = 1; j <= n; j++) print "E" US nm[j] US ks[j]
+        if (rn != "") print "R" US rn US "" US ""
+        for (j = 1; j <= n; j++) print "E" US nm[j] US ks[j] US vs[j]
     }
     ' "$1"
+}
+
+
+
+# The spec directory a repo uses (flow.spec_dir, default `specs`).
+spec_dir_of() { # <repo root>
+    _sd=$(awk '/^[[:space:]]*spec_dir:[[:space:]]*/ { v = $0
+              sub(/^[[:space:]]*spec_dir:[[:space:]]*/, "", v)
+              sub(/[[:space:]]*#.*$/, "", v); gsub(/["\047]/, "", v)
+              sub(/[[:space:]]+$/, "", v); print v; exit }' "$1/.flow/config.yml" 2>/dev/null)
+    printf '%s' "${_sd:-specs}"
+}
+
+# A spec's cross-repo join handle. `work_item:` when present, else `id:` —
+# the default 1.24 D7 ratified so an ado spec needs no extra key.
+work_item_of() { # <detail.md>
+    [ -n "${1:-}" ] && [ -f "$1" ] || return 0
+    _w=$(fm_scalar "$1" work_item)
+    [ -n "$_w" ] || _w=$(fm_scalar "$1" id)
+    printf '%s' "$_w"
+}
+
+# Every detail file in a repo whose join handle matches. One line per match, so
+# a caller can report ambiguity rather than silently picking one — the same
+# discipline spec_path_candidates already applies to ids.
+slice_file_for() { # <repo root> <work_item>
+    [ -n "${2:-}" ] || return 0
+    _d="$1/$(spec_dir_of "$1")"
+    for _f in "$_d"/*.md "$_d"/*/*.md "$_d"/archive/*.md "$_d"/archive/*/*.md; do
+        [ -f "$_f" ] || continue
+        [ "$(work_item_of "$_f")" = "$2" ] && printf '%s\n' "$_f"
+    done
+}
+
+# --- shared: the set of repo names this project declares --------------------
+# `flow.repo_name` plus every `flow.related_repos` name. cmd_repos and
+# resolve-footprint must agree on membership or one would flag a repo the other
+# accepts, so the rule lives here (root CLAUDE.md: defined once).
+known_repos() { # <parse_related records>
+    printf '%s\n' "$1" | awk -F"$US" '$1 == "R" && $2 != "" { print $2 } $1 == "E" && $2 != "" { print $2 }'
+}
+
+# Read one sibling key's value out of a parse_related record set.
+related_val() { # <records> <name> <key>
+    printf '%s\n' "$1" | awk -F"$US" -v want="$2" -v key="$3" '
+        BEGIN { FSEP = sprintf("%c", 28) }
+        $1 == "E" && $2 == want {
+            n = split($4, kv, FSEP)
+            for (i = 1; i <= n; i++) if (index(kv[i], key "=") == 1) { print substr(kv[i], length(key) + 2); exit }
+        }'
+}
+
+# --- subcommand: resolve-footprint [<spec>] --------------------------------
+# The footprint of one work item: which repos it touches, how to reach each,
+# and where that repo's slice lives. Read-only, offline — board tags arrive via
+# --tags the way `resolved` takes --done (spec 1.29). Exit 0 always.
+cmd_resolve_footprint() {
+    file=""; repo="."; tags=""; tags_seen=0
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --repo) repo="$2"; shift 2 ;;
+            --tags) tags="$2"; tags_seen=1; shift 2 ;;
+            *) [ -z "$file" ] && file="$1"; shift ;;
+        esac
+    done
+
+    fm_names=""
+    [ -n "$file" ] && [ -f "$file" ] && grep -q '^repos:' "$file" 2>/dev/null && \
+        fm_names=$(fm_scalar "$file" repos | tr '[],' '   ' | tr -s ' ' | sed 's/^ *//; s/ *$//')
+    tag_names=$(printf '%s' "$tags" | tr ',' ' ' | tr -s ' ' | tr ' ' '\n' \
+                | sed -n 's/^repo://p' | grep . | sort -u | tr '\n' ' ' | sed 's/ *$//')
+
+    # No footprint from any source is a clean no-op, not an error. Scoping the
+    # silence to BOTH sources is what keeps the cheap exit from killing the
+    # tags path, which by design has no spec file to read.
+    if [ -z "$fm_names" ] && [ -z "$tag_names" ]; then exit 0; fi
+
+    if [ -n "$fm_names" ]; then names="$fm_names"; src="front-matter"; else names="$tag_names"; src="tags"; fi
+
+    cfg=$(parse_related "$repo/.flow/config.yml")
+    loc=$(parse_related "$repo/.flow/config.local.yml")
+    known=$(known_repos "$cfg")
+    spec_dir_v=$(spec_dir_of "$repo")
+
+    # Which record is this repo. 1.26 renders "this run builds the <x> slice"
+    # and may not read config, so the resolver states it rather than making a
+    # second reader of `flow.repo_name`.
+    this=$(printf '%s
+' "$cfg" | awk -F"$US" '$1 == "R" { print $2; exit }')
+    [ -n "$this" ] && echo "this: $this"
+    echo "source: $src"
+    for n in $names; do
+        clone=$(related_val "$cfg" "$n" clone);       [ -n "$clone" ] || clone="-"
+        lp=$(related_val "$loc" "$n" local_path);     [ -n "$lp" ] || lp="-"
+        slice="-"
+        if [ "$lp" != "-" ] && [ -d "$lp" ]; then
+            wi=$(work_item_of "$file")
+            found=$(slice_file_for "$lp" "$wi")
+            if [ -n "$found" ] && [ "$(printf '%s\n' "$found" | grep -c .)" = "1" ]; then
+                slice="${found#$lp/}"
+            else
+                slice="$(spec_dir_of "$lp")/"
+            fi
+        fi
+        echo "repo: $n | clone: $clone | local_path: $lp | slice: $slice"
+    done
+
+    # Divergence is reported only when both sources exist; front-matter wins.
+    if [ -n "$fm_names" ] && [ "$tags_seen" = "1" ] && [ -n "$tag_names" ]; then
+        adds=$(for t in $tag_names; do printf '%s\n' "$fm_names" | tr ' ' '\n' | grep -qx "$t" || echo "+$t"; done | sort | tr '\n' ' ')
+        omits=$(for f in $fm_names; do printf '%s\n' "$tag_names" | tr ' ' '\n' | grep -qx "$f" || echo "-$f"; done | sort | tr '\n' ' ')
+        d=$(printf '%s%s' "$adds" "$omits" | sed 's/ *$//')
+        [ -n "$d" ] && echo "divergence: $d"
+    fi
+
+    # Adoption signal: a repo configured before cross-repo existed. Reported,
+    # never enforced — 1.25 already blocks the authoring mistake; this is the
+    # other direction, where nothing is wrong with the spec.
+    for n in $names; do
+        printf '%s\n' "$known" | grep -qx "$n" || echo "undeclared: $n"
+    done
+    printf '%s\n' "$cfg" | grep -q "^R" || echo "undeclared-self:"
+    exit 0
 }
 
 # --- subcommand: repos <detail.md> -----------------------------------------
@@ -941,11 +1065,12 @@ case "$sub" in
     spec-path)     cmd_spec_path "$@" ;;
     spawns)        cmd_spawns "$@" ;;
     repos)         cmd_repos "$@" ;;
+    resolve-footprint) cmd_resolve_footprint "$@" ;;
     blocking)      cmd_blocking "$@" ;;
     autonomy)      cmd_autonomy "$@" ;;
     rubric-basis)  cmd_rubric_basis "$@" ;;
     rubric-drift)  cmd_rubric_drift "$@" ;;
     *)
-        echo "usage: flow-preflight.sh <git-state|resolved|wellformed|spec-path|spawns|blocking|repos|autonomy|rubric-basis|rubric-drift> [args]" >&2
+        echo "usage: flow-preflight.sh <git-state|resolved|wellformed|spec-path|spawns|blocking|repos|resolve-footprint|autonomy|rubric-basis|rubric-drift> [args]" >&2
         exit 64 ;;
 esac
