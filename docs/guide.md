@@ -441,6 +441,22 @@ The parsing is unit-tested (`hooks/hooks.test.sh`) and CI runs that harness on e
 
 ---
 
+**Cross-repo resolvers.** `flow-preflight.sh resolve-footprint <detail.md>` answers *which repos does this item touch, and how do I reach each*; `slice-status <detail.md>` answers *is each slice done*. Both are read-only and offline — board tags arrive as `--tags`/`--slice-done` input, never a query, so the ado paths are testable without a board. One pair of subcommands serves the run banner, the terminal gate, and the lint drift row, so those three prompts cannot drift into three definitions of the same question.
+
+```
+$ flow-preflight.sh resolve-footprint specs/669562-pipeline.md
+this: toolkit
+source: front-matter
+repo: toolkit | clone: - | local_path: - | slice: -
+repo: ratchet-store | clone: https://…/_git/ratchet | local_path: ../ratchet | slice: specs/12.4-state-writer.md
+
+$ flow-preflight.sh slice-status specs/669562-pipeline.md
+repo: toolkit | status: open
+repo: ratchet-store | status: done
+```
+
+Note the sibling's slice is `12.4` while this repo's is `669562`: each repo numbers its own backlog, so the join is the `work_item:` handle, never the id.
+
 ## 6. Worked walkthroughs
 
 ### 6.1 A full spec, start to finish (checkpoint)
