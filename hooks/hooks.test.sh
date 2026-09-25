@@ -1689,6 +1689,21 @@ out_lacks "slice-status: no footprint ⇒ silent" "status:" "$r"
 before=$(ls -1R "$ssib")
 SS "$ss/specs/5.1-x.md" --repo "$ss" >/dev/null 2>&1
 exit_is "slice-status: leaves the sibling tree untouched" 0 $([ "$before" = "$(ls -1R "$ssib")" ]; echo $?)
+
+# Regression (1.29 AC17): slice-status must take its names from --tags when the
+# spec carries no `repos:` front-matter — the ado first-open case. Emitting
+# nothing there would make 1.27's terminal gate read zero lines and pass a
+# half-shipped item, which is the failure the whole group exists to prevent.
+r=$(SS --repo "$ss" --tags "repo:toolkit repo:ratchet-store" --slice-done "slice-done:ratchet-store" 2>&1)
+exit_is "slice-status: resolves names from --tags with no spec file" 0 $?
+out_has "slice-status: tags-sourced footprint reports the tagged repo done" "repo: ratchet-store | status: done" "$r"
+out_has "slice-status: tags-sourced footprint reports the untagged repo open" "repo: toolkit | status: open" "$r"
+r=$(SS "$ss/specs/5.9-plain.md" --repo "$ss" --tags "repo:toolkit" --slice-done "" 2>&1)
+out_has "slice-status: --tags covers a spec that carries no repos: key" "repo: toolkit | status: open" "$r"
+r=$(SS --repo "$ss" 2>&1)
+exit_is "slice-status: no spec and no tags ⇒ exit 0" 0 $?
+out_lacks "slice-status: no footprint from any source ⇒ silent" "status:" "$r"
+
 net=$(sed -n '/^cmd_slice_status()/,/^}/p' "$PREFLIGHT" | grep -cE '(^|[^a-z])(az|curl|wget|git (fetch|ls-remote|clone))' || true)
 exit_is "slice-status: contains no network or az call" 0 "$net"
 

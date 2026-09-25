@@ -975,18 +975,27 @@ index_status_of() { # <repo root> <id>
 # indeterminacy rides in the value, because the answer is per repo and a
 # process-wide exit code cannot carry a mixed result.
 cmd_slice_status() {
-    file=""; repo="."; sdone=""; sdone_seen=0
+    file=""; repo="."; sdone=""; sdone_seen=0; tags=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --repo) repo="$2"; shift 2 ;;
             --slice-done) sdone="$2"; sdone_seen=1; shift 2 ;;
-            --tags) shift 2 ;;
+            --tags) tags="$2"; shift 2 ;;
             *) [ -z "$file" ] && file="$1"; shift ;;
         esac
     done
+    # Names come from front-matter where a local slice exists, else from the
+    # card's `repo:` tags — the same precedence resolve-footprint applies. This
+    # subcommand MUST honour --tags: on an ado first open there is no local
+    # `repos:` key, and returning nothing there would let 1.27's terminal gate
+    # read zero lines and pass a half-shipped item.
     names=""
     [ -n "$file" ] && [ -f "$file" ] && grep -q '^repos:' "$file" 2>/dev/null && \
         names=$(fm_scalar "$file" repos | tr '[],' '   ' | tr -s ' ' | sed 's/^ *//; s/ *$//')
+    if [ -z "$names" ]; then
+        names=$(printf '%s' "$tags" | tr ',' ' ' | tr -s ' ' | tr ' ' '\n' \
+                | sed -n 's/^repo://p' | grep . | sort -u | tr '\n' ' ' | sed 's/ *$//')
+    fi
     [ -n "$names" ] || exit 0
 
     cfg=$(parse_related "$repo/.flow/config.yml")
