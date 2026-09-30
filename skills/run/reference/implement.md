@@ -12,7 +12,7 @@ If a free-form description maps to an existing spec, say so and switch to it. If
 
 **Cross-repo footprint banner (1.26).** Run `flow-preflight.sh resolve-footprint <detail.md> --repo .` — in **ado** mode also pass the card's `repo:` tags as `--tags "repo:a repo:b"`, taken from the card data you just read (the skill already queries the board; the hook never does). Then `flow-preflight.sh slice-status <detail.md> --repo .`, with `--slice-done "<the card's slice-done: tags>"` in ado mode.
 
-**Fire the banner when** a `repo:` line's name differs from the `this:` line, **or** `this:` is absent while `repo:` lines exist. Otherwise say nothing — a single-repo spec must read exactly as it does today. **Render only; derive nothing** — every value below is a field the resolver returned, so never read `.flow/config.yml` or compose a slice path yourself. Ignore `undeclared:`/`undeclared-self:` here; 1.28 owns the asking.
+**Fire the banner when** a `repo:` line's name differs from the `this:` line, **or** `this:` is absent while `repo:` lines exist. Otherwise say nothing — a single-repo spec must read exactly as it does today. **Render only; derive nothing** — every value below is a field the resolver returned, so never read `.flow/config.yml` or compose a slice path yourself. Ignore `undeclared:`/`undeclared-self:` here; **1.30** owns the asking.
 
 ```
 Card 669562 spans: toolkit (this run) + ratchet-store.

@@ -90,6 +90,12 @@ flow:
 3. **MCP-first, `az` CLI fallback, prompt-and-paste if both are unavailable** (headless/unauthed) — never emit a half-built map silently.
 4. Show the generated `.flow/config.yml` and confirm before writing.
 
+5. **Sibling repos (1.28) — offer, never assume.** Ask whether this project spans more than one repo. If it does, populate `flow.repo_name` (this repo's handle) and one `flow.related_repos` entry per sibling.
+   - **ado**: propose candidates from the board's projects, **MCP-first, `az` CLI fallback, prompt-and-paste if both are unavailable** — the same ladder as the state map above. A failed lookup is reported, never silently an empty list.
+   - **local**: ask for the handles and optional `clone` URLs directly; there is no board to introspect.
+   - Write nothing without sign-off, and **suggest the symmetric entry** the sibling needs — that repo must list *this* one, or its own runs will not see the footprint. Offer it as copy-paste text; never write into the sibling from here.
+   - `local_path` is **per-machine and never committed**: put it in `.flow/config.local.yml` and add that path to `.gitignore`. A committed `local_path` is rejected by `flow-preflight.sh repos`.
+
 > **Extending to other trackers:** each backend adapter (`github-issues`, `jira`, …) ships its own `discover_config()` — the "backend introspects itself" pattern. Only `ado` exists today.
 
 In `ado` mode, **do not create `SPECIFICATIONS.md`** — the board is the index. Still create the `specs/` directory for detail files.
