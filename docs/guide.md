@@ -251,6 +251,8 @@ It reads any existing `CLAUDE.md`/`SPECIFICATIONS.md` (extends rather than overw
 
 ### /flow:run
 
+**Adopting cross-repo in an existing project.** A repo configured before cross-repo existed has no `flow.repo_name` or `flow.related_repos`, and every cross-repo capability is silently inert until it does. Flow says so at four moments, all confirm-first and none of which infers a value: `/flow:lint` reports the gap (and writes it with `--fix`), `/flow:run --add` offers to declare a repo you mention, `/flow:init --adopt` offers the block to a config that lacks one, and the session brief nudges toward `/flow:lint` when `related_repos` is declared without `repo_name`.
+
 **Authoring a cross-repo item.** `/flow:run --add` asks which repos an item touches only when `flow.related_repos` is declared — a single-repo project sees no extra question. With siblings declared it writes `repos:`/`work_item:`/`canonical_repo:` into every slice, mirrors the footprint to the card as `repo:` tags in ado, and can scaffold the **sibling slice** where that repo is reachable, same-backend and has declared this one back. That scaffold is the toolkit's only cross-repo write and is bounded to creating one file and appending one index line. The sibling's id comes from its own index, so the slices share a `work_item:` handle rather than a number. `/flow:lint` reports drift between the card's `repo:` tags and the front-matter, and `--fix` re-syncs the `repo:` tags only — never `slice-done:`.
 
 **Cross-repo runs.** When a spec carries a `repos:` footprint, `/flow:run` opens with a banner naming every repo the item touches, which slice this run builds, each sibling's slice path and status, and its `clone` string as copy-paste text (never fetched). At the done-step it lists the siblings still outstanding. A spec with no `repos:` adds no step and no message.
@@ -446,9 +448,12 @@ You can run it directly: `bash ~/.claude/hooks/flow-preflight.sh git-state --rep
 ⚠ open deferral   flow-toolkit: … · 8 DONE — ⚠ 1.14 is DONE with an open deferral; /flow:run 1.14 reconciles it
 in flight         flow-toolkit: User Authentication is IN PROGRESS · 12 NOT STARTED — /flow:run 1.1 resumes it
 unshipped         flow-toolkit: no spec IN PROGRESS · 8 DONE — 3 specs DONE since v1.5.0; /flow:ship when ready
-idle              flow-toolkit: no spec IN PROGRESS · 12 NOT STARTED · 8 DONE — run /flow:run for the board
+cross-repo gap    flow-toolkit: no spec IN PROGRESS · 12 NOT STARTED — related_repos declared without repo_name; /flow:lint finishes cross-repo setup
+idle (T5)         flow-toolkit: no spec IN PROGRESS · 12 NOT STARTED · 8 DONE — run /flow:run for the board
 ado               flow-toolkit: ado backend — Contoso · Contoso\Web — /flow:run for the board
 ```
+
+The cross-repo tier sits immediately above the idle default, so the three tiers above it still win and only one line ever prints. It fires in the ado branch too — that path exits before the ladder, and an ado cross-repo project has no local index, so it would otherwise never see it. Detection is two greps of `.flow/config.yml`: no helper call, no spec-tree scan.
 
 Two deliberate constraints. The brief **never queries a board or the network** — it runs at every session start in every project, so an ado project is oriented from `.flow/config.yml` alone. And each nudge reads as state plus an available option rather than an imperative: this text lands in Claude's context, not just your eyes, so "`/flow:ship` when ready" must not read as an instruction to go and release something.
 

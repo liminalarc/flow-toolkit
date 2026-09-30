@@ -14,6 +14,8 @@ Ask: what is it, who is it for, what does success look like? Then create **both*
 
 A project with no `related_repos` gets **no extra question**: skip this section entirely.
 
+**One exception (1.30).** If the human *states* that the item touches another repository, offer to declare it — echo back the name **they** used, ask for the rest, and write nothing without sign-off. The trigger is their sentence, never the config state: a project that has declared nothing would otherwise have every token look "undeclared", which is exactly the unprompted question the paragraph above forbids. Declining leaves an ordinary single-repo spec with no footprint keys.
+
 Otherwise ask which of the declared repos this item touches. One repo (just this one) ⇒ author exactly as above and write no footprint keys. Two or more ⇒ the item is **one work item with a slice per repo**:
 
 - **Write the footprint into every slice** — `repos:` (the same set in each), `work_item:` (the same handle in each; omit it to default to this repo's `id:` only when the item is single-repo), and `canonical_repo:` (the **same value** in each — the repo holding the full Problem/Scope/AC; the others are slices that reference it).

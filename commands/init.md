@@ -44,7 +44,7 @@ Use args as the starting concept if provided. Otherwise ask up to 3 questions:
 
 ### 3. Choose the backend + scaffold `.flow/config.yml`
 
-Default is **`local`** — no config file needed; `SPECIFICATIONS.md` is the index and flow owns the lifecycle. Skip to step 4 unless the backlog is tracked outside the repo **or** the project wants bare spec filenames (below).
+Default is **`local`** — no config file needed; `SPECIFICATIONS.md` is the index and flow owns the lifecycle. Skip the ADO discovery below unless the backlog is tracked outside the repo **or** the project wants bare spec filenames (below) — but **steps 5 and 6 apply in both modes**: a local project spanning repos still needs `flow.repo_name` and `flow.related_repos`, which means it gets a `.flow/config.yml` even though its backlog is local.
 
 **Filenames (optional, both backends).** New detail files are named `<id>-<slug>.md`, the slug inferred from the spec's title (`System.Title` in ado) — so the backlog reads clearly in a file tree or a PR's changed-files list. A project that prefers bare `<id>.md` sets one key; both forms are always readable, so this only affects what gets *authored*:
 
@@ -90,7 +90,9 @@ flow:
 3. **MCP-first, `az` CLI fallback, prompt-and-paste if both are unavailable** (headless/unauthed) — never emit a half-built map silently.
 4. Show the generated `.flow/config.yml` and confirm before writing.
 
-5. **Sibling repos (1.28) — offer, never assume.** Ask whether this project spans more than one repo. If it does, populate `flow.repo_name` (this repo's handle) and one `flow.related_repos` entry per sibling.
+5. **Adopting an existing project (1.30).** On `--adopt`, or whenever `.flow/config.yml` already exists without a `flow.related_repos` block, **offer** the block rather than assuming it is unwanted — a project configured before cross-repo existed has no way to know the schema. Add only the new keys; leave every existing key byte-identical, and write nothing without sign-off. This is also where `flow.repo_name` lands, which `/flow:lint` and the session brief both nudge toward when `related_repos` is declared without it.
+
+6. **Sibling repos (1.28) — offer, never assume.** Ask whether this project spans more than one repo. If it does, populate `flow.repo_name` (this repo's handle) and one `flow.related_repos` entry per sibling.
    - **ado**: propose candidates from the board's projects, **MCP-first, `az` CLI fallback, prompt-and-paste if both are unavailable** — the same ladder as the state map above. A failed lookup is reported, never silently an empty list.
    - **local**: ask for the handles and optional `clone` URLs directly; there is no board to introspect.
    - Write nothing without sign-off, and **suggest the symmetric entry** the sibling needs — that repo must list *this* one, or its own runs will not see the footprint. Offer it as copy-paste text; never write into the sibling from here.
