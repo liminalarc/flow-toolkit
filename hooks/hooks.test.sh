@@ -1707,5 +1707,78 @@ out_lacks "slice-status: no footprint from any source ⇒ silent" "status:" "$r"
 net=$(sed -n '/^cmd_slice_status()/,/^}/p' "$PREFLIGHT" | grep -cE '(^|[^a-z])(az|curl|wget|git (fetch|ls-remote|clone))' || true)
 exit_is "slice-status: contains no network or az call" 0 "$net"
 
+# ============================================================================
+# flow-session-brief: adoption nudge  (spec 1.30)
+# ============================================================================
+ad="$tmp/adopt"; mkdir -p "$ad/.flow" "$ad/specs"
+printf -- '---\nid: 1.1\ntitle: A\n---\n## Problem\nx\n' > "$ad/specs/1.1-a.md"
+idx_not_started() { printf '# P\n## Phase 1\n- **1.1** A — `NOT STARTED` — [detail](specs/1.1-a.md)\n' > "$ad/SPECIFICATIONS.md"; }
+idx_in_progress() { printf '# P\n## Phase 1\n- **1.1** A — `IN PROGRESS` — [detail](specs/1.1-a.md)\n' > "$ad/SPECIFICATIONS.md"; }
+
+# --- indexed path: the gap becomes T4, above the unconditional board line ---
+cat > "$ad/.flow/config.yml" <<'EOF'
+flow:
+  related_repos:
+    - name: ratchet-store
+EOF
+idx_not_started
+b=$(brief_for "$ad")
+out_has "brief: nudges to finish cross-repo setup" "/flow:lint" "$b"
+out_lacks "brief: the gap replaces the generic board line" "run /flow:run for the board" "$b"
+
+# --- a higher tier still wins; exactly one nudge ever prints ---
+idx_in_progress
+b=$(brief_for "$ad")
+out_has "brief: in-progress tier wins over the config gap" "1.1 resumes it" "$b"
+out_lacks "brief: only one nudge prints" "/flow:lint" "$b"
+idx_not_started
+
+# --- repo_name present => no gap => no nudge ---
+cat > "$ad/.flow/config.yml" <<'EOF'
+flow:
+  repo_name: toolkit
+  related_repos:
+    - name: ratchet-store
+EOF
+b=$(brief_for "$ad")
+out_lacks "brief: a complete config produces no adoption nudge" "/flow:lint" "$b"
+
+# --- a sibling entry's own nested key must not satisfy the match ---
+cat > "$ad/.flow/config.yml" <<'EOF'
+flow:
+  related_repos:
+    - name: ratchet-store
+      repo_name: NOT_THE_TOP_LEVEL_KEY
+EOF
+b=$(brief_for "$ad")
+out_has "brief: a nested repo_name does not count as declared" "/flow:lint" "$b"
+
+# --- invisible to a project that never adopted cross-repo ---
+printf 'flow:\n  lifecycle_authority: local\n' > "$ad/.flow/config.yml"
+b=$(brief_for "$ad")
+out_lacks "brief: invisible without related_repos" "/flow:lint" "$b"
+
+# --- the index-less ado path exits before the ladder, so it needs its own branch ---
+ao="$tmp/adoptado"; mkdir -p "$ao/.flow"
+cat > "$ao/.flow/config.yml" <<'EOF'
+flow:
+  lifecycle_authority: ado
+  related_repos:
+    - name: ratchet-store
+  ado:
+    project: "Contoso"
+    area: "Contoso\\Web"
+EOF
+b=$(brief_for "$ao")
+out_has "brief: the ado branch nudges too" "/flow:lint" "$b"
+out_has "brief: the ado branch keeps its coordinate" "Contoso" "$b"
+
+# --- 1.25's hard stop must route somewhere ---
+rr="$tmp/reroute"; mkdir -p "$rr/specs" "$rr/.flow"
+printf 'flow:\n  related_repos:\n    - name: other\n' > "$rr/.flow/config.yml"
+printf -- '---\nid: 8.1\ntitle: X\nrepos: [other]\n---\n## Problem\nx\n' > "$rr/specs/8.1-x.md"
+r=$(bash "$PREFLIGHT" repos "$rr/specs/8.1-x.md" --repo "$rr" 2>&1)
+out_has "repos: the repo_name hard stop names the fix" "/flow:init --adopt" "$r"
+
 echo "hooks.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

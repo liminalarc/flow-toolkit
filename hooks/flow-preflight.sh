@@ -1121,7 +1121,7 @@ $known"
     wi=$(fm_scalar "$file" work_item)
 
     if [ -n "$names" ] && [ -z "$repo_name" ]; then
-        errs="${errs}  flow.repo_name is not declared in .flow/config.yml — a footprint cannot name this repo without it
+        errs="${errs}  flow.repo_name is not declared in .flow/config.yml — a footprint cannot name this repo without it; run /flow:init --adopt to add it
 "
     fi
     for n in $names; do

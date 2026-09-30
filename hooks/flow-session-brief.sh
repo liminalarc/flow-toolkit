@@ -38,6 +38,28 @@ CWD=$(printf '%s' "$CWD" | sed -e 's/\\"/"/g' -e 's/\\\//\//g' -e 's/\\\\/\\/g' 
 
 SPEC="$CWD/SPECIFICATIONS.md"
 
+# --- cross-repo adoption gap (1.30) -----------------------------------------
+# True when .flow/config.yml declares related_repos but no TOP-LEVEL repo_name:
+# the cross-repo feature is declared but inert, and nothing else ever says so.
+#
+# Two greps over one small file. No preflight call, no spec-tree glob, nothing
+# that scales with the backlog — this runs at every session start in every
+# project. Defined ABOVE the index-less ado branch because that branch exits
+# before the ladder and needs the same answer.
+#
+# Indentation is load-bearing: a related_repos ENTRY carries its own keys, so
+# an indentation-agnostic match would read a sibling's `repo_name:` as the
+# top-level declaration and silently suppress the nudge — the same shadowing
+# trap the ado coordinate hit. `flow.repo_name` sits at 2 spaces; an entry key
+# sits at 6, so 0-4 is the discriminating window.
+adoption_gap() { # <config file>
+    [ -f "$1" ] || return 1
+    _rr=$(tr -d '\r' < "$1" | grep -c '^[[:space:]]*related_repos:[[:space:]]*$' || true)
+    _rn=$(tr -d '\r' < "$1" | grep -cE '^[[:space:]]{0,4}repo_name:[[:space:]]*[^[:space:]]' || true)
+    [ "${_rr:-0}" -gt 0 ] && [ "${_rn:-0}" -eq 0 ]
+}
+
+
 # No local index: an ado project still deserves orientation (it used to get
 # nothing at all). Read the config only — the board is never queried here.
 if [ ! -f "$SPEC" ]; then
@@ -63,10 +85,12 @@ if [ ! -f "$SPEC" ]; then
         }
         END { if (p != "" && a != "") print p " · " a; else print p a }
     ')
+    adopt=""
+    adoption_gap "$CFG" && adopt="related_repos declared without repo_name; /flow:lint finishes cross-repo setup"
     if [ -n "$coord" ]; then
-        echo "flow-toolkit: ado backend — $coord — /flow:run for the board"
+        echo "flow-toolkit: ado backend — $coord — ${adopt:-/flow:run for the board}"
     else
-        echo "flow-toolkit: ado backend — /flow:run for the board"
+        echo "flow-toolkit: ado backend — ${adopt:-/flow:run for the board}"
     fi
     exit 0
 fi
@@ -129,6 +153,7 @@ $STATE
 EOF
 
 HERE=$(cd "$(dirname "$0")" 2>/dev/null && pwd)
+
 nudge=""
 
 # T1 — a DONE spec with an unresolved deferral. The rule lives in the shared
@@ -217,7 +242,11 @@ if [ -z "$nudge" ] && [ -d "$CWD/.git" ] && command -v git >/dev/null 2>&1; then
     fi
 fi
 
-# T4 — nothing to single out; the board is the useful default.
+# T4 — cross-repo config half-declared: the feature is silently inert until
+# repo_name exists, and nothing else ever says so.
+[ -z "$nudge" ] && adoption_gap "$CWD/.flow/config.yml" \n    && nudge="related_repos declared without repo_name; /flow:lint finishes cross-repo setup"
+
+# T5 — nothing to single out; the board is the useful default.
 [ -z "$nudge" ] && nudge="run /flow:run for the board"
 
 echo "$summary — $nudge"
