@@ -251,6 +251,8 @@ It reads any existing `CLAUDE.md`/`SPECIFICATIONS.md` (extends rather than overw
 
 ### /flow:run
 
+**Authoring a cross-repo item.** `/flow:run --add` asks which repos an item touches only when `flow.related_repos` is declared — a single-repo project sees no extra question. With siblings declared it writes `repos:`/`work_item:`/`canonical_repo:` into every slice, mirrors the footprint to the card as `repo:` tags in ado, and can scaffold the **sibling slice** where that repo is reachable, same-backend and has declared this one back. That scaffold is the toolkit's only cross-repo write and is bounded to creating one file and appending one index line. The sibling's id comes from its own index, so the slices share a `work_item:` handle rather than a number. `/flow:lint` reports drift between the card's `repo:` tags and the front-matter, and `--fix` re-syncs the `repo:` tags only — never `slice-done:`.
+
 **Cross-repo runs.** When a spec carries a `repos:` footprint, `/flow:run` opens with a banner naming every repo the item touches, which slice this run builds, each sibling's slice path and status, and its `clone` string as copy-paste text (never fetched). At the done-step it lists the siblings still outstanding. A spec with no `repos:` adds no step and no message.
 
 ```

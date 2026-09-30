@@ -105,6 +105,8 @@ flowchart TD
     Flat -.->|"3+ tasks, or a task with its own AC<br/>/flow:lint --migrate = shape"| Dir
     Flat -.->|"bare &lt;id&gt;.md also always valid<br/>/flow:lint --rename = name"| Flat
 
+    Flat -.->|"cross-repo: --add scaffolds a sibling slice<br/>one file + one index line, sibling numbers its own id"| Sib["sibling repo's own index + slice<br/>joined by work_item:, never by id"]
+
     Flat --> Life
     Dir --> Life
 
