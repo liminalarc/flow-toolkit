@@ -1,6 +1,6 @@
 # flow-toolkit
 
-A Claude Code **plugin** for a conversational, spec-driven development workflow — a set of `/flow:*` slash commands, sub-agents, and always-on hooks. Works in any project (.NET, Node, Python, whatever) by reading plain markdown that lives in your repo: `CLAUDE.md` for the rules, and a **spec model** — a lightweight backlog index plus one detail file per spec. Track the backlog locally or on an external board (e.g. Azure DevOps) via a small config file — same spec files either way.
+A Claude Code **plugin** for a conversational, spec-driven development workflow — a set of `/flow:*` slash commands, sub-agents, and always-on hooks. Works in any project (.NET, Node, Python, whatever) by reading plain markdown that lives in your repo: `CLAUDE.md` for the rules, and a **spec model** — a lightweight backlog index plus one detail file per spec. Track the backlog locally or on an external board (e.g. Azure DevOps) via a small config file — same spec files either way. A work item can span **multiple repos**: flow announces the full footprint, points at each sibling slice, and refuses to close the item while one is unbuilt.
 
 **New here?** This README gets you installed and running. For the full manual — every command, sub-agent, and hook with examples — see **[docs/guide.md](docs/guide.md)**. For diagrams of how it all fits together, see **[docs/how-it-works.md](docs/how-it-works.md)**.
 
@@ -150,6 +150,8 @@ Full detail — plus autonomy modes, the spec model, and agent dispatch — in t
 | `/flow:ship` | Cut a release (conventional-commit version bump) |
 
 **Sub-agents** — skills fan work out to these ([when + why](docs/guide.md#4-the-sub-agent-catalog)): `flow-implementer` (the only one that writes), `flow-verifier`, `flow-spec-reviewer`, `flow-researcher`, `flow-reviewer`, `flow-pr-reviewer`, `flow-ux-validator` (the only one that drives a running app).
+
+**Cross-repo work** — one work item, one slice per repo, joined by a `work_item:` handle (each repo numbers its own backlog, so the id is never the join). Declare siblings once in `.flow/config.yml`; then `/flow:run` opens with the item's full footprint and each sibling's status, `--add` writes the footprint into every slice, and the done-step **blocks** a local `DONE` — or declines to propose the ADO card transition — while any slice is `open`, `absent` or unverifiable. Flow reads a sibling and never builds one; the single sanctioned write creates a slice file and appends one index line, only when you ask. [Details](docs/guide.md#3-commands--skills-with-examples).
 
 **Hooks** — an always-on, zero-token seatbelt: `flow-spec-guard`, `flow-claude-guard`, `flow-commit-guard`, `flow-session-brief` (opens each session with the backlog *and* the one nudge that fits its state), all funnelling machine-checkable rules through the single-source `flow-preflight.sh`.
 
