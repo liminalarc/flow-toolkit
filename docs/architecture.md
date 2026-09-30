@@ -69,3 +69,4 @@ This is the *design*; each piece below is built by its own implementation spec (
 | 1.26 | Cross-repo footprint banner + sibling reminder | presentation of the footprint at run start + done-step | 1.29 |
 | 1.27 | Per-slice completion + terminal gate | the ado completion record + the terminal disposition | 1.26 |
 | 1.28 | Cross-repo authoring + sibling discovery | the write side — `--add`, `/flow:init`, the tag mirror | 1.29 (parallel to 1.26/1.27) |
+| 1.30 | Adoption path for repos configured before cross-repo | consuming 1.29's `undeclared:` report at four surfaces | 1.29 (split from 1.28, 2026-09-30) |
