@@ -72,10 +72,11 @@ Every flow project stores specs as **an index + one detail file per spec**. **St
 
 ### `/flow:run` (no args)
 
-Read the index. Show a concise summary: IN PROGRESS first, then NOT STARTED grouped by phase (local) or the equivalent states via `state_map` (ado). Suggest the next item by order/phase. Invite the user to pick or describe work.
+Read the index. Show a concise summary: IN PROGRESS first, then NOT STARTED grouped by phase (local) or the equivalent states via `state_map` (ado, github). Suggest the next item by order/phase. Invite the user to pick or describe work.
 
 - local: if `SPECIFICATIONS.md` doesn't exist, suggest `/flow:init`.
 - ado: query open items under the configured area path (`NOT IN ('Closed','Removed')`). If the query returns nothing, say so plainly — never assume the backlog is empty without confirming the query ran.
+- github: `gh project item-list <n> --owner <owner> --format json` with an **explicit `--limit`** (it defaults to 30 and would silently truncate a real board) or a `--query` scope. Group by the `status_field` option via `state_map`; an option missing from the map is reported `unmapped`, never guessed into a token. Same rule on an empty result: say the query ran.
 
 ### `/flow:run --ideas`
 
@@ -93,12 +94,12 @@ Read the index first to avoid re-suggesting existing specs. Brainstorm through t
 - **Autonomy gates only the plan-approval pause** — resolved via `flow-preflight.sh autonomy`. `auto-build` never bypasses Claude Code permissions, edits config, or self-approves; its safety net is the verifier.
 - **Nothing builds unreviewed** — `implement.md` §2 dispatches a `flow:flow-spec-reviewer` on the draft spec before sign-off (INVEST on the spec, SMART per criterion, prior art vs the archive). `checkpoint` → advisory; `auto-build` → gates on the verdict's `BLOCKING` line (`yes` only when an INVEST letter is WEAK): blocking → one bounded revision then escalate; criterion-only findings surface and proceed. It judges, never authors. `--add` offers it rather than imposing it.
 - **Nothing integrates unverified under `auto-build`** — a `flow:flow-verifier` FAIL blocks; one bounded retry, then escalate to `checkpoint`. Verifiers judge, never fix; implementers build only to the task-local AC and never touch status/index/`deferrals:`.
-- **A cross-repo item announces its footprint, and cannot close half-shipped** — `/flow:run` banners the full footprint at §1 and, at §4, reports every sibling slice not `done` and **gates the terminal transition on it**: flat-file blocks a local `DONE`; ado declines to propose the card transition and offers a confirm-first override that records the bypass. `open`, `absent` and `cannot-determine` all hold it. Renders `flow-preflight.sh resolve-footprint`/`slice-status` and derives nothing. No footprint ⇒ no-op.
+- **A cross-repo item announces its footprint, and cannot close half-shipped** — `/flow:run` banners the full footprint at §1 and, at §4, reports every sibling slice not `done` and **gates the terminal transition on it**: flat-file blocks a local `DONE`; ado and github decline to propose the transition and offer a confirm-first override that records the bypass. `open`, `absent` and `cannot-determine` all hold it. Renders `flow-preflight.sh resolve-footprint`/`slice-status` and derives nothing. No footprint ⇒ no-op.
 - TDD — test first, per `CLAUDE.md`.
-- **Status is single-source** — the index (local) or the board (ado). Never write a status into a `specs/<id>.md` detail file.
+- **Status is single-source** — the index (local) or the board (ado, github). Never write a status into a `specs/<id>.md` detail file.
 - **Detail files are backend-neutral** — the same shape in every mode.
 - **No silent deferrals** — the deferral protocol is mandatory (see `reference/implement.md`): surface what you're deferring + why, get a per-item decision, cross-link, and record it as a `deferrals:` front-matter entry. Deferrals gate `DONE` mechanically (`flow-preflight.sh resolved`).
 - Never ship from here. `/flow:ship` is the separate, deliberate release step.
-- ado mode: flow owns *spec content* (`specs/<id>.md`); the board + humans own *card lifecycle*. Never reprioritize, reassign, set iteration, or close a card unprompted. On card-AC vs detail conflict, surface the diff — never silently overwrite. MCP-first, `az` CLI fallback; on a write failure announce it and fall back or stop, never a silent no-op.
+- ado / github mode: flow owns *spec content* (`specs/<id>.md`); the board + humans own *item lifecycle*. Never reprioritize, reassign, set iteration/milestone, reorder the board, or close an item unprompted. On item-AC vs detail conflict, surface the diff — never silently overwrite. ado: MCP-first, `az` CLI fallback. github: `gh`-only — a failure, a missing `project` scope, or no `gh` is announced and **stops**. On a write failure announce it and fall back or stop, never a silent no-op.
 - If the work depends on an unfinished spec, stop and say so.
 - Conversational — propose and confirm; don't barrel ahead.
