@@ -85,7 +85,7 @@ It's a **criterion-gated fallback** — retired only once the plugin registers t
 /flow:ship         # cut the release
 ```
 
-That's the whole loop. Pass a concept to `/flow:init` or leave it blank to answer conversationally; on an **existing** codebase it reads what's there, skips the walking skeleton, and seeds a real backlog. To track the backlog on an ADO board instead of a local `SPECIFICATIONS.md`, run `/flow:init --backend ado`.
+That's the whole loop. Pass a concept to `/flow:init` or leave it blank to answer conversationally; on an **existing** codebase it reads what's there, skips the walking skeleton, and seeds a real backlog. To track the backlog on a board instead of a local `SPECIFICATIONS.md`, run `/flow:init --backend ado` (Azure DevOps) or `/flow:init --backend github` (a GitHub Projects v2 board — its Status column becomes the state machine, and `--backend github` reads your board's real column names rather than assuming them).
 
 ---
 
@@ -93,7 +93,7 @@ That's the whole loop. Pass a concept to `/flow:init` or leave it blank to answe
 
 By default (`checkpoint` mode) `/flow:run` never writes code until you approve the plan; a spec can opt into `auto-build` to skip that pause, with an independent verifier as the safety net.
 
-A spec carrying a `repos:` footprint cannot reach `DONE` while another repo's slice is unbuilt — flat-file refuses the status change, ado declines to propose the card transition and offers a confirm-first override. Completion is recorded per repo: each repo's own index in flat-file mode, a `slice-done:<repo>` card tag in ado. It also opens with a **cross-repo banner** — the full footprint, which slice this run builds, where each sibling's slice lives and whether it is done — and closes with a reminder of the siblings still outstanding. Both are advisory; flow reads a sibling and never builds one.
+A spec carrying a `repos:` footprint cannot reach `DONE` while another repo's slice is unbuilt — flat-file refuses the status change; ado and github decline to propose the transition and offer a confirm-first override. Completion is recorded per repo: each repo's own index in flat-file mode, a `slice-done:<repo>` card tag (ado) or issue label (github). It also opens with a **cross-repo banner** — the full footprint, which slice this run builds, where each sibling's slice lives and whether it is done — and closes with a reminder of the siblings still outstanding. Both are advisory; flow reads a sibling and never builds one.
 
 ```mermaid
 flowchart TD
@@ -127,7 +127,7 @@ flowchart TD
 
 **A work item can span repos:** declare the siblings once in `.flow/config.yml` (`flow.repo_name` + `flow.related_repos`), then a spec names the repos it touches with `repos: [toolkit, ratchet-store]`, a `work_item:` handle joining the slices, and `canonical_repo:` naming which repo holds the full spec. Each repo keeps its own id and its own index entry — the handle is the join, because every repo numbers its own backlog. Per-machine sibling paths go in a gitignored `.flow/config.local.yml`. `/flow:run --add` writes the footprint into every slice and, when a sibling is reachable and has declared this repo back, can scaffold its **sibling slice** — creating one file and appending one index line, never more. Flow reads a sibling; it never builds one.
 
-**Specs are named, not numbered:** a detail file is `specs/1.2-password-reset.md` — the id plus a slug of its title (the story title on an ADO board) — so the backlog reads clearly in a file tree, an editor tab, or a PR's changed-files list. The bare `specs/1.2.md` form stays valid forever; set `flow.spec_filename: id` in `.flow/config.yml` to keep it, or run `/flow:lint --rename --all` once to retrofit an existing repo.
+**Specs are named, not numbered:** a detail file is `specs/1.2-password-reset.md` — the id plus a slug of its title (the story title on an ADO board, the issue title on a GitHub one) — so the backlog reads clearly in a file tree, an editor tab, or a PR's changed-files list. The bare `specs/1.2.md` form stays valid forever; set `flow.spec_filename: id` in `.flow/config.yml` to keep it, or run `/flow:lint --rename --all` once to retrofit an existing repo.
 
 Full detail — plus autonomy modes, the spec model, and agent dispatch — in the [guide](docs/guide.md) and [diagrams](docs/how-it-works.md).
 
@@ -151,7 +151,7 @@ Full detail — plus autonomy modes, the spec model, and agent dispatch — in t
 
 **Sub-agents** — skills fan work out to these ([when + why](docs/guide.md#4-the-sub-agent-catalog)): `flow-implementer` (the only one that writes), `flow-verifier`, `flow-spec-reviewer`, `flow-researcher`, `flow-reviewer`, `flow-pr-reviewer`, `flow-ux-validator` (the only one that drives a running app).
 
-**Cross-repo work** — one work item, one slice per repo, joined by a `work_item:` handle (each repo numbers its own backlog, so the id is never the join). Declare siblings once in `.flow/config.yml`; then `/flow:run` opens with the item's full footprint and each sibling's status, `--add` writes the footprint into every slice, and the done-step **blocks** a local `DONE` — or declines to propose the ADO card transition — while any slice is `open`, `absent` or unverifiable. Flow reads a sibling and never builds one; the single sanctioned write creates a slice file and appends one index line, only when you ask. [Details](docs/guide.md#3-commands--skills-with-examples).
+**Cross-repo work** — one work item, one slice per repo, joined by a `work_item:` handle (each repo numbers its own backlog, so the id is never the join). Declare siblings once in `.flow/config.yml`; then `/flow:run` opens with the item's full footprint and each sibling's status, `--add` writes the footprint into every slice, and the done-step **blocks** a local `DONE` — or declines to propose the board transition — while any slice is `open`, `absent` or unverifiable. Flow reads a sibling and never builds one; the single sanctioned write creates a slice file and appends one index line, only when you ask. [Details](docs/guide.md#3-commands--skills-with-examples).
 
 **Hooks** — an always-on, zero-token seatbelt: `flow-spec-guard`, `flow-claude-guard`, `flow-commit-guard`, `flow-session-brief` (opens each session with the backlog *and* the one nudge that fits its state), all funnelling machine-checkable rules through the single-source `flow-preflight.sh`.
 

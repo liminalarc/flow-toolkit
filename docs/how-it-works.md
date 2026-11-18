@@ -85,15 +85,17 @@ protocol + validation done-gate), `skills/run/SKILL.md` (autonomy rules),
 ## 2. Spec model + lifecycle
 
 A spec is an **index entry** (status lives here — single source of truth) plus **one
-detail file**. The detail file is flat until it grows, then earns a directory of task
-files. When DONE/SUPERSEDED it archives; its id is never reused. A spec whose `repos:` footprint
+detail file**. The index is `SPECIFICATIONS.md`, or a board when `.flow/config.yml` sets
+`lifecycle_authority: ado` or `lifecycle_authority: github`. The detail file is flat until it
+grows, then earns a directory of task files. When DONE/SUPERSEDED it archives; its id is never
+reused. A spec whose `repos:` footprint
 spans repos is **held** at the terminal step until every slice reports done — read from each
-repo's own index in flat-file mode, or from `slice-done:<repo>` card tags in ado.
+repo's own index in flat-file mode, or from `slice-done:<repo>` card tags (ado) / issue labels (github).
 
 ```mermaid
 flowchart TD
     subgraph Index["Index — status lives ONLY here"]
-        I["SPECIFICATIONS.md local<br/>or the board in ado mode<br/>id · title · STATUS · link"]
+        I["SPECIFICATIONS.md local<br/>or the board — ado · github<br/>id · title · STATUS · link"]
     end
 
     subgraph Detail["Detail file — no status field · id: is the identity"]
@@ -120,11 +122,11 @@ flowchart TD
     end
 
     IP --> XR{"cross-repo?<br/>slice-status per repo"}
-    XR -->|"a slice not done"| Held["Held: flat-file refuses DONE<br/>ado declines to propose + confirm-first override"]
+    XR -->|"a slice not done"| Held["Held: flat-file refuses DONE<br/>a board backend declines to propose + confirm-first override"]
     Held --> IP
     XR -->|"all done / single repo"| DN
 
-    DN --> Arch["Archive (both backends): detail to specs/archive/<br/>name unchanged · local also moves the index entry<br/>ado triggers on Closed-category state · id never reused"]
+    DN --> Arch["Archive (every backend): detail to specs/archive/<br/>name unchanged · local also moves the index entry<br/>a board triggers on its mapped terminal state · id never reused"]
     SU --> Arch
 ```
 

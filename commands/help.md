@@ -22,7 +22,7 @@ Usage: `/flow:help` · `/flow:help specs` · `/flow:help build` · `/flow:help r
 
    A single `grep -h` style pass over those globs is enough; do **not** read whole files, and do not read `reference/*`. If a glob comes back empty, report that area as unavailable rather than filling it in from memory.
 
-3. **Read the project's current state** (cheap, local): does `SPECIFICATIONS.md` or `.flow/config.yml` exist (local vs ado vs not-a-flow-project)? Is anything `IN PROGRESS`? Does the config declare `flow.related_repos` (a **cross-repo** project — say so in one clause, since it changes what `/flow:run` shows and what can reach `DONE`)? This decides the "next step" line in step 5.
+3. **Read the project's current state** (cheap, local): does `SPECIFICATIONS.md` or `.flow/config.yml` exist (local vs ado vs github vs not-a-flow-project)? Is anything `IN PROGRESS`? Does the config declare `flow.related_repos` (a **cross-repo** project — say so in one clause, since it changes what `/flow:run` shows and what can reach `DONE`)? This decides the "next step" line in step 5.
 
 4. **Print the map — one screen.** Aim for ~40 lines; this is a glance surface, not a manual. Group entry points by the **job**, not by whether they're a command or a skill (the user doesn't care which is which at recall time):
    - **Plan & build** · **Find work** · **Review & validate** · **Maintain & release**
@@ -30,7 +30,7 @@ Usage: `/flow:help` · `/flow:help specs` · `/flow:help build` · `/flow:help r
    One line each: invocation, the useful flags, and a ≤8-word purpose taken from its own description. Mark skills that fan out to sub-agents with the agent they dispatch, so the fan-out is discoverable from the map itself.
 
 5. **Close with two lines that are specific to right now**, not generic:
-   - **You are here** — backend (local/ado), any `IN PROGRESS` spec, count of open specs.
+   - **You are here** — backend (local, or a board via `--backend ado` / `--backend github`), any `IN PROGRESS` spec, count of open specs.
    - **Likely next** — the one command that fits that state (nothing in progress → `/flow:run` to pick; spec in progress → `/flow:run <id>`; DONE work unshipped → `/flow:ship`; not a flow project → `/flow:init`).
 
 6. **Topic mode** (`/flow:help <noun>`) — same sourcing rules, one area only, and go deeper than the map: include the flags, the file shapes involved, and a worked one-liner example. Topics:

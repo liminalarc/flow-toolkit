@@ -14,7 +14,7 @@ and, for each skill, **exactly when its sub-agents get dispatched**.
 - [2. Core concepts](#2-core-concepts)
   - [2.1 The spec model — index + detail files](#21-the-spec-model--index--detail-files)
   - [2.2 The CLAUDE.md hierarchy](#22-the-claudemd-hierarchy)
-  - [2.3 Backends — local vs ado](#23-backends--local-vs-ado)
+  - [2.3 Backends — local, ado, github](#23-backends--local-ado-github)
   - [2.4 Autonomy — checkpoint vs auto-build](#24-autonomy--checkpoint-vs-auto-build)
   - [2.5 Deferrals — the no-silent-scope-narrowing rule](#25-deferrals--the-no-silent-scope-narrowing-rule)
   - [2.6 The validation done-gate — declared per-spec](#26-the-validation-done-gate--declared-per-spec)
@@ -92,7 +92,7 @@ links: []
 ## Progress log
 ```
 
-**Descriptive filenames.** A detail file's name carries its id **and a slug of its title**, so the backlog is readable in a file tree, an editor tab, a `git log --stat`, and a PR's changed-files list without opening anything. The `id:` front-matter is always the identity — the slug is decoration and is never parsed back out of the name, so an id containing `-` (`BL-12`) stays unambiguous. The slug is inferred from the index Title (local) or the work item's `System.Title` (ado); lowercased, non-alphanumerics collapsed to `-`, truncated at a word boundary to 40 chars.
+**Descriptive filenames.** A detail file's name carries its id **and a slug of its title**, so the backlog is readable in a file tree, an editor tab, a `git log --stat`, and a PR's changed-files list without opening anything. The `id:` front-matter is always the identity — the slug is decoration and is never parsed back out of the name, so an id containing `-` (`BL-12`) stays unambiguous. The slug is inferred from the index Title (local), the work item's `System.Title` (ado), or the issue title (github); lowercased, non-alphanumerics collapsed to `-`, truncated at a word boundary to 40 chars.
 
 The bare `specs/<id>.md` form stays **permanently valid** — the hooks accept both unconditionally, so nothing in an existing repo breaks. Set `flow.spec_filename: id` in `.flow/config.yml` to author bare names; retrofit an existing repo with `/flow:lint --rename --all` (opt-in, `git mv`, dry-run first). Anything that needs to turn an id into a path calls **`flow-preflight.sh spec-path <id>`** — the one helper that knows every form.
 
@@ -127,14 +127,18 @@ Engineering principles Claude reads every session — a set of rules that keep s
 
 **Don't put in CLAUDE.md:** code patterns derivable from the code, git history, ephemeral task state.
 
-### 2.3 Backends — local vs ado
+### 2.3 Backends — local, ado, github
 
 The backend is set by an optional `.flow/config.yml`. **Absent ⇒ local mode** (the default; nothing to configure).
 
 - **`local`** — the index is `SPECIFICATIONS.md`; `/flow:run` owns the full lifecycle; ids are `Phase.Spec` (`1.2`, `2.37a`); the status vocabulary is used directly (no translation).
 - **`ado`** — the **board is the index** (no `SPECIFICATIONS.md`); ids are work-item numbers, so a detail file is named from the story title (`specs/642103-add-user-login.md`); the board owns the state machine, so a `state_map` translates each board state → a canonical token. The board may live in a **different ADO project/org than the repo** — only the detail files live in the repo. Flow's card writes are **propose-only**: it transitions state on your sign-off and refreshes one "Spec:" pointer comment — never reprioritizing, reassigning, or closing a card unprompted.
 
-Detail files are **byte-for-byte the same shape** in both modes; only *where lifecycle is owned* changes, and where the filename's slug comes from (the index Title vs `System.Title`). **Archival behaves identically in both** — a finished spec's detail moves to `specs/archive/` either way; ado just takes its trigger from the card's state category instead of an index edit. Set up ado with `/flow:init --backend ado` (it auto-builds the `state_map` from ADO state categories).
+- **`github`** — a **GitHub Projects v2 board is the index** (no `SPECIFICATIONS.md`); the board's `Status` single-select owns the state machine, so `state_map` translates each **column option → a canonical token**. Ids are **repo-qualified** `<repo>-<issue#>` (`specs/atlas-12-add-user-login.md`): issue numbers are unique per repo only, and an org board can gain a repo at any time, so qualifying unconditionally means no id ever has to change. Writes are **propose-only**: flow sets the Status option and refreshes one "Spec:" pointer comment — never closing, reassigning, re-milestoning or reordering the board.
+
+Two things differ from ado and are worth knowing before you configure it. Projects v2 exposes option **names with no categories**, so `state_map` is discovered from your board and confirmed, not derived mechanically — and **expect the defaults to match nothing**: a real board reads `Discovery · Backlog · Ready for Dev · In Dev · Dev Done · Ready for Review · Deployed`, several columns collapsing onto one token, with `Deployed` as the terminal one. And `SUPERSEDED` comes from the **issue** (closed with `state_reason: not_planned`), not from a column. The tool ladder is **`gh`-only** — no MCP rung — so a `gh` failure, a missing `project` token scope (`gh auth refresh -s project`) or no `gh` at all is announced and **stops**, never guessed past.
+
+Detail files are **byte-for-byte the same shape** in every mode; only *where lifecycle is owned* changes, and where the filename's slug comes from (the index Title, `System.Title`, or the issue title). **Archival behaves identically** — a finished spec's detail moves to `specs/archive/` either way; the board backends just take their trigger from the item's mapped terminal state instead of an index edit, always **through `state_map`** rather than by matching a state or column name. Set up ado with `/flow:init --backend ado` (it auto-builds the `state_map` from ADO state categories) or github with `/flow:init --backend github` (it reads your board's real columns with `gh project field-list`).
 
 ### 2.4 Autonomy — checkpoint vs auto-build
 
@@ -253,7 +257,7 @@ It reads any existing `CLAUDE.md`/`SPECIFICATIONS.md` (extends rather than overw
 
 **Adopting cross-repo in an existing project.** A repo configured before cross-repo existed has no `flow.repo_name` or `flow.related_repos`, and every cross-repo capability is silently inert until it does. Flow says so at four moments, all confirm-first and none of which infers a value: `/flow:lint` reports the gap (and writes it with `--fix`), `/flow:run --add` offers to declare a repo you mention, `/flow:init --adopt` offers the block to a config that lacks one, and the session brief nudges toward `/flow:lint` when `related_repos` is declared without `repo_name`.
 
-**Authoring a cross-repo item.** `/flow:run --add` asks which repos an item touches only when `flow.related_repos` is declared — a single-repo project sees no extra question. With siblings declared it writes `repos:`/`work_item:`/`canonical_repo:` into every slice, mirrors the footprint to the card as `repo:` tags in ado, and can scaffold the **sibling slice** where that repo is reachable, same-backend and has declared this one back. That scaffold is the toolkit's only cross-repo write and is bounded to creating one file and appending one index line. The sibling's id comes from its own index, so the slices share a `work_item:` handle rather than a number. `/flow:lint` reports drift between the card's `repo:` tags and the front-matter, and `--fix` re-syncs the `repo:` tags only — never `slice-done:`.
+**Authoring a cross-repo item.** `/flow:run --add` asks which repos an item touches only when `flow.related_repos` is declared — a single-repo project sees no extra question. With siblings declared it writes `repos:`/`work_item:`/`canonical_repo:` into every slice, mirrors the footprint to the board as `repo:` tags (ado) or issue labels (github), and can scaffold the **sibling slice** where that repo is reachable, same-backend and has declared this one back. That scaffold is the toolkit's only cross-repo write and is bounded to creating one file and appending one index line. The sibling's id comes from its own index, so the slices share a `work_item:` handle rather than a number. `/flow:lint` reports drift between the board's `repo:` tags/labels and the front-matter, and `--fix` re-syncs the `repo:`-prefixed ones only — never `slice-done:`.
 
 **Cross-repo runs.** When a spec carries a `repos:` footprint, `/flow:run` opens with a banner naming every repo the item touches, which slice this run builds, each sibling's slice path and status, and its `clone` string as copy-paste text (never fetched). At the done-step it lists the siblings still outstanding. A spec with no `repos:` adds no step and no message.
 
@@ -266,7 +270,7 @@ This run builds the toolkit slice only.
 Remember to run /flow:run in ratchet-store and docs-site too.
 ```
 
-`absent` means the sibling is reachable and simply has no slice yet; `cannot-determine` means flow could not tell, and always says why. Neither is ever reported as done — and at the done-step **neither lets the item close**: flat-file refuses `DONE`, ado declines to propose the card transition and offers a confirm-first override that records the bypass. `/flow:ship` blocks a release containing a half-shipped item, with no override — a release is the wrong place to wave through an unbuilt slice. Where completion is recorded differs by backend: flat-file reads each repo's own index, ado reads `slice-done:<repo>` tags that `/flow:run` adds to the card as each slice finishes (exactly one tag, no other field write).
+`absent` means the sibling is reachable and simply has no slice yet; `cannot-determine` means flow could not tell, and always says why. Neither is ever reported as done — and at the done-step **neither lets the item close**: flat-file refuses `DONE`; ado and github decline to propose the transition and offer a confirm-first override that records the bypass. `/flow:ship` blocks a release containing a half-shipped item, with no override — a release is the wrong place to wave through an unbuilt slice. Where completion is recorded differs by backend: flat-file reads each repo's own index; ado reads `slice-done:<repo>` card tags and github the equivalent issue labels, added as each slice finishes (exactly one tag/label, no other field write).
 
 The primary development command — all backlog management and implementation. A **skill** that routes by invocation and loads only that path's reference.
 
@@ -384,7 +388,7 @@ Audit the CLAUDE.md hierarchy + spec integrity. **Dispatches no sub-agents.**
 
 Checks (with severity `ERROR` / `WARNING` / `INFO`): CLAUDE.md caps + required sections + no root-duplication; index entry format + valid/unique statuses; every entry has a detail file and vice-versa; no two files claiming one id; the filename stem matches the file's `id:` and carries no status; index links point at the real file; `## Value` reads as a user story; deferral well-formedness + the DONE-gate; DONE specs have no unchecked AC; archive holds only DONE/SUPERSEDED. `--fix` never touches CLAUDE.md *content* or resolves ambiguous issues.
 
-**ado only — archival reconciliation.** Because cards close on the board, sometimes outside flow, `/flow:lint` queries Closed-category work items and flags any whose detail file is still in the active folder, offering the `git mv` confirm-first. Skipped wholesale in local mode (where the index entry and the file move in one commit and can't drift). MCP-first with an `az boards` fallback that is **announced** — if the board is unreachable it reports that the check couldn't be evaluated rather than passing it.
+**Board backends only — archival reconciliation.** Because items reach a terminal state on the board, sometimes outside flow — a card closed in the ADO UI, an issue dragged to the final column on a GitHub board — `/flow:lint` queries terminal items (resolved *through* `state_map`, never by matching a state or column name) and flags any whose detail file is still in the active folder, offering the `git mv` confirm-first. Skipped wholesale in local mode (where the index entry and the file move in one commit and can't drift). ado is MCP-first with an **announced** `az boards` fallback; github is `gh`-only. If the board is unreachable it reports that the check couldn't be evaluated rather than passing it.
 
 `--rename` is the **opt-in retrofit** to descriptive `<id>-<slug>` filenames: dry-run by default, `git mv` only (history preserved), file contents never rewritten, index links updated in the same change, collisions skipped rather than forced, and idempotent — so `--rename --all` is safe to re-run. Never part of an audit or `--fix`.
 
@@ -451,6 +455,7 @@ unshipped         flow-toolkit: no spec IN PROGRESS · 8 DONE — 3 specs DONE s
 cross-repo gap    flow-toolkit: no spec IN PROGRESS · 12 NOT STARTED — related_repos declared without repo_name; /flow:lint finishes cross-repo setup
 idle (T5)         flow-toolkit: no spec IN PROGRESS · 12 NOT STARTED · 8 DONE — run /flow:run for the board
 ado               flow-toolkit: ado backend — Contoso · Contoso\Web — /flow:run for the board
+github            flow-toolkit: github backend — liminalarc · project 36 — /flow:run for the board
 ```
 
 The cross-repo tier sits immediately above the idle default, so the three tiers above it still win and only one line ever prints. It fires in the ado branch too — that path exits before the ladder, and an ado cross-repo project has no local index, so it would otherwise never see it. Detection is two greps of `.flow/config.yml`: no helper call, no spec-tree scan.
