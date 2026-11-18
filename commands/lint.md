@@ -67,7 +67,7 @@ Record for each finding: **severity** (`ERROR`/`WARNING`/`INFO`), **location** (
 | No DONE spec left in active backlog | WARNING | A DONE entry not moved to `## Archive`. |
 | No non-DONE/non-SUPERSEDED in archive | ERROR | An IN PROGRESS / NOT STARTED entry under `## Archive`. |
 
-**Detail files (`<spec_dir>/*.md` + `<spec_dir>/archive/*.md`) — both modes:**
+**Detail files (`<spec_dir>/*.md` + `<spec_dir>/archive/*.md`) — every mode:**
 
 Detail files come in two shapes — **flat** or a **directory** holding an orchestrator plus task files (a big spec's per-task "how") — and two name forms: descriptive `<id>-<slug>` or bare `<id>`. **Resolve an id to its detail file with `flow-preflight.sh spec-path <id> --repo .`** (located as described below): it covers every shape/name/location combination, so never guess a path or glob for one here. Exit 1 = no detail file; exit 2 = **two files claim one id** (report as the ERROR below). Task files are **not** separate index entries: they belong to their orchestrator's id, so they are never orphans.
 
@@ -95,7 +95,7 @@ Detail files come in two shapes — **flat** or a **directory** holding an orche
 
 **Deferral checks use the shared helper** (`flow-preflight.sh`) so the rule is identical to the commit guard and `/flow:ship`. Find it: the plugin bundles it at `${CLAUDE_PLUGIN_ROOT}/hooks/flow-preflight.sh` — **try that first** — then fall back to the legacy installer locations (`$CLAUDE_CONFIG_DIR/hooks/flow-preflight.sh`, then `~/.claude/hooks/flow-preflight.sh`, then `~/.claude-*/hooks/flow-preflight.sh`). If none is found, say so and fall back to reading the front-matter yourself against the rule above — never silently skip the deferral checks.
 
-- **Well-formedness** (both backends): `flow-preflight.sh wellformed specs/<id>.md` for each detail file.
+- **Well-formedness** (every backend): `flow-preflight.sh wellformed specs/<id>.md` for each detail file.
 - **DONE-gating**:
   - **local**: `flow-preflight.sh resolved --repo .` reads `SPECIFICATIONS.md` for the DONE set itself.
   - **ado / github**: the board owns status, so query the DONE items first, then pass them: `flow-preflight.sh resolved --repo . --done <id,id,...>`. In github the ids are the repo-qualified `<repo>-<issue#>` form the spec files carry.
@@ -241,6 +241,6 @@ flow:lint --rename --all (dry run)
 - Always diff before writing; confirm if any change is ambiguous.
 - Report the line number for every finding when possible.
 - Five precise findings beat a wall of nitpicks. Over 20 findings → group and summarize.
-- `--migrate` (either mode) never runs destructively — dry-run first; the legacy conversion backs up and preserves every byte of unclassified content, and the flat→dir conversion uses `git mv` and never rewrites file contents.
+- `--migrate` (any mode) never runs destructively — dry-run first; the legacy conversion backs up and preserves every byte of unclassified content, and the flat→dir conversion uses `git mv` and never rewrites file contents.
 - `--rename` is opt-in and never part of an audit or `--fix`: dry-run first, `git mv` only, contents untouched, collisions skipped rather than overwritten.
 - **Never resolve an id to a path by hand** — call `flow-preflight.sh spec-path`, so the audit and the guards agree on every filename form.
