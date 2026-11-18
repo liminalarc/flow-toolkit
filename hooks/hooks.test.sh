@@ -1986,6 +1986,18 @@ out_has "fixture: a human comment follows it" "shipping Monday" "$got"
 got=$(stub_case issue-closed-notplanned issue view 19 --json state,stateReason)
 out_has "fixture: closed not_planned is representable" "NOT_PLANNED" "$got"
 
+# A failing board must fail on EVERY read, not just the two that had responses:
+# an unanswered key falls through to exit 0 + empty stdout, which a caller reads
+# as "the board is empty" rather than "the board is unreachable".
+err=$(FLOW_GH_CAPTURE_LOG="$gs/calls.log" FLOW_GH_STUB_DIR="$R/scope-error"       bash "$STUB" project item-list 36 --owner liminalarc 2>&1 >/dev/null); rc=$?
+exit_is "fixture: scope-error covers item-list too" 4 $rc
+out_has "fixture: item-list failure names the scope" "read:project" "$err"
+err=$(FLOW_GH_CAPTURE_LOG="$gs/calls.log" FLOW_GH_STUB_DIR="$R/scope-error"       bash "$STUB" issue view 12 2>&1 >/dev/null); rc=$?
+exit_is "fixture: scope-error covers issue view too" 4 $rc
+
+got=$(stub_case issue-cross-repo-drift issue view 20 --json labels)
+out_has "fixture: drift case carries a stale repo: label" "repo:other" "$got"
+
 got=$(stub_case issue-cross-repo issue view 20 --json labels)
 out_has "fixture: cross-repo footprint rides on labels" "repo:ratchet-store" "$got"
 out_has "fixture: slice-done rides on labels too" "slice-done:atlas" "$got"

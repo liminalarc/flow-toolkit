@@ -76,7 +76,7 @@ Read the index. Show a concise summary: IN PROGRESS first, then NOT STARTED grou
 
 - local: if `SPECIFICATIONS.md` doesn't exist, suggest `/flow:init`.
 - ado: query open items under the configured area path (`NOT IN ('Closed','Removed')`). If the query returns nothing, say so plainly — never assume the backlog is empty without confirming the query ran.
-- github: `gh project item-list <n> --owner <owner> --format json` with an **explicit `--limit`** (it defaults to 30 and would silently truncate a real board) or a `--query` scope. Group by the `status_field` option via `state_map`; an option missing from the map is reported `unmapped`, never guessed into a token. Same rule on an empty result: say the query ran.
+- github: `gh project item-list <n> --owner <owner> --format json` with an **explicit `--limit`** (it defaults to 30 and would silently truncate a real board) or a `--query` scope. Group by the `status_field` option via `state_map`; an option missing from the map is reported `unmapped`, never guessed into a token. Same rule on an empty result: say the query ran. **Decide that from `gh`'s exit status, never from empty output** — a failed call can return nothing at all, which is indistinguishable from a genuinely empty board if you only look at stdout, and reporting "no open items" for an unreachable board is the worst available answer.
 
 ### `/flow:run --ideas`
 
