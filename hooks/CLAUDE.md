@@ -41,6 +41,8 @@ Every rule reads only the repo's own files, so it behaves identically in local a
 
 `fixtures/ado-capture/az` is the **write-capture double** for ADO card writes (spec 1.27). Put that directory first on `PATH`, set `FLOW_ADO_CAPTURE_LOG`, and every `az` call is recorded with full argv instead of executed — so a prompt-level ado write can be asserted offline (exactly one `slice-done:<repo>` tag, no other field, no new comment). 1.29's resolvers are read-only and cannot witness a write, and this repo has no board; the real round-trip is field-verified after release, per 1.18.
 
+`fixtures/gh-stub/gh` is the **programmable stub** for GitHub Projects v2 / Issues calls (spec 1.31). Same `PATH`-first idea plus `FLOW_GH_CAPTURE_LOG`, but it also *answers*: `$FLOW_GH_STUB_DIR/<key>.{out,err,exit}` scripts stdout, stderr and exit status per call, keyed by the first two non-numeric, non-flag argv tokens (`project-field-list`, `issue-view`, …), with a global `FLOW_GH_STUB_EXIT` for the blunt gh-is-unavailable case. The `az` double only logs because an ADO write needs no return value; here the read path is load-bearing — a Status write happens only after a read resolves the item, `/flow:init` builds its `state_map` from `field-list`, and the scope-gap and board-unreachable criteria need a real failure to assert. No fallthrough to real `gh` exists, so "board data is an input, never a query" still holds.
+
 `hooks.test.sh` is the bash test harness for hook parsing/validation. Any change to how a hook parses or validates gets a matching case here, and `bash hooks/hooks.test.sh` must be green before committing (TDD mandate from root). CI (`.github/workflows/test.yml`) runs the same harness on every push/PR to `main`.
 
 ## Rules

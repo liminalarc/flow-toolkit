@@ -930,6 +930,97 @@ b=$(brief_for "$sba")
 out_has "ado brief names the backend" "ado" "$b"
 out_has "ado brief names the project" "Contoso" "$b"
 
+# github (1.31) — no index either; the Projects v2 board is the index, so orient
+# from the config alone exactly as the ado branch does.
+sbh="$tmp/sbgh"; mkdir -p "$sbh/.flow"
+cat > "$sbh/.flow/config.yml" <<'EOF'
+flow:
+  lifecycle_authority: github
+  github:
+    owner: liminalarc
+    project_number: 36
+    status_field: "Status"
+EOF
+b=$(brief_for "$sbh")
+out_has "github brief names the backend" "github" "$b"
+out_has "github brief names the owner" "liminalarc" "$b"
+out_has "github brief names the project number" "36" "$b"
+printf '{"cwd":"%s"}' "$sbh" | bash "$BRIEF" >/dev/null 2>&1; exit_is "github brief exits 0" 0 $?
+
+# Indentation is load-bearing (same trap the ado block hit): a related_repos
+# entry's own `owner:` must not shadow the board coordinate, and it is listed
+# FIRST here so a naive first-match parse fails this case.
+sbh2="$tmp/sbgh2"; mkdir -p "$sbh2/.flow"
+cat > "$sbh2/.flow/config.yml" <<'EOF'
+flow:
+  lifecycle_authority: github
+  repo_name: toolkit
+  related_repos:
+    - name: other
+      owner: someoneelse
+  github:
+    owner: liminalarc
+    project_number: 36
+EOF
+b=$(brief_for "$sbh2")
+out_has "github coord survives a sibling owner key" "liminalarc" "$b"
+out_lacks "sibling owner does not shadow the board" "someoneelse" "$b"
+
+# A half-written config must not crash or print a bare separator.
+sbh3="$tmp/sbgh3"; mkdir -p "$sbh3/.flow"
+cat > "$sbh3/.flow/config.yml" <<'EOF'
+flow:
+  lifecycle_authority: github
+  github:
+    owner: liminalarc
+EOF
+b=$(brief_for "$sbh3")
+out_has "github brief tolerates a missing project_number" "github" "$b"
+out_lacks "no dangling project label" "project ·" "$b"
+printf '{"cwd":"%s"}' "$sbh3" | bash "$BRIEF" >/dev/null 2>&1; exit_is "partial github config exits 0" 0 $?
+
+# The 1.30 adoption nudge fires in the github branch too — that branch exits
+# before the ladder, so without this it would never be reached.
+sbh4="$tmp/sbgh4"; mkdir -p "$sbh4/.flow"
+cat > "$sbh4/.flow/config.yml" <<'EOF'
+flow:
+  lifecycle_authority: github
+  related_repos:
+    - name: other
+  github:
+    owner: liminalarc
+    project_number: 36
+EOF
+b=$(brief_for "$sbh4")
+out_has "github branch carries the adoption nudge" "/flow:lint" "$b"
+
+# An authority this build does not implement stays silent rather than guessing.
+sbh5="$tmp/sbgh5"; mkdir -p "$sbh5/.flow"
+printf 'flow:\n  lifecycle_authority: jira\n' > "$sbh5/.flow/config.yml"
+b=$(brief_for "$sbh5")
+out_lacks "unknown backend prints nothing" "flow-toolkit" "$b"
+
+# The brief runs at every session start, so it must never reach the network.
+out_lacks "brief makes no gh call" "gh project" "$(cat "$BRIEF")"
+out_lacks "brief makes no gh issue call" "gh issue" "$(cat "$BRIEF")"
+
+# Repo-qualified ids (1.31): `<repo>-<issue#>` where the repo name itself has
+# dashes. The id is identity and is never parsed out of the filename, so
+# spec-path must resolve it in all three shapes.
+qd="$tmp/qualified"; mkdir -p "$qd/specs/archive"
+printf -- '---\nid: my-app-2-42\ntitle: Flat\n---\n' > "$qd/specs/my-app-2-42.md"
+got=$(bash "$PREFLIGHT" spec-path my-app-2-42 --repo "$qd")
+out_has "dashed repo-qualified id resolves flat" "my-app-2-42.md" "$got"
+rm -f "$qd/specs/my-app-2-42.md"
+mkdir -p "$qd/specs/my-app-2-42-add-login"
+printf -- '---\nid: my-app-2-42\ntitle: Dir\n---\n' > "$qd/specs/my-app-2-42-add-login/my-app-2-42-add-login.md"
+got=$(bash "$PREFLIGHT" spec-path my-app-2-42 --repo "$qd")
+out_has "dashed repo-qualified id resolves in directory form" "my-app-2-42-add-login.md" "$got"
+rm -rf "$qd/specs/my-app-2-42-add-login"
+printf -- '---\nid: my-app-2-42\ntitle: Archived\n---\n' > "$qd/specs/archive/my-app-2-42-add-login.md"
+got=$(bash "$PREFLIGHT" spec-path my-app-2-42 --repo "$qd")
+out_has "dashed repo-qualified id resolves in archive" "archive/my-app-2-42-add-login.md" "$got"
+
 # Fast exit — a project with neither index nor config stays silent.
 sbn="$tmp/sbnone"; mkdir -p "$sbn"
 b=$(brief_for "$sbn")
@@ -1779,6 +1870,60 @@ printf 'flow:\n  related_repos:\n    - name: other\n' > "$rr/.flow/config.yml"
 printf -- '---\nid: 8.1\ntitle: X\nrepos: [other]\n---\n## Problem\nx\n' > "$rr/specs/8.1-x.md"
 r=$(bash "$PREFLIGHT" repos "$rr/specs/8.1-x.md" --repo "$rr" 2>&1)
 out_has "repos: the repo_name hard stop names the fix" "/flow:init --adopt" "$r"
+
+# --- 1.31's programmable gh stub -------------------------------------------
+# Unlike 1.27's `az` double (which only logs, because ADO writes need no return
+# value), this one must ANSWER: field-list options, item lists, comment lists
+# and the scope-error path all return something, and a board write is only
+# reached after a read resolves the item.
+STUB="$HERE/fixtures/gh-stub/gh"
+gs="$tmp/ghstub"; mkdir -p "$gs/responses"
+export FLOW_GH_CAPTURE_LOG="$gs/calls.log"
+export FLOW_GH_STUB_DIR="$gs/responses"
+
+: > "$FLOW_GH_CAPTURE_LOG"
+bash "$STUB" project field-list 36 --owner liminalarc >/dev/null 2>&1
+exit_is "gh stub exits 0 with no canned response" 0 $?
+out_has "gh stub logs full argv" "gh project field-list 36 --owner liminalarc" "$(cat "$FLOW_GH_CAPTURE_LOG")"
+
+# An argument containing spaces stays one argument in the log, so an assertion
+# can tell `--value "In Progress"` from two separate tokens.
+: > "$FLOW_GH_CAPTURE_LOG"
+bash "$STUB" project item-edit --field Status --value "In Progress" >/dev/null 2>&1
+out_has "gh stub quotes spaced args" '--value "In Progress"' "$(cat "$FLOW_GH_CAPTURE_LOG")"
+
+# Canned stdout, keyed by subcommand — this is what the az double cannot do.
+printf '{"fields":[{"name":"Status","options":["Icebox","Cooking","Shipped"]}]}\n' \
+    > "$gs/responses/project-field-list.out"
+got=$(bash "$STUB" project field-list 36 --owner liminalarc 2>/dev/null)
+out_has "gh stub serves canned stdout" "Icebox" "$got"
+out_has "gh stub serves non-default option names" "Shipped" "$got"
+
+# Per-key failure injection: the scope-error path five criteria depend on.
+printf 'error: your authentication token is missing required scopes [read:project]\n' \
+    > "$gs/responses/project-view.err"
+echo 4 > "$gs/responses/project-view.exit"
+err=$(bash "$STUB" project view 36 --owner liminalarc 2>&1 >/dev/null); rc=$?
+exit_is "gh stub honours a per-key exit code" 4 $rc
+out_has "gh stub serves the real scope error" "read:project" "$err"
+
+# A key with a response must not leak into a different key.
+bash "$STUB" issue list --limit 45 >/dev/null 2>&1
+exit_is "gh stub leaves unrelated keys passing" 0 $?
+
+# Global exit override for the plain gh-unavailable case.
+FLOW_GH_STUB_EXIT=1 bash "$STUB" issue view 42 >/dev/null 2>&1
+exit_is "gh stub honours the global exit override" 1 $?
+
+# The stub is a fixture, never a query: it must not shell out to real gh.
+out_lacks "gh stub never calls real gh" "command gh" "$(cat "$STUB")"
+
+# PATH-first is the DOCUMENTED usage, so the fixture has to be executable. Every
+# assertion above invokes it as `bash "$STUB"`, which passes even without the
+# exec bit and then breaks on Linux CI — this case is what catches that.
+got=$(PATH="$HERE/fixtures/gh-stub:$PATH" gh project field-list 36 --owner liminalarc 2>/dev/null)
+out_has "gh stub resolves PATH-first as an executable" "Icebox" "$got"
+unset FLOW_GH_CAPTURE_LOG FLOW_GH_STUB_DIR
 
 echo "hooks.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

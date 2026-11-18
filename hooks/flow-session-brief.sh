@@ -59,38 +59,66 @@ adoption_gap() { # <config file>
     [ "${_rr:-0}" -gt 0 ] && [ "${_rn:-0}" -eq 0 ]
 }
 
+# --- backend coordinate (1.31 generalizes 1.19's ado-only parse) -------------
+# Read two keys from ONE indentation-scoped block of the config, tab-joined, in
+# a single awk pass (the brief runs at every session start — one subprocess per
+# backend, not one per key).
+#
+# Scoping is the whole point and it is load-bearing: a `flow.related_repos`
+# entry carries its own keys, so an indentation-agnostic first-match would let a
+# sibling's `project:`/`owner:` shadow the board coordinate — the trap the ado
+# block already hit. Anchoring at column 0 is not the fix either, since the real
+# keys are nested two levels under `flow:`.
+block_pair() { # <config> <block> <keyA> <keyB>
+    tr -d '\r' < "$1" | awk -v blk="$2" -v ka="$3" -v kb="$4" '
+        function ind(s,   i) { i = match(s, /[^ \t]/); return i ? i - 1 : 999 }
+        $0 ~ "^[[:space:]]*" blk ":[[:space:]]*$" { inb = 1; bind = ind($0); next }
+        {
+            if (inb && $0 ~ /[^[:space:]]/ && ind($0) <= bind) inb = 0
+            if (!inb) next
+            if ($0 ~ "^[[:space:]]*" ka ":" && a == "") {
+                a = $0; sub("^[[:space:]]*" ka ":[[:space:]]*", "", a); gsub(/"/, "", a)
+            }
+            if ($0 ~ "^[[:space:]]*" kb ":" && b == "") {
+                b = $0; sub("^[[:space:]]*" kb ":[[:space:]]*", "", b); gsub(/"/, "", b)
+            }
+        }
+        END { print a "\t" b }
+    '
+}
+
 
 # No local index: an ado project still deserves orientation (it used to get
 # nothing at all). Read the config only — the board is never queried here.
 if [ ! -f "$SPEC" ]; then
     CFG="$CWD/.flow/config.yml"
     [ -f "$CFG" ] || exit 0
-    grep -q 'lifecycle_authority:[[:space:]]*ado' "$CFG" 2>/dev/null || exit 0
-    # Scoped to the `ado:` block. `flow.related_repos` entries (1.25) may carry
-    # their own `project:`, and an indentation-agnostic first-match would let a
-    # sibling shadow the board coordinate. Anchoring at column 0 is not the fix
-    # either — the real keys are nested two levels under `flow:`.
-    coord=$(tr -d '\r' < "$CFG" | awk '
-        function ind(s,   i) { i = match(s, /[^ \t]/); return i ? i - 1 : 999 }
-        /^[[:space:]]*ado:[[:space:]]*$/ { inado = 1; adoind = ind($0); next }
-        {
-            if (inado && $0 ~ /[^[:space:]]/ && ind($0) <= adoind) inado = 0
-            if (!inado) next
-            if ($0 ~ /^[[:space:]]*project:/ && p == "") {
-                p = $0; sub(/^[[:space:]]*project:[[:space:]]*/, "", p); gsub(/"/, "", p)
-            }
-            if ($0 ~ /^[[:space:]]*area:/ && a == "") {
-                a = $0; sub(/^[[:space:]]*area:[[:space:]]*/, "", a); gsub(/"/, "", a)
-            }
-        }
-        END { if (p != "" && a != "") print p " · " a; else print p a }
-    ')
+    backend=$(tr -d '\r' < "$CFG" \
+        | sed -n 's/^[[:space:]]*lifecycle_authority:[[:space:]]*\([a-z][a-z_-]*\).*/\1/p' \
+        | head -1)
+    coord=""
+    case "$backend" in
+        ado)
+            IFS=$'\t' read -r _p _a <<< "$(block_pair "$CFG" ado project area)"
+            if [ -n "$_p" ] && [ -n "$_a" ]; then coord="$_p · $_a"; else coord="$_p$_a"; fi
+            ;;
+        github)
+            IFS=$'\t' read -r _o _n <<< "$(block_pair "$CFG" github owner project_number)"
+            if   [ -n "$_o" ] && [ -n "$_n" ]; then coord="$_o · project $_n"
+            elif [ -n "$_n" ];                 then coord="project $_n"
+            else                                    coord="$_o"
+            fi
+            ;;
+        # An authority this build doesn't implement stays silent rather than
+        # guessing at a coordinate it can't read.
+        *) exit 0 ;;
+    esac
     adopt=""
     adoption_gap "$CFG" && adopt="related_repos declared without repo_name; /flow:lint finishes cross-repo setup"
     if [ -n "$coord" ]; then
-        echo "flow-toolkit: ado backend — $coord — ${adopt:-/flow:run for the board}"
+        echo "flow-toolkit: $backend backend — $coord — ${adopt:-/flow:run for the board}"
     else
-        echo "flow-toolkit: ado backend — ${adopt:-/flow:run for the board}"
+        echo "flow-toolkit: $backend backend — ${adopt:-/flow:run for the board}"
     fi
     exit 0
 fi

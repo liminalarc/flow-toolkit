@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# Programmable stub for GitHub Projects v2 / Issues calls (spec 1.31).
+#
+# Put this directory FIRST on PATH and every `gh` invocation is recorded instead
+# of executed:
+#
+#   PATH="$(git rev-parse --show-toplevel)/hooks/fixtures/gh-stub:$PATH" \
+#   FLOW_GH_CAPTURE_LOG=/tmp/calls.log \
+#   FLOW_GH_STUB_DIR=/tmp/responses     <run the thing under test>
+#
+# Then assert against the log — e.g. that a done-step issued exactly one
+# `item-edit`, edited one comment, and touched no other field or item.
+#
+# Why this is NOT a copy of 1.27's `fixtures/ado-capture/az`: that double is
+# documented as "exits 0 and prints nothing", which is enough because an ADO
+# card write needs no return value. Here the read path is load-bearing — a
+# Status write can only happen after `item-list`/`issue view` resolves the item,
+# `/flow:init` builds its state_map from `field-list`, and the scope-gap and
+# board-unreachable criteria need a real failure. So this one also ANSWERS:
+# scripted stdout, stderr and exit status per invocation.
+#
+# Responses live in $FLOW_GH_STUB_DIR, keyed by the first two non-numeric,
+# non-flag argv tokens joined with `-`:
+#
+#   project-field-list.out    stdout for `gh project field-list 36 --owner x`
+#   project-view.err          stderr for `gh project view …`
+#   project-view.exit         exit status for `gh project view …`
+#   issue-view.out            stdout for `gh issue view 42 --json comments`
+#
+# Absent a response the call logs and exits 0 silently, so a caller that pipes
+# or checks status behaves as it would against a successful real call. A global
+# $FLOW_GH_STUB_EXIT covers the blunt "gh is broken/unavailable" case.
+#
+# It is a durable fixture, not scratch, and it never reaches the network: there
+# is no fallthrough to the real `gh` anywhere below. `hooks/CLAUDE.md`'s "board
+# data is an input, never a query" rule is untouched — no preflight subcommand
+# gains a call because this exists.
+
+set -u
+LOG="${FLOW_GH_CAPTURE_LOG:-${TMPDIR:-/tmp}/flow-gh-capture.log}"
+mkdir -p "$(dirname "$LOG")" 2>/dev/null || true
+
+# One line per call, argv space-joined. Arguments containing spaces are quoted
+# so a reader can tell `--value "In Progress"` from two separate arguments.
+line="gh"
+for a in "$@"; do
+    case "$a" in
+        *[[:space:]]*) line="$line \"$a\"" ;;
+        *)             line="$line $a" ;;
+    esac
+done
+printf '%s\n' "$line" >> "$LOG"
+
+# Response key: leading argv tokens up to the first flag or bare number, max 2.
+# `gh project field-list 36 --owner x` -> project-field-list
+# `gh issue view 42 --json comments`   -> issue-view
+key=""
+count=0
+for a in "$@"; do
+    case "$a" in
+        -*)       break ;;   # a flag: the subcommand path has ended
+        *[!0-9]*) ;;         # has a non-digit: part of the subcommand
+        *)        break ;;   # all digits: an id, not a subcommand
+    esac
+    key="${key:+$key-}$a"
+    count=$((count + 1))
+    [ "$count" -ge 2 ] && break
+done
+
+DIR="${FLOW_GH_STUB_DIR:-}"
+rc="${FLOW_GH_STUB_EXIT:-0}"
+
+if [ -n "$DIR" ] && [ -n "$key" ]; then
+    [ -f "$DIR/$key.out" ] && cat "$DIR/$key.out"
+    [ -f "$DIR/$key.err" ] && cat "$DIR/$key.err" >&2
+    # A per-key exit beats the global one: a run usually needs most calls to
+    # succeed and exactly one to fail.
+    if [ -f "$DIR/$key.exit" ]; then
+        rc=$(tr -dc '0-9' < "$DIR/$key.exit")
+        rc="${rc:-0}"
+    fi
+fi
+
+exit "$rc"
