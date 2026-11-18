@@ -1,0 +1,1 @@
+{"fields": [{"id": "PVTF_fixtureTitle", "name": "Title", "type": "ProjectV2Field"}, {"id": "PVTSSF_fixtureStatus", "name": "Status", "type": "ProjectV2SingleSelectField", "options": [{"id": "opt1", "name": "Icebox"}, {"id": "opt2", "name": "Cooking"}, {"id": "opt3", "name": "Shipped"}]}], "totalCount": 2}

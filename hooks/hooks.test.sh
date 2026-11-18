@@ -1947,5 +1947,48 @@ got=$(PATH="$HERE/fixtures/gh-stub:$PATH" gh project field-list 36 --owner limin
 out_has "gh stub resolves PATH-first as an executable" "Icebox" "$got"
 unset FLOW_GH_CAPTURE_LOG FLOW_GH_STUB_DIR
 
+# --- 1.31 canned response fixtures ------------------------------------------
+# The committed cases under fixtures/gh-stub/responses/ are what the prompt-path
+# criteria are proven against, so each one is checked here: a rotted or
+# mis-shaped fixture would otherwise fail silently as "no output".
+R="$HERE/fixtures/gh-stub/responses"
+stub_case() { # <case> <args...>  -> stdout
+    FLOW_GH_CAPTURE_LOG="$gs/calls.log" FLOW_GH_STUB_DIR="$R/$1" bash "$STUB" "${@:2}" 2>/dev/null
+}
+count_in() { printf '%s' "$2" | grep -o "$1" | wc -l | tr -d ' '; }
+
+got=$(stub_case field-list-nondefault project field-list 36 --owner liminalarc)
+out_has "fixture: field-list serves non-default options" "Icebox" "$got"
+out_lacks "fixture: field-list has no default names to copy" "In Progress" "$got"
+
+err=$(FLOW_GH_CAPTURE_LOG="$gs/calls.log" FLOW_GH_STUB_DIR="$R/scope-error" \
+      bash "$STUB" project field-list 36 --owner liminalarc 2>&1 >/dev/null); rc=$?
+exit_is "fixture: scope-error exits non-zero" 4 $rc
+out_has "fixture: scope-error names the missing scope" "read:project" "$err"
+
+got=$(stub_case item-list-multicolumn project item-list 36 --owner liminalarc)
+exit_is "fixture: multicolumn has 8 items" 8 "$(count_in '"number":' "$got")"
+out_has "fixture: multicolumn carries an UNMAPPED column" "Parking Lot" "$got"
+out_has "fixture: multicolumn carries the terminal column" "Deployed" "$got"
+
+got=$(stub_case item-list-empty project item-list 36 --owner liminalarc)
+exit_is "fixture: empty list has 0 items" 0 "$(count_in '"number":' "$got")"
+out_has "fixture: empty list is still valid JSON (the query ran)" '"items"' "$got"
+
+# 45 > gh's default --limit 30: a caller that forgets the flag loses 15 silently.
+got=$(stub_case item-list-45 project item-list 36 --owner liminalarc)
+exit_is "fixture: 45-item list really holds 45" 45 "$(count_in '"number":' "$got")"
+
+got=$(stub_case issue-view-human-last issue view 12 --json comments)
+out_has "fixture: pointer comment present" "Spec: specs/atlas-12-add-user-login.md" "$got"
+out_has "fixture: a human comment follows it" "shipping Monday" "$got"
+
+got=$(stub_case issue-closed-notplanned issue view 19 --json state,stateReason)
+out_has "fixture: closed not_planned is representable" "NOT_PLANNED" "$got"
+
+got=$(stub_case issue-cross-repo issue view 20 --json labels)
+out_has "fixture: cross-repo footprint rides on labels" "repo:ratchet-store" "$got"
+out_has "fixture: slice-done rides on labels too" "slice-done:atlas" "$got"
+
 echo "hooks.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
