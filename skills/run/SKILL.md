@@ -40,7 +40,8 @@ Read `.flow/config.yml` at the project root (absent ⇒ all defaults):
 ```yaml
 flow:
   lifecycle_authority: local    # DEFAULT — SPECIFICATIONS.md index owns status/priority/close
-                                # or: ado  — the ADO board owns lifecycle
+                                # or: ado    — the ADO board owns lifecycle
+                                # or: github — a GitHub Projects v2 board owns lifecycle
   spec_dir: specs               # where detail files live
   spec_filename: id-slug        # DEFAULT — name new detail files <id>-<slug>.md, slug from the
                                 # title; or: id — bare <id>.md. Both forms are always readable.
@@ -50,12 +51,20 @@ flow:
     area: "<Area\\Path>"
     item_type: "Work Item"
     state_map: …                        # tracker state -> canonical status
+  github:                       # only when lifecycle_authority: github
+    owner: <org-or-user>                # the BOARD's owner — may differ from the repo's remote
+    project_number: <n>                 # from .../projects/<n>
+    status_field: "Status"              # the single-select that owns lifecycle
+    repo: <repo>                        # optional — scope the backlog to one repo
+    state_map: …                        # Status option -> canonical status
 ```
 
 **Status vocabulary is flow's own, single-source:** `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
 - **`local`** (default) → the index is `SPECIFICATIONS.md`; `flow` owns the full lifecycle and the index uses the canonical vocabulary **directly — no `state_map`**. Spec ids are `Phase.Spec` (`1.2`, `0.1`, alphanumeric like `2.37a` allowed).
 - **`ado`** → the **board is the index** (no `SPECIFICATIONS.md`); spec ids are the work-item numbers (`specs/642103.md`). The tracker owns the state machine, so `state_map` translates each **board state -> a canonical token** (defined once in `.flow/config.yml`, scaffolded by `/flow:init`). The board may live in a **different ADO project/org than this repo** — the `ado` coordinates are independent of the git remote; only the `specs/<id>.md` detail files live here. Flow's card writes are **propose-only**: it transitions `System.State` on your sign-off and refreshes a single "Spec:" pointer comment, and **never** reprioritizes, reassigns, sets iteration, or closes a card unprompted. Prefer the tracking MCP tools (`wit_*`); if a call is unavailable or returns 401/403, announce the fallback and use the `az boards` CLI — never silently no-op. If both fail, stop and report.
+
+- **`github`** → the **Projects v2 board is the index** (no `SPECIFICATIONS.md`); the `status_field` single-select owns the state machine, so `state_map` translates each **column option -> a canonical token**. Two asymmetries with ado, both load-bearing: Projects v2 exposes option *names* with **no categories**, so the map is discovered from the board and confirmed rather than derived mechanically; and `SUPERSEDED` comes from the **issue** (closed with `state_reason: not_planned`), not from a column. Spec ids are **repo-qualified** `<repo>-<issue#>` (`specs/web-12-add-user-login.md`) — issue numbers are unique per repo only and an org board can gain a repo at any time, so qualifying unconditionally means no id ever changes; the id is parsed as *last dash-delimited numeric segment is the issue number*, applied to the front-matter `id:` and **never** to a filename. The board may live under a **different owner than the repo's remote**. Writes are **propose-only**: on your sign-off flow sets the Status option and refreshes a single "Spec:" pointer comment — located by its `Spec:` marker, never via `--edit-last`, which would overwrite a human's comment — and **never** closes, reassigns, re-milestones or reorders the board. The ladder is **`gh`-only**: on a failure, a missing `project` token scope (`gh auth refresh -s project`) or no `gh` at all, announce it and stop — never a silent no-op, never a guessed board state.
 
 ### The spec model (concept)
 

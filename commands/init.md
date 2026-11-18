@@ -1,5 +1,5 @@
 ---
-description: "Bootstrap or adopt a project: index + specs/ detail files, CLAUDE.md, config — /flow:init [concept|--adopt|--greenfield|--backend ado]"
+description: "Bootstrap or adopt a project: index + specs/ detail files, CLAUDE.md, config — /flow:init [concept|--adopt|--greenfield|--backend ado|--backend github]"
 ---
 # Init
 
@@ -11,10 +11,11 @@ Usage:
 - `/flow:init --greenfield` — force new-project mode (scaffold a Walking Skeleton)
 - `/flow:init --adopt` — force existing-project mode (no Walking Skeleton)
 - `/flow:init --backend ado` — configure an ADO-tracked backlog (writes `.flow/config.yml`)
+- `/flow:init --backend github` — configure a GitHub Projects v2 backlog (writes `.flow/config.yml`)
 
 ## The spec model this creates
 
-- **The index** — the lifecycle ledger (id, title, status, phase, link). **Status lives only here.** In `local` mode it's `SPECIFICATIONS.md`; in `ado` mode the board *is* the index (no `SPECIFICATIONS.md`).
+- **The index** — the lifecycle ledger (id, title, status, phase, link). **Status lives only here.** In `local` mode it's `SPECIFICATIONS.md`; in `ado` and `github` mode the board *is* the index (no `SPECIFICATIONS.md`).
 - **`specs/<id>.md`** — one detail file per spec (Problem, Value user story, Scope, AC, Plan, Decisions, Verification, Progress log). **No status field.** Backend-neutral.
 - **Canonical status vocabulary:** `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
@@ -98,9 +99,33 @@ flow:
    - Write nothing without sign-off, and **suggest the symmetric entry** the sibling needs — that repo must list *this* one, or its own runs will not see the footprint. Offer it as copy-paste text; never write into the sibling from here.
    - `local_path` is **per-machine and never committed**: put it in `.flow/config.local.yml` and add that path to `.gitignore`. A committed `local_path` is rejected by `flow-preflight.sh repos`.
 
-> **Extending to other trackers:** each backend adapter (`github-issues`, `jira`, …) ships its own `discover_config()` — the "backend introspects itself" pattern. Only `ado` exists today.
+**GitHub Projects backend (`--backend github`).** The board is a Projects v2 board — org- or user-level — whose **`Status` single-select is the state machine**. Steps 5 and 6 above apply here too.
 
-In `ado` mode, **do not create `SPECIFICATIONS.md`** — the board is the index. Still create the `specs/` directory for detail files.
+```yaml
+flow:
+  lifecycle_authority: github
+  spec_dir: specs
+  github:
+    owner: <org-or-user>      # the BOARD's owner — may differ from the repo's remote
+    project_number: <n>       # from https://github.com/orgs/<owner>/projects/<n>
+    status_field: "Status"    # the single-select that owns lifecycle
+    repo: <repo>              # optional — scope the backlog to one repo
+    state_map:                # Status option -> canonical token
+      "<Option>": <CANONICAL>
+```
+
+**Auto-discover it:** `gh project field-list <n> --owner <owner> --format json` returns the board's real option names; build `state_map` from those and confirm. Two things differ from ado and both matter:
+
+- **There are no state categories.** ADO maps mechanically from a state's *category*, which works on any custom process without knowing its names. Projects v2 exposes option **names only**, so the map is a *proposal from the discovered names* (`Todo`→`NOT STARTED`, `In Progress`→`IN PROGRESS`, `Blocked`→`PARTIAL`, `Done`→`DONE`) that the user confirms or corrects. Never write a map containing an option you did not read from the board, and never silently drop one you could not classify — surface it for assignment.
+- **`SUPERSEDED` comes from the issue, not the column.** A closed issue with `state_reason: not_planned` is `SUPERSEDED`; boards rarely carry a column for it.
+
+**The ladder is `gh`-only** — there is no MCP rung. If `gh` is missing, unauthenticated, or its token lacks the `project` scope, report the exact fix (`gh auth refresh -s project`) and **stop**: never write a config that was never verified against the board.
+
+**Ids are repo-qualified** — `<repo>-<issue#>` (`web-12` → `specs/web-12-add-user-login.md`). Issue numbers are unique per repo only and an org board can gain a repo at any time, so qualifying unconditionally means no id ever has to change. Parsed as *last dash-delimited numeric segment is the issue number*, applied to the front-matter `id:` and never to a filename.
+
+> **Extending to other trackers:** each backend adapter (`jira`, …) ships its own `discover_config()` — the "backend introspects itself" pattern. `ado` and `github` exist today.
+
+In `ado` and `github` mode, **do not create `SPECIFICATIONS.md`** — the board is the index. Still create the `specs/` directory for detail files.
 
 ### 4. Generate root CLAUDE.md
 
