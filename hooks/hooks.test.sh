@@ -1940,6 +1940,18 @@ printf '[{"id":7,"body":"Spec: specs/web-12.md @ abc1234"}]\n' \
 got=$(bash "$STUB" api repos/o/r/issues/1/comments 2>/dev/null)
 out_has "gh stub flattens a slashed api key" "Spec: specs/web-12.md" "$got"
 
+# The exec bit is recorded in git, not on disk: Windows has no exec bit, so any
+# rewrite of this file re-records it as 100644 and the stub stops being runnable
+# on Linux CI — where there is no real `gh` to fall back to. The PATH-first case
+# below cannot catch that on Windows (bash runs the script regardless), so assert
+# the committed mode directly; it is the only platform-independent check.
+mode=$(git -C "$HERE/.." ls-files -s hooks/fixtures/gh-stub/gh 2>/dev/null | awk '{print $1}')
+if [ -n "$mode" ]; then
+    exit_is "gh stub is committed executable (100755)" "100755" "$mode"
+else
+    pass=$((pass+1))   # not a git checkout: nothing to assert
+fi
+
 # PATH-first is the DOCUMENTED usage, so the fixture has to be executable. Every
 # assertion above invokes it as `bash "$STUB"`, which passes even without the
 # exec bit and then breaks on Linux CI — this case is what catches that.
