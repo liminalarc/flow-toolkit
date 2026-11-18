@@ -9,7 +9,7 @@ Usage:
 - `/flow:lint` — full audit (CLAUDE.md hierarchy + spec model + README)
 - `/flow:lint --claude` — CLAUDE.md hierarchy only
 - `/flow:lint --specs` — spec model only (index + detail files)
-- `/flow:lint --fix` — full audit, then auto-fix what's safe (status keyword casing, entry/heading format, archival — incl. reconciling ado cards closed outside flow)
+- `/flow:lint --fix` — full audit, then auto-fix what's safe (status keyword casing, entry/heading format, archival — incl. reconciling board items closed outside flow)
 - `/flow:lint --migrate` — convert a legacy inline `SPECIFICATIONS.md` to the index + detail-file model (dry-run by default; `--migrate --apply` writes)
 - `/flow:lint --migrate <id>` — reshape one flat spec into the directory form so it can hold task files (dry-run by default; add `--apply` to write)
 - `/flow:lint --rename [<id>|--all]` — rename bare `<id>.md` specs to the descriptive `<id>-<slug>.md` form and fix their index links (dry-run by default; add `--apply` to write)
@@ -18,7 +18,7 @@ Usage:
 
 **Start fresh.** Read only from the project files — `CLAUDE.md`, `.flow/config.yml`, `SPECIFICATIONS.md`, `specs/`, `README.md`. Do not build on prior conversation context.
 
-**Resolve the backend** from `.flow/config.yml` (absent ⇒ `local`). In `local` mode the index is `SPECIFICATIONS.md`; in `ado` mode there is no `SPECIFICATIONS.md` (the board is the index) and the spec-model checks validate the `specs/` directory only.
+**Resolve the backend** from `.flow/config.yml` (absent ⇒ `local`). In `local` mode the index is `SPECIFICATIONS.md`; in `ado` and `github` mode there is no `SPECIFICATIONS.md` (the board is the index) and the spec-model checks validate the `specs/` directory only. On a board backend that cannot be reached (`az`/MCP unavailable; `gh` failing, absent, or lacking the `project` scope), report every board-dependent row as **not evaluated** — never as a pass.
 
 ### Step 1: Discover the project layout
 
@@ -87,7 +87,7 @@ Detail files come in two shapes — **flat** or a **directory** holding an orche
 | DONE spec has no unchecked AC | WARNING | Index says DONE but `specs/<id>.md` still has `- [ ]` acceptance criteria. |
 | Non-DONE spec with all AC checked | INFO | All `- [x]` but status isn't DONE — probably needs a status update. |
 | `spawns:` front-matter well-formed | ERROR | **Only when the file carries a `spawns:` key** — otherwise this row does not apply and nothing is reported. Run `flow-preflight.sh spawns <file> --repo .`: every entry needs `id` and `after`, every id (spawned and `after`) must resolve to a detail file, and the graph must be acyclic. An `after` naming a resolvable id outside the set is a legitimate cross-spec blocker, not an error. |
-| `repo:` card tags mirror the footprint (ado only) | WARNING | **Only when the spec carries `repos:` and the backend is `ado`.** Run `flow-preflight.sh resolve-footprint <file> --tags "<the card's repo: tags>"`; a `divergence:` line means the card's tags and the front-matter disagree. Report which repos the tags add (`+name`) or omit (`-name`). With `--fix`, re-sync **the card's `repo:`-prefixed tags only** from the front-matter, which is the authority (1.24 D7) — confirm-first, per 1.18. **Never touch a non-`repo:` tag**: `slice-done:<name>` belongs to the done-step's completion record and re-syncing the whole tag set would delete it. |
+| `repo:` tags/labels mirror the footprint (board backends) | WARNING | **Only when the spec carries `repos:` and the backend is `ado` or `github`.** Run `flow-preflight.sh resolve-footprint <file> --tags "<the card's repo: tags>"` — in github the same set comes from the issue's `repo:*` **labels**. A `divergence:` line means the board and the front-matter disagree. Report which repos it adds (`+name`) or omits (`-name`). With `--fix`, re-sync **the `repo:`-prefixed tags/labels only** from the front-matter, which is the authority (1.24 D7) — confirm-first, per 1.18. **Never touch a non-`repo:` tag/label**: `slice-done:<name>` belongs to the done-step's completion record and re-syncing the whole set would delete it. |
 | Cross-repo config complete | INFO | **Only when `flow.related_repos` is declared, or a card carries `repo:` tags.** `flow-preflight.sh resolve-footprint` reports `undeclared: <name>` for a footprint name the config never declared, and `undeclared-self:` when `flow.repo_name` is unset. Report both; with `--fix`, **ask for** each value and write it — the entries for `undeclared:`, `flow.repo_name` for `undeclared-self:`. Never infer either: `repo_name` is a human's name for their own repo, and a guessed sibling handle silently disables every reminder that depends on it. Read-only without `--fix`, per the Rules below. |
 | `repos:` footprint valid | ERROR | **Only when the file carries a `repos:` key** — otherwise this row does not apply and nothing is reported. Run `flow-preflight.sh repos <file>`: every name is `flow.repo_name` or a declared `flow.related_repos` entry, `canonical_repo:` is present and inside `repos:` whenever the footprint names a repo beyond this one, and `work_item:` (which defaults to `id:`) is not blank. Advisory findings — an unknown key under a sibling entry, a `.flow/config.local.yml` that is not gitignored — come back on stderr with exit 0 and report as INFO, never ERROR. |
 | Deferrals front-matter well-formed | ERROR | A `deferrals:` entry is missing `what`, `why`, or `to`. Run `flow-preflight.sh wellformed <file>` per detail file. |
@@ -98,13 +98,13 @@ Detail files come in two shapes — **flat** or a **directory** holding an orche
 - **Well-formedness** (both backends): `flow-preflight.sh wellformed specs/<id>.md` for each detail file.
 - **DONE-gating**:
   - **local**: `flow-preflight.sh resolved --repo .` reads `SPECIFICATIONS.md` for the DONE set itself.
-  - **ado**: the board owns status, so query the DONE work items first, then pass them: `flow-preflight.sh resolved --repo . --done <id,id,...>`.
+  - **ado / github**: the board owns status, so query the DONE items first, then pass them: `flow-preflight.sh resolved --repo . --done <id,id,...>`. In github the ids are the repo-qualified `<repo>-<issue#>` form the spec files carry.
 
-### Step 3a: Archival reconciliation (ado only — skip entirely in local mode)
+### Step 3a: Archival reconciliation (board backends only — skip entirely in local mode)
 
-In local mode the index and the detail file move together in one commit, so they can't drift. In **ado** the board owns lifecycle and cards close **outside flow** — a teammate closing one in the ADO UI leaves its detail file sitting in the active folder with nothing watching. This step catches that.
+In local mode the index and the detail file move together in one commit, so they can't drift. On a **board backend** the board owns lifecycle and items close **outside flow** — a teammate closing a card in the ADO UI, or dragging an issue to the final column on a GitHub board, leaves its detail file sitting in the active folder with nothing watching. This step catches that.
 
-1. Query the configured area path for work items in a **Closed-category** state (per `.flow/config.yml`'s `state_map` — the *category*, never a hardcoded state name, since a team may rename its board states).
+1. Query for items in a **terminal** state — ado: the configured area path for a **Closed-category** state; github: `gh project item-list` for items whose `status_field` option maps to `DONE`/`SUPERSEDED`, plus issues closed with `state_reason: not_planned`. Resolve through `.flow/config.yml`'s `state_map` — the *mapping*, never a hardcoded state or column name, since a team renames these freely (a real board's terminal column may be `Deployed`, not `Done`).
 2. For each, resolve its detail with `flow-preflight.sh spec-path <id> --repo .`. If the resolved path is **not** under `<spec_dir>/archive/`, record a `WARNING`.
 3. Report them together, then **offer the `git mv` set confirm-first**. Move nothing unprompted and nothing without `--fix`; a flat file moves to `<spec_dir>/archive/<same-name>.md` and a directory moves whole (orchestrator + every task file), filenames unchanged.
 
@@ -162,7 +162,7 @@ Safe to auto-fix:
 - Status keyword normalization in the index (`done` → `DONE`, etc.).
 - Index entry format (spacing, backticks around status, link form).
 - Archive (local): move DONE/SUPERSEDED entries to `## Archive` and relocate their detail — a flat detail file → `specs/archive/<same-name>.md`, or a whole directory → `specs/archive/<same-dir>/` (orchestrator + every task file moved together), filenames unchanged.
-- Archive (ado): apply the Step 3a reconciliation moves — a Closed-category card whose detail is still in the active folder. Confirm-first, same `git mv` rules.
+- Archive (ado / github): apply the Step 3a reconciliation moves — a terminal-state card, or an issue in a terminal column, whose detail is still in the active folder. Confirm-first, same `git mv` rules.
 - Trailing whitespace / double blank lines in the index.
 
 Do **NOT** auto-fix: CLAUDE.md content, duplicate ids, missing sections/detail files (requires authoring), line-count issues, or moving a `status` out of a detail file (surface it; the human decides the true status).
