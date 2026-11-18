@@ -109,7 +109,7 @@ flow:
     owner: <org-or-user>      # the BOARD's owner — may differ from the repo's remote
     project_number: <n>       # from https://github.com/orgs/<owner>/projects/<n>
     status_field: "Status"    # the single-select that owns lifecycle
-    repo: <repo>              # optional — scope the backlog to one repo
+    repo: <repo>              # optional — omit to take the whole board
     state_map:                # Status option -> canonical token
       "<Option>": <CANONICAL>
 ```

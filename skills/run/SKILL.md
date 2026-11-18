@@ -55,7 +55,7 @@ flow:
     owner: <org-or-user>                # the BOARD's owner — may differ from the repo's remote
     project_number: <n>                 # from .../projects/<n>
     status_field: "Status"              # the single-select that owns lifecycle
-    repo: <repo>                        # optional — scope the backlog to one repo
+    repo: <repo>                        # optional — omit to take the whole board
     state_map: …                        # Status option -> canonical status
 ```
 
@@ -76,7 +76,7 @@ Read the index. Show a concise summary: IN PROGRESS first, then NOT STARTED grou
 
 - local: if `SPECIFICATIONS.md` doesn't exist, suggest `/flow:init`.
 - ado: query open items under the configured area path (`NOT IN ('Closed','Removed')`). If the query returns nothing, say so plainly — never assume the backlog is empty without confirming the query ran.
-- github: `gh project item-list <n> --owner <owner> --format json` with an **explicit `--limit`** (it defaults to 30 and would silently truncate a real board) or a `--query` scope. Group by the `status_field` option via `state_map`; an option missing from the map is reported `unmapped`, never guessed into a token. Same rule on an empty result: say the query ran. **Decide that from `gh`'s exit status, never from empty output** — a failed call can return nothing at all, which is indistinguishable from a genuinely empty board if you only look at stdout, and reporting "no open items" for an unreachable board is the worst available answer.
+- github: `gh project item-list <n> --owner <owner> --format json` with an **explicit `--limit`** (it defaults to 30 and would silently truncate a real board) or a `--query` scope. Group by the `status_field` option via `state_map`; an option missing from the map is reported `unmapped`, never guessed into a token. With `github.repo` set, read only that repo's items; omit it and the whole board is the backlog (repo-qualified ids keep `atlas-12` and `ratchet-store-12` distinct). **Skip draft items** — a Projects v2 draft has no issue, so no number, no repo and no `state_reason`, and therefore no id flow can address; say how many were skipped rather than dropping them silently. Same rule on an empty result: say the query ran. **Decide that from `gh`'s exit status, never from empty output** — a failed call can return nothing at all, which is indistinguishable from a genuinely empty board if you only look at stdout, and reporting "no open items" for an unreachable board is the worst available answer.
 
 ### `/flow:run --ideas`
 

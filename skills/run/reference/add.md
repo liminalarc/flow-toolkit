@@ -30,7 +30,7 @@ Otherwise ask which of the declared repos this item touches. One repo (just this
 - **Touch nothing else** in that tree.
 - The sibling's id is **allocated from the sibling's own index**, never copied from here: take **max + 1** within its highest existing phase, counting `## Archive` entries (ids are never reused) and ignoring non-numeric ids when taking the max. If a max cannot be computed — no numeric id anywhere, or that phase holds only non-numeric ids — **ask** rather than guessing. The slices share a `work_item:`, not an id, because each repo numbers its own backlog.
 
-**ado only — mirror the footprint to the card.** Add one `repo:<name>` tag per repo in `repos:`. Touch no other tag: `slice-done:<name>` tags belong to the done-step and must survive untouched.
+**Board backends — mirror the footprint to the item.** Add one `repo:<name>` per repo in `repos:` — an ado card **tag**, a github issue **label** (`gh issue edit <n> --add-label repo:<name>`; Projects v2 has no tag field, so labels carry it, and `/flow:lint --fix` re-syncs the same set). Touch nothing else: `slice-done:<name>` belongs to the done-step and must survive untouched.
 
 Show the draft (index line + detail) and confirm before writing.
 

@@ -150,7 +150,7 @@ flow:                             # everything lives under `flow:`
     owner: liminalarc             # the BOARD's owner — org or user
     project_number: 36            # from .../projects/36
     status_field: "Status"        # the single-select that owns lifecycle
-    repo: atlas                   # optional — scope the backlog to one repo
+    repo: atlas                   # optional — see below; omit to take the whole board
     state_map:                    # YOUR column names -> the vocabulary above
       Discovery:        NOT STARTED
       Backlog:          NOT STARTED
@@ -160,6 +160,13 @@ flow:                             # everything lives under `flow:`
       Ready for Review: IN PROGRESS
       Deployed:         DONE
 ```
+
+**What counts as the backlog.** With `repo:` set, flow reads only that repo's items — the usual
+choice on an org board shared by several teams. Omit it and the whole board is the backlog, which is
+what repo-qualified ids are for: `atlas-12` and `ratchet-store-12` coexist without colliding.
+**Draft items are skipped either way** — a Projects v2 draft has no issue, so it has no number, no
+repo and no `state_reason`, and therefore no id flow can address. Flow reports how many it skipped
+rather than silently dropping them; convert a draft to a real issue to track it.
 
 The right-hand side is always one of the five canonical tokens, spelled exactly as in **Status vocabulary** above. Several columns mapping to one token is normal — `Dev Done` and `Ready for Review` are both "built, not shipped", which flow treats as `IN PROGRESS` exactly as ado treats `Resolved`. `SUPERSEDED` usually needs no row — an issue closed with `state_reason: not_planned` is `SUPERSEDED` whatever column it sits in. Map a column to it only if your board has an explicit abandoned/won't-do column; both routes are valid and the issue route always applies. A column you leave out is reported `unmapped` rather than guessed.
 
@@ -304,7 +311,8 @@ The primary development command — all backlog management and implementation. A
 
 ```
 /flow:run                       # show the backlog, suggest the next spec
-/flow:run 2.3                   # plan + build spec 2.3
+/flow:run 2.3                   # plan + build spec 2.3 (local ids are Phase.Spec)
+/flow:run atlas-12              # github: the id is <repo>-<issue#>, not the bare number
 /flow:run "add dark mode"       # free-form; maps to a spec or offers --add
 /flow:run --add                 # co-author a new spec (index entry + detail file)
 /flow:run --ideas               # fast three-lens brainstorm
