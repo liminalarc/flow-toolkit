@@ -994,6 +994,20 @@ EOF
 b=$(brief_for "$sbh4")
 out_has "github branch carries the adoption nudge" "/flow:lint" "$b"
 
+# "Makes no network call" is the clause protecting the zero-cost-hook rule, and
+# none of the cases above prove it. Poison the PATH with a `gh` that records
+# being called: the brief must orient from the config alone and never touch it.
+poison="$tmp/poison"; mkdir -p "$poison"
+cat > "$poison/gh" <<POISON
+#!/usr/bin/env bash
+echo called >> "$tmp/gh-was-called"
+exit 0
+POISON
+chmod +x "$poison/gh"
+rm -f "$tmp/gh-was-called"
+PATH="$poison:$PATH" brief_for "$sbh" >/dev/null 2>&1
+[ -f "$tmp/gh-was-called" ] && { fail=$((fail+1)); echo "FAIL: brief shelled out to gh"; } || pass=$((pass+1))
+
 # An authority this build does not implement stays silent rather than guessing.
 sbh5="$tmp/sbgh5"; mkdir -p "$sbh5/.flow"
 printf 'flow:\n  lifecycle_authority: jira\n' > "$sbh5/.flow/config.yml"
@@ -1917,6 +1931,14 @@ exit_is "gh stub honours the global exit override" 1 $?
 
 # The stub is a fixture, never a query: it must not shell out to real gh.
 out_lacks "gh stub never calls real gh" "command gh" "$(cat "$STUB")"
+
+# A `gh api` path argument carries slashes; unflattened it would key to a nested
+# path that cannot exist, and the stub would answer empty stdout — which a
+# caller reads as "no comments" rather than as a failure.
+printf '[{"id":7,"body":"Spec: specs/web-12.md @ abc1234"}]\n' \
+    > "$gs/responses/api-repos-o-r-issues-1-comments.out"
+got=$(bash "$STUB" api repos/o/r/issues/1/comments 2>/dev/null)
+out_has "gh stub flattens a slashed api key" "Spec: specs/web-12.md" "$got"
 
 # PATH-first is the DOCUMENTED usage, so the fixture has to be executable. Every
 # assertion above invokes it as `bash "$STUB"`, which passes even without the

@@ -31,6 +31,12 @@
 # or checks status behaves as it would against a successful real call. A global
 # $FLOW_GH_STUB_EXIT covers the blunt "gh is broken/unavailable" case.
 #
+# LIMIT, by design: the key deliberately ignores all-digit tokens, so an item or
+# issue number is NOT part of it — every `issue view <n>` in one run gets the
+# same canned answer. Cases that must differ per item (one per Status column, a
+# closed not_planned, an unmapped column) each need their own
+# $FLOW_GH_STUB_DIR; they cannot share one run.
+#
 # It is a durable fixture, not scratch, and it never reaches the network: there
 # is no fallthrough to the real `gh` anywhere below. `hooks/CLAUDE.md`'s "board
 # data is an input, never a query" rule is untouched — no preflight subcommand
@@ -66,6 +72,11 @@ for a in "$@"; do
     count=$((count + 1))
     [ "$count" -ge 2 ] && break
 done
+# A `gh api repos/o/r/issues/1/comments` token carries slashes, which would
+# resolve to a nested path that cannot exist — the stub would then log, exit 0
+# and hand back empty stdout, which a caller reads as "no comments" rather than
+# as a failure. Flatten so such a call keys to one real file.
+key=$(printf '%s' "$key" | tr '/' '-')
 
 DIR="${FLOW_GH_STUB_DIR:-}"
 rc="${FLOW_GH_STUB_EXIT:-0}"
