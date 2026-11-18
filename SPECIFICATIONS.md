@@ -8,9 +8,9 @@
 ## Phase 1 — Features
 - **1.21** Unified outcome declaration — scenarios in front-matter, two executors — `NOT STARTED` — [detail](specs/1.21-unified-outcome-declaration-scenarios/1.21-unified-outcome-declaration-scenarios.md)
 - **1.23** Scope-amendment protocol — `NOT STARTED` — [detail](specs/1.23-scope-amendment-protocol.md)
-- **1.31** GitHub backend — Projects v2 lifecycle — `IN PROGRESS` — [detail](specs/1.31-github-backend-projects-v2-lifecycle/1.31-github-backend-projects-v2-lifecycle.md)
 
 ## Archive
+- **1.31** GitHub backend — Projects v2 lifecycle — `DONE` — [detail](specs/archive/1.31-github-backend-projects-v2-lifecycle/1.31-github-backend-projects-v2-lifecycle.md)
 - **1.30** Adoption path for repos configured before cross-repo — `DONE` — [detail](specs/archive/1.30-adoption-for-existing-repos.md)
 - **1.28** Cross-repo authoring + sibling discovery — `DONE` — [detail](specs/archive/1.28-cross-repo-authoring-sibling-discovery.md)
 - **1.27** Per-slice completion + terminal gate — `DONE` — [detail](specs/archive/1.27-per-slice-completion-terminal-gate.md)
