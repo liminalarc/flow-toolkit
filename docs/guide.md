@@ -35,7 +35,7 @@ flow-toolkit is **prompts + scripts, not an app**. Four moving parts:
 
 1. **A spec model** — a lightweight *index* (the backlog, status lives here) plus one *detail file* per spec. `/flow:run` reads the tiny index to orient, then loads only the one spec it's working on.
 2. **A `CLAUDE.md` hierarchy** — the rules Claude reads every session: root always loads; a subdirectory file loads only when Claude works in that directory.
-3. **Skills & commands** — `/flow:*` entry points. Heavy, path-dependent ones are **skills** (`run`, `hunt`, `review`, `pr`); thin deliberate ones are **commands** (`init`, `lint`, `ship`).
+3. **Skills & commands** — `/flow:*` entry points. Heavy, path-dependent ones are **skills** (`run`, `hunt`, `review`, `pr`, `validate`); thin deliberate ones are **commands** (`init`, `lint`, `ship`).
 4. **Hooks** — always-on bash guards that enforce file-format invariants deterministically (zero tokens), all funnelling machine-checkable rules through one helper, `flow-preflight.sh`.
 
 The loop is: **`/flow:run`** to see the backlog → **`/flow:run <id>`** to plan-then-build one spec (it pauses for your sign-off by default) → **`/flow:ship`** to cut a release. Everything else supports that loop.
@@ -109,9 +109,9 @@ Break out by a manual guideline — **≥3 tasks, or a task with its own AC** �
 
 **Status vocabulary** — exactly one per index entry: `NOT STARTED · IN PROGRESS · PARTIAL · DONE · SUPERSEDED`.
 
-**Archival — both backends.** When a spec reaches a terminal state, `/flow:run` moves its detail file into `specs/archive/`, **name unchanged** (a flat file, or the whole directory). In `local` it also moves the index entry to `## Archive`; in `ado` there's no index entry to move, so the trigger is the card reaching a **Closed-category** state per `state_map`. One folder holds both outcomes — `DONE` and `SUPERSEDED` archive identically, because *which* outcome it was is already single-source in the index/board, and encoding it in the folder path would be a second source of truth to drift. **Ids are never reused** — "closes 2.3" stays meaningful forever.
+**Archival — every backend.** When a spec reaches a terminal state, `/flow:run` moves its detail file into `specs/archive/`, **name unchanged** (a flat file, or the whole directory). In `local` it also moves the index entry to `## Archive`. On a board backend there is no index entry to move, so the trigger is the item's **mapped terminal state** — in `ado` a Closed-category state, in `github` a column `state_map` maps to `DONE`/`SUPERSEDED` (Projects v2 has no categories, so the map is the only authority) plus issues closed `not_planned`. One folder holds both outcomes — `DONE` and `SUPERSEDED` archive identically, because *which* outcome it was is already single-source in the index/board, and encoding it in the folder path would be a second source of truth to drift. **Ids are never reused** — "closes 2.3" stays meaningful forever.
 
-Cards closed **outside flow** (someone closed one in the ADO UI) leave their detail file behind; `/flow:lint` reconciles those — see [Section 4](#flowlint).
+Items that reach a terminal state **outside flow** (someone closed a card in the ADO UI, or dragged an issue to the final column on a GitHub board) leave their detail file behind; `/flow:lint` reconciles those — see [Section 4](#flowlint).
 
 **Terseness by rule** — a detail file is read every time its spec is worked, so bloat is wasted budget. `/flow:run --add` authors to three rules (one job per section, shortest lossless form, append-only one-line Progress log); a soft line budget (default 120, `spec.maxLines`) *warns* on drift but never blocks. `/flow:run --condense` is the judgment pass that tightens an existing spec losslessly.
 
@@ -137,6 +137,33 @@ The backend is set by an optional `.flow/config.yml`. **Absent ⇒ local mode** 
 - **`github`** — a **GitHub Projects v2 board is the index** (no `SPECIFICATIONS.md`); the board's `Status` single-select owns the state machine, so `state_map` translates each **column option → a canonical token**. Ids are **repo-qualified** `<repo>-<issue#>` (`specs/atlas-12-add-user-login.md`): issue numbers are unique per repo only, and an org board can gain a repo at any time, so qualifying unconditionally means no id ever has to change. Writes are **propose-only**: flow sets the Status option and refreshes one "Spec:" pointer comment — never closing, reassigning, re-milestoning or reordering the board.
 
 Two things differ from ado and are worth knowing before you configure it. Projects v2 exposes option **names with no categories**, so `state_map` is discovered from your board and confirmed, not derived mechanically — and **expect the defaults to match nothing**: a real board reads `Discovery · Backlog · Ready for Dev · In Dev · Dev Done · Ready for Review · Deployed`, several columns collapsing onto one token, with `Deployed` as the terminal one. And `SUPERSEDED` comes from the **issue** (closed with `state_reason: not_planned`), not from a column. The tool ladder is **`gh`-only** — no MCP rung — so a `gh` failure, a missing `project` token scope (`gh auth refresh -s project`) or no `gh` at all is announced and **stops**, never guessed past.
+
+**The config file, in full.** `/flow:init` writes this for you, but the schema is here so you can read or hand-edit it. Every key below is real; the `github` block is what board 36 actually needs:
+
+```yaml
+flow:                             # everything lives under `flow:`
+  lifecycle_authority: github     # local (default) | ado | github
+  spec_dir: specs                 # optional — where detail files live
+  spec_filename: id-slug          # optional — or `id` for bare <id>.md
+  repo_name: atlas                # optional — this repo's handle (cross-repo)
+  github:
+    owner: liminalarc             # the BOARD's owner — org or user
+    project_number: 36            # from .../projects/36
+    status_field: "Status"        # the single-select that owns lifecycle
+    repo: atlas                   # optional — scope the backlog to one repo
+    state_map:                    # YOUR column names -> the vocabulary above
+      Discovery:        NOT STARTED
+      Backlog:          NOT STARTED
+      Ready for Dev:    NOT STARTED
+      In Dev:           IN PROGRESS
+      Dev Done:         IN PROGRESS
+      Ready for Review: IN PROGRESS
+      Deployed:         DONE
+```
+
+The right-hand side is always one of the five canonical tokens, spelled exactly as in **Status vocabulary** above. Several columns mapping to one token is normal — `Dev Done` and `Ready for Review` are both "built, not shipped", which flow treats as `IN PROGRESS` exactly as ado treats `Resolved`. `SUPERSEDED` needs no row: it comes from the issue being closed with `state_reason: not_planned`. A column you leave out is reported `unmapped` rather than guessed.
+
+**Before you run it:** the `project` token scope is a prerequisite, not just an error you might hit — `gh auth refresh --hostname github.com --scopes project` once, up front. The id qualifier is the **bare** repo name (`atlas-12`, not `liminalarc/atlas-12`).
 
 Detail files are **byte-for-byte the same shape** in every mode; only *where lifecycle is owned* changes, and where the filename's slug comes from (the index Title, `System.Title`, or the issue title). **Archival behaves identically** — a finished spec's detail moves to `specs/archive/` either way; the board backends just take their trigger from the item's mapped terminal state instead of an index edit, always **through `state_map`** rather than by matching a state or column name. Set up ado with `/flow:init --backend ado` (it auto-builds the `state_map` from ADO state categories) or github with `/flow:init --backend github` (it reads your board's real columns with `gh project field-list`).
 
@@ -249,6 +276,7 @@ Bootstrap a new project or adopt an existing one. **Dispatches no sub-agents.**
 /flow:init --adopt                                  # force adopt-mode on an existing repo
 /flow:init --greenfield                             # force skeleton scaffolding
 /flow:init --backend ado                            # track the backlog on an ADO board
+/flow:init --backend github                         # track it on a GitHub Projects v2 board
 ```
 
 It reads any existing `CLAUDE.md`/`SPECIFICATIONS.md` (extends rather than overwrites), asks 2-3 focused questions (what it does, stack, layers), then generates the root + subdirectory `CLAUDE.md` files, the spec model (Walking Skeleton `0.1` on greenfield; a real backlog on adopt), and `MARKETING.md` for user-facing projects. Safe to re-run as the project evolves.
@@ -396,7 +424,7 @@ Checks (with severity `ERROR` / `WARNING` / `INFO`): CLAUDE.md caps + required s
 
 ## 4. The sub-agent catalog
 
-Six isolated-context sub-agents. Only the **implementer** writes; the other five are **read-only** (they report; the main thread decides and applies). Each runs in its own context, so the main thread stays lean and parallel units don't collide.
+Seven isolated-context sub-agents. Only the **implementer** writes; the other six are **read-only** (they report; the main thread decides and applies). Each runs in its own context, so the main thread stays lean and parallel units don't collide.
 
 | Agent | Dispatched by | When | R/W | Returns |
 |---|---|---|---|---|
